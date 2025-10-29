@@ -224,7 +224,7 @@ class EnhancedFCMService extends AdminFCMController
             return false;
         }
     
-        $credentialsFilePath = base_path('json/taxiu-app-ec56ab60a76b.json');
+        $credentialsFilePath = base_path('json/taxikjo-8bff55c09915.json');
     
         if (!file_exists($credentialsFilePath)) {
             \Log::error("FCM Error: Credentials file not found at: $credentialsFilePath");
@@ -291,7 +291,7 @@ class EnhancedFCMService extends AdminFCMController
             $payload = json_encode($data);
     
             $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/v1/projects/taxiu-app/messages:send');
+            curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/v1/projects/taxikjo/messages:send');
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

@@ -42,6 +42,7 @@ return new class extends Migration
             $table->timestamp('trip_started_at')->nullable();
             $table->timestamp('trip_completed_at')->nullable();
             $table->double('actual_trip_duration_minutes')->nullable();
+            $table->double('live_distance')->default(0);
 
             $table->enum('status', [
                 'pending',
@@ -53,6 +54,7 @@ return new class extends Migration
                 'user_cancel_order',
                 'driver_cancel_order',
                 'arrived',
+                'cancel_cron_jon',
             ])->default('pending');
     
             $table->text('reason_for_cancel')->nullable();
@@ -63,6 +65,15 @@ return new class extends Migration
             // Change status_payment to ENUM
             $table->enum('status_payment', ['pending', 'paid'])
                   ->default('pending');
+
+            /// وهو بستنى باليوزر عبين ما ينزله
+            $table->timestamp('arrived_at')->nullable();
+            $table->integer('total_waiting_minutes')->default(0);
+            $table->double('waiting_charges')->default(0);
+
+            // وهي الرحلة شغالة الوقت اللي وقف فيه
+            $table->integer('in_trip_waiting_minutes')->default(0);
+            $table->double('in_trip_waiting_charges')->default(0);
             $table->timestamps();
         });
     }

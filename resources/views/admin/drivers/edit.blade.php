@@ -49,11 +49,7 @@
                             <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $driver->email) }}">
                         </div>
                         
-                        <div class="form-group">
-                            <label for="password">{{ __('messages.Password') }}</label>
-                            <input type="password" class="form-control" id="password" name="password">
-                            <small class="form-text text-muted">{{ __('messages.Leave_blank_to_keep_current_password') }}</small>
-                        </div>
+                    
                         
                         <div class="form-group">
                             <label>{{ __('Options') }}</label>

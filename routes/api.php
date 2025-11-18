@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\v1\User;
 
+use App\Http\Controllers\Api\v1\Driver\AlertDriverController;
 use App\Http\Controllers\Api\v1\Driver\ComplaintDriverController;
 use App\Http\Controllers\Api\v1\Driver\OrderDriverController;
 use App\Http\Controllers\Api\v1\Driver\RatingDriverController;
@@ -43,6 +44,10 @@ Route::group(['prefix' => 'v1/user'], function () {
     Route::get('/getOptions', [OptionController::class, 'getOptions']);
     Route::post('/check-phone', [AuthController::class, 'checkPhone']);
     Route::post('/register', [AuthController::class, 'register']);
+
+
+    Route::post('/sendOtp', [AuthController::class, 'sendOtp']);
+    Route::post('/verifyOtp', [AuthController::class, 'verifyOtp']);
     Route::post('/resendOtp', [AuthController::class, 'resendOtp']);
 
     Route::get('/settings', [SettingController::class, 'index']);
@@ -144,5 +149,8 @@ Route::group(['prefix' => 'v1/driver'], function () {
         Route::get('/orders/{id}', [OrderDriverController::class, 'show']);
         Route::post('/orders/{id}/cancel', [OrderDriverController::class, 'cancelOrder']);
         Route::post('/orders/{id}/status', [OrderDriverController::class, 'updateStatus']);
+
+        Route::get('/driverAlerts', [AlertDriverController::class, 'index']); // List alerts
+        Route::post('/driverAlerts', [AlertDriverController::class, 'store']); // Create alert
     });
 });

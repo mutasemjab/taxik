@@ -52,8 +52,6 @@ class ServiceController extends Controller
             'start_price_evening' => 'required|numeric|min:0',
             'price_per_km_morning' => 'required|numeric|min:0',
             'price_per_km_evening' => 'required|numeric|min:0',
-            'price_of_real_one_minute_morning' => 'required|numeric|min:0',
-            'price_of_real_one_minute_evening' => 'required|numeric|min:0',
             'admin_commision' => 'required|numeric|min:0',
             'activate' => 'required|boolean',
             'type_of_commision' => 'required|in:1,2',
@@ -66,6 +64,10 @@ class ServiceController extends Controller
             'capacity' => 'required|integer|min:0',
             'waiting_time' => 'required|numeric|min:0',
             'cancellation_fee' => 'required|numeric|min:0',
+            // NEW: Waiting charges validation
+            'free_waiting_minutes' => 'required|integer|min:0',
+            'waiting_charge_per_minute' => 'required|numeric|min:0',
+            'waiting_charge_per_minute_when_order_active' => 'required|numeric|min:0',
         ]);
     
         if ($validator->fails()) {
@@ -126,8 +128,6 @@ class ServiceController extends Controller
             'start_price_evening' => 'required|numeric|min:0',
             'price_per_km_morning' => 'required|numeric|min:0',
             'price_per_km_evening' => 'required|numeric|min:0',
-            'price_of_real_one_minute_morning' => 'required|numeric|min:0',
-            'price_of_real_one_minute_evening' => 'required|numeric|min:0',
             'admin_commision' => 'required|numeric|min:0',
             'activate' => 'required|boolean',
             'type_of_commision' => 'required|in:1,2',
@@ -140,6 +140,10 @@ class ServiceController extends Controller
             'capacity' => 'required|integer|min:0',
             'waiting_time' => 'required|numeric|min:0',
             'cancellation_fee' => 'required|numeric|min:0',
+            // NEW: Waiting charges validation
+            'free_waiting_minutes' => 'required|integer|min:0',
+            'waiting_charge_per_minute' => 'required|numeric|min:0',
+            'waiting_charge_per_minute_when_order_active' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {

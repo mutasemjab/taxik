@@ -229,6 +229,77 @@
                         
                         <div id="map" style="height: 200px; width: 100%; margin-bottom: 20px;"></div>
                     </div>
+
+                    <!-- NEW: Waiting Charges Information -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="m-0 font-weight-bold text-info">
+                                <i class="fas fa-clock"></i> {{ __('messages.Waiting_Charges_Details') }}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="arrived_at">{{ __('messages.Arrived_At') }}</label>
+                                        <input type="datetime-local" class="form-control" id="arrived_at" name="arrived_at" 
+                                            value="{{ old('arrived_at', $order->arrived_at ? $order->arrived_at->format('Y-m-d\TH:i') : '') }}">
+                                        <small class="form-text text-muted">{{ __('messages.Arrived_At_Info') }}</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="total_waiting_minutes">{{ __('messages.Total_Waiting_Minutes') }}</label>
+                                        <input type="number" class="form-control" id="total_waiting_minutes" name="total_waiting_minutes" 
+                                            value="{{ old('total_waiting_minutes', $order->total_waiting_minutes) }}" min="0">
+                                        <small class="form-text text-muted">{{ __('messages.Total_Waiting_Minutes_Info') }}</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="waiting_charges">{{ __('messages.Waiting_Charges') }}</label>
+                                        <input type="number" step="0.01" class="form-control" id="waiting_charges" name="waiting_charges" 
+                                            value="{{ old('waiting_charges', $order->waiting_charges) }}" min="0">
+                                        <small class="form-text text-muted">{{ __('messages.Waiting_Charges_Info') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-3">
+                            <h6 class="font-weight-bold text-warning mb-3">
+                                <i class="fas fa-traffic-light"></i> {{ __('messages.In_Trip_Waiting') }}
+                            </h6>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="in_trip_waiting_minutes">{{ __('messages.In_Trip_Waiting_Minutes') }}</label>
+                                        <input type="number" class="form-control" id="in_trip_waiting_minutes" name="in_trip_waiting_minutes" 
+                                            value="{{ old('in_trip_waiting_minutes', $order->in_trip_waiting_minutes) }}" min="0">
+                                        <small class="form-text text-muted">{{ __('messages.In_Trip_Waiting_Minutes_Info') }}</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="in_trip_waiting_charges">{{ __('messages.In_Trip_Waiting_Charges') }}</label>
+                                        <input type="number" step="0.01" class="form-control" id="in_trip_waiting_charges" name="in_trip_waiting_charges" 
+                                            value="{{ old('in_trip_waiting_charges', $order->in_trip_waiting_charges) }}" min="0">
+                                        <small class="form-text text-muted">{{ __('messages.In_Trip_Waiting_Charges_Info') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i> 
+                                <strong>{{ __('messages.Note') }}:</strong> {{ __('messages.Waiting_Charges_Note') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="map" style="height: 200px; width: 100%; margin-bottom: 20px;"></div>
                 </div>
 
                 <div class="form-group text-center mt-4">

@@ -33,7 +33,12 @@ class CouponController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return $this->error_response('Validation error', $validator->errors());
+            return response()->json([
+                'status' => false,
+                'type' => 'validation_error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         // Get the coupon
@@ -46,7 +51,11 @@ class CouponController extends Controller
             ->first();
 
         if (!$coupon) {
-            return $this->error_response('Invalid or expired coupon code', null);
+            return response()->json([
+                'status' => false,
+                'type' => 'coupon_not_found',
+                'message' => 'Invalid or expired coupon code'
+            ], 200);
         }
 
         // Check if user has already used this coupon
@@ -56,7 +65,11 @@ class CouponController extends Controller
             ->exists();
 
         if ($hasUsedCoupon) {
-            return $this->error_response('You have already used this coupon', null);
+            return response()->json([
+                'status' => false,
+                'type' => 'coupon_already_used',
+                'message' => 'You have already used this coupon'
+            ], 200);
         }
 
         // Check coupon usage limit (if number_of_used is not null)
@@ -66,13 +79,21 @@ class CouponController extends Controller
                 ->count();
 
             if ($currentUsageCount >= $coupon->number_of_used) {
-                return $this->error_response('This coupon has reached its maximum usage limit', null);
+                return response()->json([
+                    'status' => false,
+                    'type' => 'coupon_usage_limit_reached',
+                    'message' => 'This coupon has reached its maximum usage limit'
+                ], 200);
             }
         }
 
         // Check for service-specific coupon
         if ($coupon->coupon_type == 3 && $coupon->service_id != $request->service_id) {
-            return $this->error_response('This coupon is only valid for ' . $coupon->service->name . ' service', null);
+            return response()->json([
+                'status' => false,
+                'type' => 'coupon_invalid_service',
+                'message' => 'This coupon is only valid for ' . $coupon->service->name . ' service'
+            ], 200);
         }
 
         // Check for first ride coupon
@@ -82,7 +103,11 @@ class CouponController extends Controller
                 ->exists();
 
             if ($hasCompletedRides) {
-                return $this->error_response('This coupon is only valid for your first ride', null);
+                return response()->json([
+                    'status' => false,
+                    'type' => 'coupon_first_ride_only',
+                    'message' => 'This coupon is only valid for your first ride'
+                ], 200);
             }
         }
 
@@ -98,6 +123,11 @@ class CouponController extends Controller
             ],
         ];
 
-        return $this->success_response('Coupon applied successfully', $responseData);
+        return response()->json([
+            'status' => true,
+            'type' => 'coupon_valid',
+            'message' => 'Coupon applied successfully',
+            'data' => $responseData
+        ], 200);
     }
 }

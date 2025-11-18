@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
@@ -166,6 +168,43 @@ class UserController extends Controller
         return redirect()
             ->route('users.index')
             ->with('success', 'User deleted successfully');
+    }
+
+    public function topUp(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'amount' => 'required|numeric|min:0.01',
+                'note' => 'nullable|string|max:255',
+            ]);
+            
+            DB::beginTransaction();
+            try {
+                // Update user balance
+                $user->balance += $request->amount;
+                $user->save();
+                
+                // Create transaction record
+                WalletTransaction::create([
+                    'user_id' => $user->id,
+                    'admin_id' => auth()->guard('admin')->user()->id,
+                    'amount' => $request->amount,
+                    'type_of_transaction' => 1, // 1 for add
+                    'note' => $request->note ?? 'Balance top-up by admin',
+                ]);
+                
+                DB::commit();
+                return redirect()->route('users.index')
+                    ->with('success', __('messages.Balance_Updated_Successfully'));
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return redirect()->back()
+                    ->with('error', __('messages.Something_Went_Wrong'));
+            }
+        }
+        
     }
 }
 

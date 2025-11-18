@@ -47,49 +47,57 @@ class OrderController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-   public function store(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'user_id' => 'required|exists:users,id',
-        'driver_id' => 'nullable|exists:drivers,id',
-        'service_id' => 'required|exists:services,id',
-        'pick_name' => 'required|string|max:255',
-        'pick_lat' => 'required|numeric',
-        'pick_lng' => 'required|numeric',
-        'drop_name' => 'required|string|max:255',
-        'drop_lat' => 'required|numeric',
-        'drop_lng' => 'required|numeric',
-        'total_price_before_discount' => 'required|numeric|min:0',
-        'discount_value' => 'nullable|numeric|min:0',
-        'total_price_after_discount' => 'required|numeric|min:0',
-        'net_price_for_driver' => 'required|numeric|min:0',
-        'commision_of_admin' => 'required|numeric|min:0',
-        'status' => ['required', Rule::in(array_column(OrderStatus::cases(), 'value'))],
-        'reason_for_cancel' => 'nullable|required_if:status,' . OrderStatus::UserCancelOrder->value . ',' . OrderStatus::DriverCancelOrder->value . '|string',
-        'payment_method' => ['required', Rule::in(array_column(PaymentMethod::cases(), 'value'))],
-        'status_payment' => ['required', Rule::in(array_column(StatusPayment::cases(), 'value'))],
-    ]);
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'driver_id' => 'nullable|exists:drivers,id',
+            'service_id' => 'required|exists:services,id',
+            'pick_name' => 'required|string|max:255',
+            'pick_lat' => 'required|numeric',
+            'pick_lng' => 'required|numeric',
+            'drop_name' => 'required|string|max:255',
+            'drop_lat' => 'required|numeric',
+            'drop_lng' => 'required|numeric',
+            'total_price_before_discount' => 'required|numeric|min:0',
+            'discount_value' => 'nullable|numeric|min:0',
+            'total_price_after_discount' => 'required|numeric|min:0',
+            'net_price_for_driver' => 'required|numeric|min:0',
+            'commision_of_admin' => 'required|numeric|min:0',
+            'status' => ['required', Rule::in(array_column(OrderStatus::cases(), 'value'))],
+            'reason_for_cancel' => 'nullable|required_if:status,' . OrderStatus::UserCancelOrder->value . ',' . OrderStatus::DriverCancelOrder->value . '|string',
+            'payment_method' => ['required', Rule::in(array_column(PaymentMethod::cases(), 'value'))],
+            'status_payment' => ['required', Rule::in(array_column(StatusPayment::cases(), 'value'))],
+            // NEW: Waiting charges validation
+            'arrived_at' => 'nullable|date',
+            'total_waiting_minutes' => 'nullable|integer|min:0',
+            'waiting_charges' => 'nullable|numeric|min:0',
+            'in_trip_waiting_minutes' => 'nullable|integer|min:0',
+            'in_trip_waiting_charges' => 'nullable|numeric|min:0',
+        ]);
 
-    if ($validator->fails()) {
+        if ($validator->fails()) {
+            return redirect()
+                ->route('orders.create')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $data = $request->all();
+
+        // Cast enum fields manually
+        $data['status'] = OrderStatus::from($data['status']);
+        $data['payment_method'] = PaymentMethod::from($data['payment_method']);
+        $data['status_payment'] = StatusPayment::from($data['status_payment']);
+
+        Order::create($data);
+
         return redirect()
-            ->route('orders.create')
-            ->withErrors($validator)
-            ->withInput();
+            ->route('orders.index')
+            ->with('success', __('messages.Order_Created_Successfully'));
     }
 
-    $data = $request->all();
 
-    // Cast enum fields manually
-    $data['status'] = OrderStatus::from($data['status']);
-    $data['payment_method'] = PaymentMethod::from($data['payment_method']);
-    $data['status_payment'] = StatusPayment::from($data['status_payment']);
-
-    Order::create($data);
-
-    return redirect()
-        ->route('orders.index')
-        ->with('success', __('messages.Order_Created_Successfully'));
-}
 
     /**
      * Display the specified resource.
@@ -125,50 +133,56 @@ class OrderController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-   public function update(Request $request, $id)
-{
-    $order = Order::findOrFail($id);
+    public function update(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
 
-    $validator = Validator::make($request->all(), [
-        'user_id' => 'required|exists:users,id',
-        'driver_id' => 'nullable|exists:drivers,id',
-        'service_id' => 'required|exists:services,id',
-        'pick_name' => 'required|string|max:255',
-        'pick_lat' => 'required|numeric',
-        'pick_lng' => 'required|numeric',
-        'drop_name' => 'required|string|max:255',
-        'drop_lat' => 'required|numeric',
-        'drop_lng' => 'required|numeric',
-        'total_price_before_discount' => 'required|numeric|min:0',
-        'discount_value' => 'nullable|numeric|min:0',
-        'total_price_after_discount' => 'required|numeric|min:0',
-        'net_price_for_driver' => 'required|numeric|min:0',
-        'commision_of_admin' => 'required|numeric|min:0',
-        'status' => ['required', Rule::in(array_column(OrderStatus::cases(), 'value'))],
-        'reason_for_cancel' => 'nullable|required_if:status,' . OrderStatus::UserCancelOrder->value . ',' . OrderStatus::DriverCancelOrder->value . '|string',
-        'payment_method' => ['required', Rule::in(array_column(PaymentMethod::cases(), 'value'))],
-        'status_payment' => ['required', Rule::in(array_column(StatusPayment::cases(), 'value'))],
-    ]);
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'driver_id' => 'nullable|exists:drivers,id',
+            'service_id' => 'required|exists:services,id',
+            'pick_name' => 'required|string|max:255',
+            'pick_lat' => 'required|numeric',
+            'pick_lng' => 'required|numeric',
+            'drop_name' => 'required|string|max:255',
+            'drop_lat' => 'required|numeric',
+            'drop_lng' => 'required|numeric',
+            'total_price_before_discount' => 'required|numeric|min:0',
+            'discount_value' => 'nullable|numeric|min:0',
+            'total_price_after_discount' => 'required|numeric|min:0',
+            'net_price_for_driver' => 'required|numeric|min:0',
+            'commision_of_admin' => 'required|numeric|min:0',
+            'status' => ['required', Rule::in(array_column(OrderStatus::cases(), 'value'))],
+            'reason_for_cancel' => 'nullable|required_if:status,' . OrderStatus::UserCancelOrder->value . ',' . OrderStatus::DriverCancelOrder->value . '|string',
+            'payment_method' => ['required', Rule::in(array_column(PaymentMethod::cases(), 'value'))],
+            'status_payment' => ['required', Rule::in(array_column(StatusPayment::cases(), 'value'))],
+            // NEW: Waiting charges validation
+            'arrived_at' => 'nullable|date',
+            'total_waiting_minutes' => 'nullable|integer|min:0',
+            'waiting_charges' => 'nullable|numeric|min:0',
+            'in_trip_waiting_minutes' => 'nullable|integer|min:0',
+            'in_trip_waiting_charges' => 'nullable|numeric|min:0',
+        ]);
 
-    if ($validator->fails()) {
+        if ($validator->fails()) {
+            return redirect()
+                ->route('orders.edit', $id)
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $data = $request->all();
+
+        $data['status'] = OrderStatus::from($data['status']);
+        $data['payment_method'] = PaymentMethod::from($data['payment_method']);
+        $data['status_payment'] = StatusPayment::from($data['status_payment']);
+
+        $order->update($data);
+
         return redirect()
-            ->route('orders.edit', $id)
-            ->withErrors($validator)
-            ->withInput();
+            ->route('orders.index')
+            ->with('success', __('messages.Order_Updated_Successfully'));
     }
-
-    $data = $request->all();
-
-    $data['status'] = OrderStatus::from($data['status']);
-    $data['payment_method'] = PaymentMethod::from($data['payment_method']);
-    $data['status_payment'] = StatusPayment::from($data['status_payment']);
-
-    $order->update($data);
-
-    return redirect()
-        ->route('orders.index')
-        ->with('success', __('messages.Order_Updated_Successfully'));
-}
 
 
     /**

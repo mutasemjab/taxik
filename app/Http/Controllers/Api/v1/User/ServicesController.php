@@ -44,17 +44,36 @@ class ServicesController extends Controller
             }])
             ->get();
 
-        $data = $services->map(function ($service) use ($distance) {
-            $price = $service->start_price + ($service->price_per_km * $distance);
+        $isEvening = $this->isEveningTime();
+
+        $data = $services->map(function ($service) use ($distance, $isEvening) {
+            // Select pricing based on time of day
+            $startPrice = $isEvening ? $service->start_price_evening : $service->start_price_morning;
+            $pricePerKm = $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning;
+            
+            $price = $startPrice + ($pricePerKm * $distance);
 
             $serviceData = $service->toArray();
             $serviceData['distance_km'] = round($distance, 2);
             $serviceData['estimated_price'] = round($price, 2);
+            $serviceData['pricing_period'] = $isEvening ? 'evening' : 'morning';
 
             return $serviceData;
         });
 
         return $this->success_response('Services retrieved with full data and estimated prices', $data);
+    }
+
+    /**
+     * Determine if current time is morning or evening
+     * Morning: before 18:00 (6 PM)
+     * Evening: 18:00 (6 PM) and after
+     */
+    private function isEveningTime($dateTime = null)
+    {
+        $checkTime = $dateTime ?? now();
+        $hour = $checkTime->format('H');
+        return $hour >= 22 || $hour < 6;
     }
 
 

@@ -38,10 +38,7 @@
                             <input type="email" class="form-control" id="email" name="email" value="{{ old('email') }}">
                         </div>
                         
-                        <div class="form-group">
-                            <label for="password">{{ __('messages.Password') }} <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
+                      
                     </div>
                     
                     <div class="col-md-6">

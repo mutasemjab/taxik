@@ -51,7 +51,7 @@
                         @canany(['driver-table', 'driver-add', 'driver-edit', 'driver-delete'])
                         <li class="nav-item">
                             <a href="{{ route('drivers.index') }}" class="nav-link {{ request()->routeIs('drivers.index') ? 'active' : '' }}">
-                                <i class="fas fa-car nav-icon"></i>
+                                <i class="fas fa-id-card nav-icon"></i>
                                 <p>{{ __('messages.drivers') }}</p>
                             </a>
                         </li>
@@ -74,7 +74,7 @@
                         @canany(['service-table', 'service-add', 'service-edit', 'service-delete'])
                         <li class="nav-item">
                             <a href="{{ route('services.index') }}" class="nav-link {{ request()->routeIs('services.index') ? 'active' : '' }}">
-                                <i class="fas fa-handshake nav-icon"></i>
+                                <i class="fas fa-taxi nav-icon"></i>
                                 <p>{{ __('messages.services') }}</p>
                             </a>
                         </li>
@@ -92,15 +92,17 @@
                 </li>
                 @endcanany
 
-                <!-- Notifications -->
+                <!-- Orders -->
                 @canany(['order-table', 'order-add', 'order-edit', 'order-delete'])
                 <li class="nav-item">
                     <a href="{{ route('orders.index') }}" class="nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-car"></i>
+                        <i class="nav-icon fas fa-receipt"></i>
                         <p>{{ __('messages.orders') }}</p>
                     </a>
                 </li>
                 @endcanany
+
+             
             
                 <!-- Notifications -->
                 @canany(['notification-table', 'notification-add', 'notification-edit', 'notification-delete'])
@@ -121,89 +123,120 @@
                     </a>
                 </li>
                 @endcanany
-           
-            
 
-                   @canany(['wallet-table', 'wallet-add', 'wallet-edit', 'wallet-delete', 'withdrawal-table', 'withdrawal-add', 'withdrawal-edit', 'withdrawal-delete'])
-                <li class="nav-item {{ request()->is('admin/users*') || request()->is('admin/drivers*') ? 'menu-open' : '' }}">
+                <!-- Wallet Management -->
+                @canany(['wallet-table', 'wallet-add', 'wallet-edit', 'wallet-delete', 'withdrawal-table', 'withdrawal-add', 'withdrawal-edit', 'withdrawal-delete'])
+                <li class="nav-item {{ request()->is('admin/wallet_transactions*') || request()->is('admin/withdrawals*') ? 'menu-open' : '' }}">
                     <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-users"></i>
+                        <i class="nav-icon fas fa-wallet"></i>
                         <p>
                             {{ __('messages.wallet_management') }}
                             <i class="right fas fa-angle-left"></i>
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-
-
                         @canany(['wallet-table', 'wallet-add', 'wallet-edit', 'wallet-delete'])
                         <li class="nav-item">
                             <a href="{{ route('wallet_transactions.index') }}" class="nav-link {{ request()->routeIs('wallet_transactions.index') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-money-bill-wave"></i>
+                                <i class="fas fa-money-bill-wave nav-icon"></i>
                                 <p>{{ __('messages.wallets') }}</p>
                             </a>
                         </li>
                         @endcanany
                         
                         @canany(['withdrawal-table', 'withdrawal-add', 'withdrawal-edit', 'withdrawal-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('withdrawals.index') }}" class="nav-link {{ request()->routeIs('withdrawals.index') ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-file-alt"></i>
-                                    <p>{{ __('messages.withdrawals') }}</p>
-                                </a>
-                            </li>
+                        <li class="nav-item">
+                            <a href="{{ route('withdrawals.index') }}" class="nav-link {{ request()->routeIs('withdrawals.index') ? 'active' : '' }}">
+                                <i class="fas fa-hand-holding-usd nav-icon"></i>
+                                <p>{{ __('messages.withdrawals') }}</p>
+                            </a>
+                        </li>
                         @endcanany
-
-
                     </ul>
                 </li>
                 @endcanany
 
+                <!-- Banners -->
                 @canany(['banner-table', 'banner-add', 'banner-edit', 'banner-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('banners.index') }}" class="nav-link {{ request()->routeIs('banners.index') ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-file-alt"></i>
-                                    <p>{{ __('messages.Banners') }}</p>
-                                </a>
-                            </li>
+                <li class="nav-item">
+                    <a href="{{ route('banners.index') }}" class="nav-link {{ request()->routeIs('banners.index') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-images"></i>
+                        <p>{{ __('messages.Banners') }}</p>
+                    </a>
+                </li>
+                @endcanany
+              
+                <!-- Driver Alerts -->
+                @canany(['driver_alert-table', 'driver_alert-add', 'driver_alert-edit', 'driver_alert-delete'])
+                <li class="nav-item">
+                    <a href="{{ route('admin.driver_alerts.index') }}" class="nav-link {{ request()->routeIs('admin.driver_alerts.index') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-exclamation-triangle"></i>
+                        <p>{{ __('messages.driver_alerts') }}</p>
+                    </a>
+                </li>
                 @endcanany
 
+                <!-- Ratings -->
                 @canany(['rating-table', 'rating-add', 'rating-edit', 'rating-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('ratings.index') }}" class="nav-link {{ request()->routeIs('ratings.index') ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-file-alt"></i>
-                                    <p>{{ __('messages.Ratings') }}</p>
-                                </a>
-                            </li>
+                <li class="nav-item">
+                    <a href="{{ route('ratings.index') }}" class="nav-link {{ request()->routeIs('ratings.index') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-star"></i>
+                        <p>{{ __('messages.Ratings') }}</p>
+                    </a>
+                </li>
                 @endcanany
+
+                <!-- Complaints -->
                 @canany(['complaint-table', 'complaint-add', 'complaint-edit', 'complaint-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('complaints.index') }}" class="nav-link {{ request()->routeIs('complaints.index') ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-file-alt"></i>
-                                    <p>{{ __('messages.complaints') }}</p>
-                                </a>
-                            </li>
+                <li class="nav-item">
+                    <a href="{{ route('complaints.index') }}" class="nav-link {{ request()->routeIs('complaints.index') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-comment-alt"></i>
+                        <p>{{ __('messages.complaints') }}</p>
+                    </a>
+                </li>
                 @endcanany
+
+                <!-- POS -->
                 @canany(['pos-table', 'pos-add', 'pos-edit', 'pos-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.index') ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-file-alt"></i>
-                                    <p>{{ __('messages.pos_list') }}</p>
-                                </a>
-                            </li>
+                <li class="nav-item">
+                    <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.index') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-cash-register"></i>
+                        <p>{{ __('messages.pos_list') }}</p>
+                    </a>
+                </li>
                 @endcanany
                
+                <!-- Cards -->
                 @canany(['card-table', 'card-add', 'card-edit', 'card-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('cards.index') }}" class="nav-link {{ request()->routeIs('cards.index') ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-file-alt"></i>
-                                    <p>{{ __('messages.cards_list') }}</p>
-                                </a>
-                            </li>
+                <li class="nav-item">
+                    <a href="{{ route('cards.index') }}" class="nav-link {{ request()->routeIs('cards.index') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-credit-card"></i>
+                        <p>{{ __('messages.cards_list') }}</p>
+                    </a>
+                </li>
                 @endcanany
 
+                   <!-- Reports Section -->
+                <li class="nav-item {{ request()->is('admin/reports*') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-chart-bar"></i>
+                        <p>
+                            {{ __('messages.reports') }}
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{{ route('reports.order-status-history') }}" class="nav-link {{ request()->routeIs('reports.order-status-history') || request()->routeIs('admin.reports.order-status-detail') ? 'active' : '' }}">
+                                <i class="fas fa-history nav-icon"></i>
+                                <p>{{ __('messages.Order_Status_History') }}</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
                 <!-- System Settings -->
-                <li class="nav-item {{ request()->is('admin/settings*') || request()->is('admin/roles*') || request()->is('admin/employees*') ? 'menu-open' : '' }}">
+                <li class="nav-item {{ request()->is('admin/settings*') || request()->is('admin/app-configs*') || request()->is('admin/roles*') || request()->is('admin/employees*') ? 'menu-open' : '' }}">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-cogs"></i>
                         <p>
@@ -214,13 +247,13 @@
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
                             <a href="{{ route('app-configs.index') }}" class="nav-link {{ request()->routeIs('app-configs.index') ? 'active' : '' }}">
-                                <i class="fas fa-wrench nav-icon"></i>
+                                <i class="fas fa-mobile-alt nav-icon"></i>
                                 <p>{{ __('messages.app_configurations') }}</p>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="{{ route('settings.index') }}" class="nav-link {{ request()->routeIs('settings.index') ? 'active' : '' }}">
-                                <i class="fas fa-wrench nav-icon"></i>
+                                <i class="fas fa-sliders-h nav-icon"></i>
                                 <p>{{ __('messages.general_settings') }}</p>
                             </a>
                         </li>
@@ -252,8 +285,6 @@
                         <p>{{ __('messages.admin_account') }}</p>
                     </a>
                 </li>
-
-               
             </ul>
         </nav>
     </div>

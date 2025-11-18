@@ -54,38 +54,7 @@ class Order extends Model
 
         return $number;
     }
-    
 
-
-    public function getStatusText()
-    {
-        return match ($this->status) {
-            OrderStatus::Pending => __('messages.Pending'),
-            OrderStatus::DriverAccepted => __('messages.Driver_Accepted'),
-            OrderStatus::DriverGoToUser => __('messages.on_the_way'),
-            OrderStatus::UserWithDriver => __('messages.started'),
-            OrderStatus::waitingPayment => __('messages.waiting_payment'),
-            OrderStatus::Delivered => __('messages.completed'),
-            OrderStatus::UserCancelOrder => __('messages.User_Cancelled'),
-            OrderStatus::DriverCancelOrder => __('messages.Driver_Cancelled'),
-            OrderStatus::Arrived => __('messages.arrived'),
-            default => __('messages.Unknown'),
-        };
-    }
-
-    public function getStatusClass()
-    {
-        return match ($this->status) {
-            OrderStatus::Pending => 'warning',
-            OrderStatus::DriverAccepted,
-            OrderStatus::DriverGoToUser,
-            OrderStatus::UserWithDriver => 'primary',
-            OrderStatus::Delivered => 'success',
-            OrderStatus::UserCancelOrder,
-            OrderStatus::DriverCancelOrder => 'danger',
-            default => 'secondary',
-        };
-    }
 
     public function getPaymentMethodText()
     {
@@ -115,11 +84,46 @@ class Order extends Model
         };
     }
 
+        public function getStatusClass()
+    {
+        return match($this->status) {
+            OrderStatus::Pending => 'warning',
+            OrderStatus::DriverAccepted => 'info',
+            OrderStatus::DriverGoToUser => 'primary',
+            OrderStatus::UserWithDriver => 'success',
+            OrderStatus::Arrived => 'info',
+            OrderStatus::waitingPayment => 'warning',
+            OrderStatus::Delivered => 'success',
+            OrderStatus::UserCancelOrder => 'danger',
+            OrderStatus::DriverCancelOrder => 'danger',
+            OrderStatus::CancelCronJob => 'secondary', // NEW
+            default => 'secondary',
+        };
+    }
+
+    public function getStatusText()
+    {
+        return match($this->status) {
+            OrderStatus::Pending => __('messages.Pending'),
+            OrderStatus::DriverAccepted => __('messages.Accepted'),
+            OrderStatus::DriverGoToUser => __('messages.On_Way'),
+            OrderStatus::UserWithDriver => __('messages.Started'),
+            OrderStatus::Arrived => __('messages.Arrived'),
+            OrderStatus::waitingPayment => __('messages.Waiting_Payment'),
+            OrderStatus::Delivered => __('messages.Completed'),
+            OrderStatus::UserCancelOrder => __('messages.User_Cancelled'),
+            OrderStatus::DriverCancelOrder => __('messages.Driver_Cancelled'),
+            OrderStatus::CancelCronJob => __('messages.Auto_Cancelled'), // NEW
+            default => __('messages.Unknown'),
+        };
+    }
+
     public function isCancelled()
     {
         return in_array($this->status, [
             OrderStatus::UserCancelOrder,
-            OrderStatus::DriverCancelOrder
+            OrderStatus::DriverCancelOrder,
+            OrderStatus::CancelCronJob, // NEW
         ]);
     }
 

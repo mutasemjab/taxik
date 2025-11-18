@@ -122,6 +122,138 @@
         </div>
     </div>
 
+    <!-- Waiting Charges Details Card -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-info">
+            <i class="fas fa-clock"></i> {{ __('messages.Waiting_Charges_Details') }}
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- Pre-Trip Waiting (Arrived → Started) -->
+            <div class="col-md-6">
+                <h6 class="font-weight-bold text-primary mb-3">
+                    <i class="fas fa-user-clock"></i> {{ __('messages.Pre_Trip_Waiting') }}
+                </h6>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th width="50%">{{ __('messages.Arrived_At') }}</th>
+                                <td>
+                                    @if($order->arrived_at)
+                                        {{ $order->arrived_at->format('Y-m-d H:i:s') }}
+                                    @else
+                                        <span class="text-muted">{{ __('messages.Not_Set') }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>{{ __('messages.Total_Waiting_Minutes') }}</th>
+                                <td>
+                                    <span class="badge badge-info px-3 py-2">
+                                        {{ $order->total_waiting_minutes }} {{ __('messages.Minutes') }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>{{ __('messages.Waiting_Charges') }}</th>
+                                <td>
+                                    <span class="badge badge-success px-3 py-2">
+                                        {{ number_format($order->waiting_charges, 2) }} {{ __('messages.JD') }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-light border mb-0">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        {{ __('messages.Pre_Trip_Waiting_Info') }}
+                    </small>
+                </div>
+            </div>
+
+            <!-- In-Trip Waiting (Traffic, Lights) -->
+            <div class="col-md-6">
+                <h6 class="font-weight-bold text-warning mb-3">
+                    <i class="fas fa-traffic-light"></i> {{ __('messages.In_Trip_Waiting') }}
+                </h6>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th width="50%">{{ __('messages.In_Trip_Waiting_Minutes') }}</th>
+                                <td>
+                                    <span class="badge badge-warning px-3 py-2">
+                                        {{ $order->in_trip_waiting_minutes }} {{ __('messages.Minutes') }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>{{ __('messages.In_Trip_Waiting_Charges') }}</th>
+                                <td>
+                                    <span class="badge badge-success px-3 py-2">
+                                        {{ number_format($order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>{{ __('messages.Total_Waiting_Charges') }}</th>
+                                <td>
+                                    <span class="badge badge-primary px-3 py-2">
+                                        {{ number_format($order->waiting_charges + $order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-light border mb-0">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        {{ __('messages.In_Trip_Waiting_Info_Show') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        @if($order->waiting_charges > 0 || $order->in_trip_waiting_charges > 0)
+        <hr class="my-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card bg-light">
+                    <div class="card-body p-3">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calculator"></i> 
+                                    {{ __('messages.Total_Waiting_Impact') }}
+                                </h6>
+                                <small class="text-muted">
+                                    {{ __('messages.Total_Waiting_Impact_Description') }}
+                                </small>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <h4 class="mb-0 text-success">
+                                    +{{ number_format($order->waiting_charges + $order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+
     <div class="row">
         <div class="col-lg-8">
             <!-- Order Details Card -->

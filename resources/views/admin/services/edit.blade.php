@@ -114,12 +114,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="price_of_real_one_minute_morning">{{ __('messages.price_of_real_one_minute') }} ({{ __('messages.Morning') }}) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" id="price_of_real_one_minute_morning" name="price_of_real_one_minute_morning" value="{{ old('price_of_real_one_minute_morning', $service->price_of_real_one_minute_morning) }}" required min="0">
-                        </div>
-                    </div>
+                
                 </div>
 
                 <hr>
@@ -141,16 +136,40 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="price_of_real_one_minute_evening">{{ __('messages.price_of_real_one_minute') }} ({{ __('messages.Evening') }}) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" id="price_of_real_one_minute_evening" name="price_of_real_one_minute_evening" value="{{ old('price_of_real_one_minute_evening', $service->price_of_real_one_minute_evening) }}" required min="0">
-                        </div>
-                    </div>
+                    
                 </div>
                 
                 <hr>
+
+            <!-- NEW: Waiting Charges Section -->
+            <h5 class="text-info mb-3"><i class="fas fa-clock"></i> {{ __('messages.Waiting_Charges') }}</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="free_waiting_minutes">{{ __('messages.Free_Waiting_Minutes') }} <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="free_waiting_minutes" name="free_waiting_minutes" value="{{ old('free_waiting_minutes', $service->free_waiting_minutes) }}" required min="0">
+                        <small class="form-text text-muted">{{ __('messages.Free_Waiting_Minutes_Info') }}</small>
+                    </div>
+                </div>
                 
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="waiting_charge_per_minute">{{ __('messages.Waiting_Charge_Per_Minute') }} <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" class="form-control" id="waiting_charge_per_minute" name="waiting_charge_per_minute" value="{{ old('waiting_charge_per_minute', $service->waiting_charge_per_minute) }}" required min="0">
+                        <small class="form-text text-muted">{{ __('messages.Waiting_Charge_Per_Minute_Info') }}</small>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="waiting_charge_per_minute_when_order_active">{{ __('messages.In_Trip_Waiting_Charge') }} <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" class="form-control" id="waiting_charge_per_minute_when_order_active" name="waiting_charge_per_minute_when_order_active" value="{{ old('waiting_charge_per_minute_when_order_active', $service->waiting_charge_per_minute_when_order_active) }}" required min="0">
+                        <small class="form-text text-muted">{{ __('messages.In_Trip_Waiting_Charge_Info') }}</small>
+                    </div>                                          
+                </div>
+            </div>
+
+            <hr>
                 <!-- Commission and Payment Settings -->
                 <h5 class="text-success mb-3"><i class="fas fa-cog"></i> {{ __('messages.Commission_and_Payment') }}</h5>
                 <div class="row">

@@ -158,14 +158,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card bg-warning text-white mb-3">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">{{ __('messages.Price_Per_Minute') }}</h6>
-                                    <h2>{{ $service->price_of_real_one_minute_morning }}</h2>
-                                </div>
-                            </div>
-                        </div>
+                    
                     </div>
                     
                     <div class="card mt-3">
@@ -217,14 +210,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card bg-info text-white mb-3">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">{{ __('messages.Price_Per_Minute') }}</h6>
-                                    <h2>{{ $service->price_of_real_one_minute_evening }}</h2>
-                                </div>
-                            </div>
-                        </div>
+                     
                     </div>
                     
                     <div class="card mt-3">

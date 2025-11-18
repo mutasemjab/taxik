@@ -180,6 +180,7 @@ class OrderController extends Controller
                 if (!$coupon) {
                     return response()->json([
                         'status' => false,
+                        'type' => 'coupon_not_found',
                         'message' => 'Coupon not found or inactive'
                     ], 200);
                 }
@@ -188,6 +189,7 @@ class OrderController extends Controller
                 if (!$coupon->isValid()) {
                     return response()->json([
                         'status' => false,
+                        'type' => 'expired',
                         'message' => 'Coupon has expired or not yet active'
                     ], 200);
                 }
@@ -201,6 +203,7 @@ class OrderController extends Controller
                 if ($hasUsedCoupon) {
                     return response()->json([
                         'status' => false,
+                        'type' => 'coupon_already_used',
                         'message' => 'You have already used this coupon'
                     ], 200);
                 }
@@ -214,6 +217,7 @@ class OrderController extends Controller
                     if ($currentUsageCount >= $coupon->number_of_used) {
                         return response()->json([
                             'status' => false,
+                            'type' => 'coupon_usage_limit_reached',
                             'message' => 'This coupon has reached its maximum usage limit'
                         ], 200);
                     }
@@ -223,6 +227,7 @@ class OrderController extends Controller
                 if ($calculatedPrice < $coupon->minimum_amount) {
                     return response()->json([
                         'status' => false,
+                        'type' => 'minimum_amount',
                         'message' => 'Order amount does not meet minimum requirement for this coupon'
                     ], 200);
                 }
@@ -236,6 +241,7 @@ class OrderController extends Controller
                     if ($previousOrdersCount > 0) {
                         return response()->json([
                             'status' => false,
+                            'type' => 'coupon_first_ride_only',
                             'message' => 'This coupon is only valid for first ride'
                         ], 200);
                     }
@@ -243,6 +249,7 @@ class OrderController extends Controller
                     if ($coupon->service_id != $request->service_id) {
                         return response()->json([
                             'status' => false,
+                            'type' => 'coupon_invalid_service',
                             'message' => 'This coupon is not valid for the selected service'
                         ], 200);
                     }

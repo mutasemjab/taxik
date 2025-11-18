@@ -70,76 +70,83 @@ class WalletDriverController extends Controller
     }
 
     public function useCard(Request $request)
-    {
-        \Log::info('useCard method called', ['request_data' => $request->all()]);
-        
+    {        
         $validator = Validator::make($request->all(), [
             'card_number' => 'required|string',
         ]);
 
         if ($validator->fails()) {
-            \Log::warning('useCard validation failed', ['errors' => $validator->errors()]);
-            return $this->error_response($validator->errors(),[]);
+            return response()->json([
+                'status' => false,
+                'type' => 'validation_error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         // Get authenticated driver
         $driver = Auth::guard('driver-api')->user();
         if (!$driver) {
-            \Log::error('useCard: Driver not authenticated');
-            return $this->error_response(__('messages.driver_not_authenticated'),[]);
+            return response()->json([
+                'status' => false,
+                'type' => 'driver_not_authenticated',
+                'message' => __('messages.driver_not_authenticated')
+            ], 401);
         }
-
-        \Log::info('useCard: Driver authenticated', ['driver_id' => $driver->id, 'driver_name' => $driver->name]);
 
         DB::beginTransaction();
 
         try {
             // Remove formatting from card number (remove dashes)
-            $cardNumberClean = str_replace('-', '', $request->card_number);
-            \Log::info('useCard: Card number cleaned', ['original' => $request->card_number, 'cleaned' => $cardNumberClean]);
+            $cardNumberClean = str_replace('-', '', $request->card_number);            
             
             // Find the card number
             $cardNumber = CardNumber::where('number', $cardNumberClean)->first();
             
             if (!$cardNumber) {
-                \Log::error('useCard: Card number not found', ['card_number' => $cardNumberClean]);
-                return $this->error_response(__('messages.invalid_card_number'),[]);
+                return response()->json([
+                    'status' => false,
+                    'type' => 'card_number_not_found',
+                    'message' => __('messages.invalid_card_number')
+                ], 200);
             }
-
-            \Log::info('useCard: Card number found', ['card_number_id' => $cardNumber->id, 'status' => $cardNumber->status, 'activate' => $cardNumber->activate]);
 
             // Check if card number is active
             if ($cardNumber->activate != CardNumber::ACTIVATE_ACTIVE) {
-                \Log::warning('useCard: Card number is inactive', ['card_number_id' => $cardNumber->id, 'activate_status' => $cardNumber->activate]);
-                return $this->error_response(__('messages.card_number_inactive'),[]);
+                return response()->json([
+                    'status' => false,
+                    'type' => 'card_number_inactive',
+                    'message' => __('messages.card_number_inactive')
+                ], 200);
             }
 
             // Check if card number is already used
             if ($cardNumber->status == CardNumber::STATUS_USED) {
-                \Log::warning('useCard: Card number already used', ['card_number_id' => $cardNumber->id]);
-                return $this->error_response(__('messages.card_number_already_used'),[]);
+                return response()->json([
+                    'status' => false,
+                    'type' => 'card_number_already_used',
+                    'message' => __('messages.card_number_already_used')
+                ], 200);
             }
 
             // Get the card details
             $card = $cardNumber->card;
             if (!$card) {
-                \Log::error('useCard: Card not found for card number', ['card_number_id' => $cardNumber->id]);
-                return $this->error_response(__('messages.card_not_found'),[]);
+                return response()->json([
+                    'status' => false,
+                    'type' => 'card_not_found',
+                    'message' => __('messages.card_not_found')
+                ], 200);
             }
 
-            \Log::info('useCard: Card found', ['card_id' => $card->id, 'card_name' => $card->name, 'card_price' => $card->price]);
-
             // Add balance to driver wallet
-            \Log::info('useCard: Adding balance to driver wallet', ['driver_id' => $driver->id, 'amount' => $card->price]);
             $walletTransaction = $driver->addBalance(
                 $card->price,
                 __('messages.card_usage_note', ['card_name' => $card->name, 'card_number' => $request->card_number])
             );
-            \Log::info('useCard: Balance added successfully', ['transaction_id' => $walletTransaction->id]);
 
             // Mark card number as used
             $cardNumber->update(['status' => CardNumber::STATUS_USED]);
-            \Log::info('useCard: Card number marked as used', ['card_number_id' => $cardNumber->id]);
 
             // Record card usage
             $cardUsage = CardUsage::create([
@@ -148,10 +155,8 @@ class WalletDriverController extends Controller
                 'wallet_transaction_id' => $walletTransaction->id,
                 'used_at' => now(),
             ]);
-            \Log::info('useCard: Card usage recorded', ['card_usage_id' => $cardUsage->id]);
 
             DB::commit();
-            \Log::info('useCard: Transaction committed successfully');
 
             // Prepare response data
             $responseData = [
@@ -186,11 +191,12 @@ class WalletDriverController extends Controller
                 ]
             ];
 
-            \Log::info('useCard: Success response prepared', ['driver_id' => $driver->id, 'card_id' => $card->id]);
-            return $this->success_response(
-                __('messages.card_used_successfully'),
-                $responseData
-            );
+            return response()->json([
+                'status' => true,
+                'type' => 'card_used_successfully',
+                'message' => __('messages.card_used_successfully'),
+                'data' => $responseData
+            ], 200);
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -202,7 +208,12 @@ class WalletDriverController extends Controller
                 'driver_id' => $driver ? $driver->id : null,
                 'card_number' => $request->card_number
             ]);
-            return $this->error_response(__('messages.error_using_card') . ': ' . $e->getMessage(),[]);
+            
+            return response()->json([
+                'status' => false,
+                'type' => 'server_error',
+                'message' => __('messages.error_using_card') . ': ' . $e->getMessage()
+            ], 500);
         }
     }
 

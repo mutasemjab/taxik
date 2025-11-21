@@ -103,7 +103,7 @@ class OrderController extends Controller
     }
    
 
-   public function createOrder(Request $request)
+    public function createOrder(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'pick_name' => 'required',
@@ -311,28 +311,50 @@ class OrderController extends Controller
 
                 DB::commit();
 
+                // Get initial search radius from settings
+                $initialRadius = DB::table('settings')
+                    ->where('key', 'find_drivers_in_radius')
+                    ->value('value') ?? 5;
+
+                // Start progressive driver search in first zone (e.g., 5km)
                 $result = $this->driverLocationService->findAndStoreOrderInFirebase(
                     $request->start_lat,
                     $request->start_lng,
                     $order->id,
                     $request->service_id,
-                    $request->radius ?? 10000,
+                    null, // Let the service use settings values
                     OrderStatus::Pending->value
                 );
 
+                // If drivers found in first zone, schedule job for next zone after 30 seconds
+                if ($result['success'] && isset($result['next_radius']) && $result['next_radius'] !== null) {
+                    \App\Jobs\SearchDriversInNextZone::dispatch(
+                        $order->id,
+                        $result['search_radius'],
+                        $request->service_id,
+                        $request->start_lat,
+                        $request->start_lng
+                    );
+                }
+
                 return response()->json([
-                    'status' => $result['success'],
+                    'status' => true,
                     'message' => $result['success'] 
-                        ? 'Order created and drivers notified successfully' 
+                        ? 'Order created successfully. Searching for drivers in ' . ($result['search_radius'] ?? $initialRadius) . 'km radius.' 
                         : $result['message'],
                     'data' => [
                         'order' => $order->load(['service', 'coupon']),
                         'service' => $service,
                         'coupon_applied' => $couponId ? true : false,
                         'discount_applied' => $discountValue,
-                        'drivers_notified' => $result['drivers_found'] ?? [],
-                        'notifications_sent' => $result['notifications_sent'] ?? [],
-                        'notifications_failed' => $result['notifications_failed'] ?? [],
+                        'driver_search' => [
+                            'drivers_found' => $result['drivers_found'] ?? 0,
+                            'current_search_radius' => $result['search_radius'] ?? $initialRadius,
+                            'next_search_radius' => $result['next_radius'] ?? null,
+                            'will_expand_search' => ($result['next_radius'] ?? null) !== null,
+                            'wait_time_seconds' => 30,
+                            'status' => $result['success'] ? 'searching' : 'no_drivers_available'
+                        ],
                         'user_location' => [
                             'start_lat' => $request->start_lat,
                             'start_lng' => $request->start_lng,
@@ -356,6 +378,7 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
 
     private function calculateDistance($lat1, $lng1, $lat2, $lng2)
     {

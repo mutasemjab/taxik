@@ -13,4 +13,6 @@ enum OrderStatus: string
     case UserCancelOrder = 'user_cancel_order';
     case DriverCancelOrder = 'driver_cancel_order';
     case Arrived = 'arrived';
+    case CancelCronJob = 'cancel_cron_job'; // NEW
+
 }

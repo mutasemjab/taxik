@@ -14,7 +14,7 @@ class OrderPaymentService
     /**
      * Update order status to delivered and process payment
      */
-    public function markAsDeliveredAndProcessPayment(Order $order, $driver = null)
+   public function markAsDeliveredAndProcessPayment(Order $order, $driver = null)
     {
         try {
             DB::beginTransaction();
@@ -229,147 +229,9 @@ class OrderPaymentService
     }
 
     /**
-     * Determine if current time is morning or evening
-     * Morning: before 18:00 (6 PM)
-     * Evening: 18:00 (6 PM) and after
+     * Get service commission details (PUBLIC method for external use)
      */
-    private function isEveningTime($dateTime = null)
-    {
-        $checkTime = $dateTime ?? now();
-        $hour = $checkTime->format('H');
-        return $hour >= 22 || $hour < 6;
-    }
-
-    /**
-     * Get appropriate pricing fields based on time of day
-     */
-    private function getTimePeriodPricing($service, $dateTime = null)
-    {
-        $isEvening = $this->isEveningTime($dateTime);
-        
-        return [
-            'period' => $isEvening ? 'evening' : 'morning',
-            'start_price' => $isEvening ? $service->start_price_evening : $service->start_price_morning,
-            'price_per_km' => $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning,
-            'price_per_minute' => $isEvening ? $service->price_of_real_one_minute_evening : $service->price_of_real_one_minute_morning,
-        ];
-    }
-
-    /**
-     * Calculate final price based on settings and trip duration
-     */
-    public function calculateFinalPrice($order)
-    {
-        // Get pricing method from settings
-        $pricingMethod = $this->getPricingMethod();
-
-        $pricingDetails = [
-            'pricing_method' => $pricingMethod === 1 ? 'time_based' : 'distance_based',
-            'initial_estimated_price' => $order->total_price_before_discount,
-            'initial_discount' => $order->discount_value,
-            'price_updated' => false,
-            'coupon_recalculated' => false,
-        ];
-
-        $newCalculatedPrice = $order->total_price_before_discount; // Default to original price
-        $discountValue = $order->discount_value; // Default to existing discount
-
-        if ($pricingMethod == 1 && $order->trip_started_at) {
-            // Time-based pricing calculation with morning/evening rates
-            $tripDurationMinutes = $order->trip_started_at->diffInMinutes(now());
-            
-            // Get pricing based on current time period
-            $timePricing = $this->getTimePeriodPricing($order->service);
-            
-            $pricePerMinute = $timePricing['price_per_minute'];
-            $startPrice = $timePricing['start_price'];
-            $realPriceBasedOnTime = $tripDurationMinutes * $pricePerMinute;
-            $newCalculatedPrice = $startPrice + $realPriceBasedOnTime;
-
-            $pricingDetails = array_merge($pricingDetails, [
-                'price_updated' => true,
-                'time_period' => $timePricing['period'],
-                'trip_duration_minutes' => $tripDurationMinutes,
-                'price_per_minute' => $pricePerMinute,
-                'service_start_price' => $startPrice,
-                'time_based_price' => $realPriceBasedOnTime,
-                'new_calculated_price' => $newCalculatedPrice,
-            ]);
-
-            // Recalculate coupon discount if order has a coupon and price changed
-            if ($order->coupon_id && $newCalculatedPrice != $order->total_price_before_discount) {
-                $coupon = $order->coupon;
-
-                if ($coupon && $coupon->isValid()) {
-                    // Check if new price still meets minimum amount requirement
-                    if ($newCalculatedPrice >= $coupon->minimum_amount) {
-                        // Recalculate discount based on new price
-                        if ($coupon->discount_type == 1) { // Fixed amount
-                            $discountValue = $coupon->discount;
-                        } else { // Percentage
-                            $discountValue = ($newCalculatedPrice * $coupon->discount) / 100;
-                        }
-
-                        // Ensure discount doesn't exceed total price
-                        $discountValue = min($discountValue, $newCalculatedPrice);
-
-                        $pricingDetails['coupon_recalculated'] = true;
-                        $pricingDetails['coupon_valid_for_new_price'] = true;
-                        $pricingDetails['new_discount_value'] = $discountValue;
-
-                        Log::info("Coupon discount recalculated for order {$order->id}: old discount {$order->discount_value}, new discount {$discountValue}");
-                    } else {
-                        // New price doesn't meet minimum requirement, remove coupon discount
-                        $discountValue = 0;
-                        $pricingDetails['coupon_recalculated'] = true;
-                        $pricingDetails['coupon_valid_for_new_price'] = false;
-                        $pricingDetails['coupon_removed_reason'] = 'New price below minimum amount requirement';
-
-                        Log::info("Coupon discount removed for order {$order->id} - new price {$newCalculatedPrice} below minimum {$coupon->minimum_amount}");
-                    }
-                } else {
-                    // Coupon is no longer valid, remove discount
-                    $discountValue = 0;
-                    $pricingDetails['coupon_recalculated'] = true;
-                    $pricingDetails['coupon_valid_for_new_price'] = false;
-                    $pricingDetails['coupon_removed_reason'] = 'Coupon expired or inactive';
-
-                    Log::info("Coupon discount removed for order {$order->id} - coupon no longer valid");
-                }
-            }
-        } else {
-            // Distance-based pricing (keep original price)
-            $pricingDetails = array_merge($pricingDetails, [
-                'new_calculated_price' => $newCalculatedPrice,
-                'note' => $pricingMethod == 2
-                    ? 'Price calculated based on distance, no time adjustment applied'
-                    : 'Trip start time not found, using original price'
-            ]);
-        }
-
-        // Calculate final price after discount
-        $finalPrice = $newCalculatedPrice - $discountValue;
-
-        $pricingDetails['final_discount_value'] = $discountValue;
-        $pricingDetails['final_price'] = $finalPrice;
-
-        // Calculate commission based on final price using service commission
-        $priceCalculation = $this->calculateCommissionAndNetPrice($order->service_id, $finalPrice);
-
-        $pricingDetails = array_merge($pricingDetails, [
-            'commission_type' => $priceCalculation['commission_type'],
-            'commission_value' => $priceCalculation['commission_value'],
-            'admin_commission' => $priceCalculation['admin_commission'],
-            'net_price_for_driver' => $priceCalculation['net_price_for_driver']
-        ]);
-
-        return $pricingDetails;
-    }
-
-    /**
-     * Get service commission details
-     */
-    private function getServiceCommission($serviceId, $totalPrice)
+    public function getServiceCommission($serviceId, $totalPrice)
     {
         $service = DB::table('services')->where('id', $serviceId)->first();
 
@@ -397,37 +259,224 @@ class OrderPaymentService
     }
 
     /**
-     * Get setting value by key with default fallback
+     * Determine if current time is morning or evening
+     * Morning: before 18:00 (6 PM)
+     * Evening: 18:00 (6 PM) and after
      */
-    private function getSettingValue($key, $default = 0)
+    private function isEveningTime($dateTime = null)
     {
-        $setting = DB::table('settings')->where('key', $key)->first();
-        return $setting ? $setting->value : $default;
+        $checkTime = $dateTime ?? now();
+        $hour = $checkTime->format('H');
+        return $hour >= 22 || $hour < 6;
     }
 
     /**
-     * Get pricing calculation method from settings
-     * 1 = time-based, 2 = distance-based
+     * Get appropriate pricing fields based on time of day
      */
-    private function getPricingMethod()
+    public function getTimePeriodPricing($service, $dateTime = null)
     {
-        return $this->getSettingValue('calculate_price_depend_on_time_or_distance', 2);
-    }
-
-    /**
-     * Calculate admin commission and driver net price using service commission
-     */
-    private function calculateCommissionAndNetPrice($serviceId, $totalPrice)
-    {
-        $commissionData = $this->getServiceCommission($serviceId, $totalPrice);
-        $adminCommission = $commissionData['admin_commission'];
-        $netPriceForDriver = $totalPrice - $adminCommission;
-
+        $isEvening = $this->isEveningTime($dateTime);
+        
         return [
-            'commission_type' => $commissionData['type_text'],
-            'commission_value' => $commissionData['commission_value'],
-            'admin_commission' => $adminCommission,
-            'net_price_for_driver' => $netPriceForDriver
+            'period' => $isEvening ? 'evening' : 'morning',
+            'start_price' => $isEvening ? $service->start_price_evening : $service->start_price_morning,
+            'price_per_km' => $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning,
         ];
     }
+
+    
+    /**
+     * Calculate final price based on settings and trip duration
+     * Includes in-trip waiting charges when pricing method is "both" (3)
+     */
+    // public function calculateFinalPrice($order)
+    // {
+    //     // Get pricing method from settings
+    //     $pricingMethod = $this->getPricingMethod();
+
+    //     $pricingDetails = [
+    //         'pricing_method' => $this->getPricingMethodText($pricingMethod),
+    //         'initial_estimated_price' => $order->total_price_before_discount,
+    //         'initial_discount' => $order->discount_value,
+    //         'price_updated' => false,
+    //         'coupon_recalculated' => false,
+    //     ];
+
+    //     $newCalculatedPrice = $order->total_price_before_discount; // Default to original price
+    //     $discountValue = $order->discount_value; // Default to existing discount
+
+    //     if ($pricingMethod == 1 && $order->trip_started_at) {
+    //         // Time-based pricing calculation with morning/evening rates
+    //         $tripDurationMinutes = $order->trip_started_at->diffInMinutes(now());
+            
+    //         // Get pricing based on current time period
+    //         $timePricing = $this->getTimePeriodPricing($order->service);
+            
+    //         $pricePerMinute = $timePricing['price_per_minute'];
+    //         $startPrice = $timePricing['start_price'];
+    //         $realPriceBasedOnTime = $tripDurationMinutes * $pricePerMinute;
+    //         $newCalculatedPrice = $startPrice + $realPriceBasedOnTime;
+
+    //         $pricingDetails = array_merge($pricingDetails, [
+    //             'price_updated' => true,
+    //             'time_period' => $timePricing['period'],
+    //             'trip_duration_minutes' => $tripDurationMinutes,
+    //             'price_per_minute' => $pricePerMinute,
+    //             'service_start_price' => $startPrice,
+    //             'time_based_price' => $realPriceBasedOnTime,
+    //             'new_calculated_price' => $newCalculatedPrice,
+    //         ]);
+
+    //         // Recalculate coupon discount if order has a coupon and price changed
+    //         if ($order->coupon_id && $newCalculatedPrice != $order->total_price_before_discount) {
+    //             $coupon = $order->coupon;
+
+    //             if ($coupon && $coupon->isValid()) {
+    //                 // Check if new price still meets minimum amount requirement
+    //                 if ($newCalculatedPrice >= $coupon->minimum_amount) {
+    //                     // Recalculate discount based on new price
+    //                     if ($coupon->discount_type == 1) { // Fixed amount
+    //                         $discountValue = $coupon->discount;
+    //                     } else { // Percentage
+    //                         $discountValue = ($newCalculatedPrice * $coupon->discount) / 100;
+    //                     }
+
+    //                     // Ensure discount doesn't exceed total price
+    //                     $discountValue = min($discountValue, $newCalculatedPrice);
+
+    //                     $pricingDetails['coupon_recalculated'] = true;
+    //                     $pricingDetails['coupon_valid_for_new_price'] = true;
+    //                     $pricingDetails['new_discount_value'] = $discountValue;
+
+    //                     Log::info("Coupon discount recalculated for order {$order->id}: old discount {$order->discount_value}, new discount {$discountValue}");
+    //                 } else {
+    //                     // New price doesn't meet minimum requirement, remove coupon discount
+    //                     $discountValue = 0;
+    //                     $pricingDetails['coupon_recalculated'] = true;
+    //                     $pricingDetails['coupon_valid_for_new_price'] = false;
+    //                     $pricingDetails['coupon_removed_reason'] = 'New price below minimum amount requirement';
+
+    //                     Log::info("Coupon discount removed for order {$order->id} - new price {$newCalculatedPrice} below minimum {$coupon->minimum_amount}");
+    //                 }
+    //             } else {
+    //                 // Coupon is no longer valid, remove discount
+    //                 $discountValue = 0;
+    //                 $pricingDetails['coupon_recalculated'] = true;
+    //                 $pricingDetails['coupon_valid_for_new_price'] = false;
+    //                 $pricingDetails['coupon_removed_reason'] = 'Coupon expired or inactive';
+
+    //                 Log::info("Coupon discount removed for order {$order->id} - coupon no longer valid");
+    //             }
+    //         }
+    //     } else {
+    //         // Distance-based pricing (keep original price)
+    //         $pricingDetails = array_merge($pricingDetails, [
+    //             'new_calculated_price' => $newCalculatedPrice,
+    //             'note' => $pricingMethod == 2
+    //                 ? 'Price calculated based on distance, no time adjustment applied'
+    //                 : 'Trip start time not found, using original price'
+    //         ]);
+    //     }
+
+    //     // ========== ADD IN-TRIP WAITING CHARGES (for traffic stops, etc.) ==========
+    //     // Only apply when pricing method is "both" (3) and mobile sent waiting minutes
+    //     if ($pricingMethod == 3 && $order->in_trip_waiting_minutes > 0) {
+    //         $inTripWaitingMinutes = $order->in_trip_waiting_minutes;
+    //         $chargePerMinute = $order->service->waiting_charge_per_minute_when_order_active ?? 0;
+            
+    //         $inTripWaitingCharges = $inTripWaitingMinutes * $chargePerMinute;
+            
+    //         $pricingDetails['in_trip_waiting_charges'] = [
+    //             'in_trip_waiting_minutes' => $inTripWaitingMinutes,
+    //             'charge_per_minute' => $chargePerMinute,
+    //             'total_charges' => round($inTripWaitingCharges, 2),
+    //             'description' => 'Charges for stopped time during trip (traffic, lights, etc.)'
+    //         ];
+            
+    //         // Add in-trip waiting charges to the calculated price
+    //         $newCalculatedPrice += $inTripWaitingCharges;
+    //         $pricingDetails['new_calculated_price'] = $newCalculatedPrice;
+    //         $pricingDetails['price_includes_in_trip_waiting'] = true;
+            
+    //         Log::info("Order {$order->id}: In-trip waiting charges calculated", [
+    //             'waiting_minutes' => $inTripWaitingMinutes,
+    //             'charge_per_minute' => $chargePerMinute,
+    //             'total_charges' => $inTripWaitingCharges
+    //         ]);
+    //     }
+    //     // ========== END IN-TRIP WAITING CHARGES ==========
+
+    //     // Calculate final price after discount
+    //     $finalPrice = $newCalculatedPrice - $discountValue;
+
+    //     $pricingDetails['final_discount_value'] = $discountValue;
+    //     $pricingDetails['final_price'] = $finalPrice;
+
+    //     // Calculate commission based on final price using service commission
+    //     $priceCalculation = $this->calculateCommissionAndNetPrice($order->service_id, $finalPrice);
+
+    //     $pricingDetails = array_merge($pricingDetails, [
+    //         'commission_type' => $priceCalculation['commission_type'],
+    //         'commission_value' => $priceCalculation['commission_value'],
+    //         'admin_commission' => $priceCalculation['admin_commission'],
+    //         'net_price_for_driver' => $priceCalculation['net_price_for_driver']
+    //     ]);
+
+    //     return $pricingDetails;
+    // }
+
+    // /**
+    //  * Get pricing calculation method from settings
+    //  * 1 = time-based, 2 = distance-based, 3 = both
+    //  */
+    // private function getPricingMethod()
+    // {
+    //     return $this->getSettingValue('calculate_price_depend_on_time_or_distance_or_both', 2);
+    // }
+
+    // /**
+    //  * Get text representation of pricing method
+    //  */
+    // private function getPricingMethodText($method)
+    // {
+    //     switch ($method) {
+    //         case 1:
+    //             return 'time_based';
+    //         case 2:
+    //             return 'distance_based';
+    //         case 3:
+    //             return 'both_time_and_distance';
+    //         default:
+    //             return 'unknown';
+    //     }
+    // }
+
+
+    // /**
+    //  * Get setting value by key with default fallback
+    //  */
+    // private function getSettingValue($key, $default = 0)
+    // {
+    //     $setting = DB::table('settings')->where('key', $key)->first();
+    //     return $setting ? $setting->value : $default;
+    // }
+
+ 
+
+    // /**
+    //  * Calculate admin commission and driver net price using service commission
+    //  */
+    // private function calculateCommissionAndNetPrice($serviceId, $totalPrice)
+    // {
+    //     $commissionData = $this->getServiceCommission($serviceId, $totalPrice);
+    //     $adminCommission = $commissionData['admin_commission'];
+    //     $netPriceForDriver = $totalPrice - $adminCommission;
+
+    //     return [
+    //         'commission_type' => $commissionData['type_text'],
+    //         'commission_value' => $commissionData['commission_value'],
+    //         'admin_commission' => $adminCommission,
+    //         'net_price_for_driver' => $netPriceForDriver
+    //     ];
+    // }
 }

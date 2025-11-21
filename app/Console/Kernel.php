@@ -7,6 +7,12 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
+
+    protected $commands = [
+        Commands\CancelPendingOrders::class,
+        Commands\CleanupFinishedOrders::class,
+    ];
+
     /**
      * Define the application's command schedule.
      *
@@ -16,6 +22,17 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
+          $schedule->command('orders:cancel-pending')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/cancel-pending-orders.log'));
+            
+            $schedule->command('orders:cleanup-finished')
+             ->hourly()
+             ->withoutOverlapping()
+             ->runInBackground()
+             ->appendOutputTo(storage_path('logs/cleanup-finished-orders.log'));
     }
 
     /**

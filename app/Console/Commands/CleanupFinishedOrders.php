@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Enums\OrderStatus;
-use Google\Cloud\Firestore\FirestoreClient;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -29,15 +28,6 @@ class CleanupFinishedOrders extends Command
     public function __construct()
     {
         parent::__construct();
-        
-        try {
-            $this->firestore = new FirestoreClient([
-                'projectId' => config('firebase.project_id'),
-                'keyFilePath' => config('firebase.credentials.file'),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to initialize Firestore in CleanupFinishedOrders command: ' . $e->getMessage());
-        }
     }
 
     /**
@@ -45,7 +35,11 @@ class CleanupFinishedOrders extends Command
      */
     public function handle()
     {
-        if (!$this->firestore) {
+        // Initialize Firestore from service container (avoids gRPC error)
+        try {
+            $this->firestore = app('firebase.firestore')->database();
+        } catch (\Exception $e) {
+            Log::error('Failed to initialize Firestore in CleanupFinishedOrders command: ' . $e->getMessage());
             $this->error('Firestore not initialized. Please check Firebase configuration.');
             return Command::FAILURE;
         }
@@ -142,7 +136,7 @@ class CleanupFinishedOrders extends Command
     private function removeOrderFromFirestore($orderId)
     {
         try {
-            $rideRequestsCollection = $this->firestore->database()->collection('ride_requests');
+            $rideRequestsCollection = $this->firestore->collection('ride_requests');
             $document = $rideRequestsCollection->document((string)$orderId);
 
             // Check if document exists

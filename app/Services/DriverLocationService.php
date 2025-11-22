@@ -16,9 +16,17 @@ class DriverLocationService
 {
     protected $firestore;
     
-    public function __construct(Firestore $firestore)
+    public function __construct() // ✅ No dependency
     {
-        $this->firestore = $firestore;
+        // Empty
+    }
+
+    private function getFirestore() // ✅ Lazy-load only when needed
+    {
+        if (!$this->firestore) {
+            $this->firestore = app(Firestore::class);
+        }
+        return $this->firestore;
     }
     
     /**
@@ -62,7 +70,7 @@ class DriverLocationService
             // - Driver balance >= minimum
             // - Driver NOT in orders with status: pending, accepted, on_the_way, started, arrived
             // - Driver has the service active in driver_services table with status = 1
-            $availableDriverIds = $this->getAvailableDriversForService($serviceId);
+             $availableDriverIds = $this->getAvailableDriversForService($serviceId, $orderId);
             
             if (empty($availableDriverIds)) {
                 \Log::warning("No available drivers found for service {$serviceId}. Checked criteria: online status, active account, sufficient balance, no active orders, service assignment.");
@@ -139,6 +147,8 @@ class DriverLocationService
         }
     }
     
+  
+
     /**
      * Get the next radius zone
      */
@@ -171,41 +181,36 @@ class DriverLocationService
      * @param int $serviceId The service ID for the order
      * @return array Array of available driver IDs
      */
-    private function getAvailableDriversForService($serviceId)
+    private function getAvailableDriversForService($serviceId, $orderId = null)
     {
-        // Get minimum wallet balance requirement from settings
         $minWalletBalance = \DB::table('settings')
             ->where('key', 'minimum_money_in_wallet_driver_to_get_order')
             ->value('value') ?? 0;
         
-        \Log::info("Searching for available drivers with criteria: online(1), active(1), balance>={$minWalletBalance}, service_id={$serviceId}");
-        
-        return Driver::where('status', 1) // Must be online/available
-            ->where('activate', 1) // Must have active account
-            ->where('balance', '>=', $minWalletBalance) // Must have sufficient balance
-            
-            // Exclude drivers who are currently busy with active orders
-            // Active order statuses: pending, accepted, on_the_way, started, arrived
+        $query = Driver::where('status', 1)
+            ->where('activate', 1)
+            ->where('balance', '>=', $minWalletBalance)
             ->whereNotIn('id', function($query) {
                 $query->select('driver_id')
                     ->from('orders')
-                    ->whereIn('status', [
-                        'pending',      // OrderStatus::Pending
-                        'accepted',     // OrderStatus::DriverAccepted
-                        'on_the_way',   // OrderStatus::DriverGoToUser
-                        'started',      // OrderStatus::UserWithDriver
-                        'arrived'       // OrderStatus::Arrived
-                    ])
-                    ->whereNotNull('driver_id'); // Only orders that have a driver assigned
+                    ->whereIn('status', ['pending', 'accepted', 'on_the_way', 'started', 'arrived'])
+                    ->whereNotNull('driver_id');
             })
-            
-            // Only drivers who have this service assigned AND it's active
             ->whereHas('services', function($query) use ($serviceId) {
-                $query->where('service_id', $serviceId)           // Must have the service
-                      ->where('driver_services.status', 1);        // Service must be active (not disabled)
-            })
-            ->pluck('id')
-            ->toArray();
+                $query->where('service_id', $serviceId)
+                    ->where('driver_services.status', 1);
+            });
+        
+        // ✅ NEW: Exclude drivers who rejected this order
+        if ($orderId) {
+            $query->whereNotIn('id', function($subQuery) use ($orderId) {
+                $subQuery->select('driver_id')
+                    ->from('order_rejections')
+                    ->where('order_id', $orderId);
+            });
+        }
+        
+        return $query->pluck('id')->toArray();
     }
     
     /**
@@ -216,7 +221,9 @@ class DriverLocationService
         $driversWithLocations = [];
         
         try {
-            $collection = $this->firestore->database()->collection('drivers');
+            // ✅ Use the lazy-loaded method
+            $firestore = $this->getFirestore();
+            $collection = $firestore->database()->collection('drivers');
             
             foreach ($driverIds as $driverId) {
                 $document = $collection->document((string)$driverId)->snapshot();
@@ -390,18 +397,19 @@ class DriverLocationService
                 'firebase_updated_at' => new \DateTime(),
             ];
             
-            // Write to Firebase ride_requests collection
-            $ordersCollection = $this->firestore->database()->collection('ride_requests');
+               
+            $firestore = $this->getFirestore();
+            $ordersCollection = $firestore->database()->collection('ride_requests');
             $ordersCollection->document((string)$orderId)->set($orderData);
-            
+
             \Log::info("Complete order data for order {$orderId} written to Firebase with " . count($driverIDs) . " available drivers within {$searchRadius}km for service {$serviceId}");
-            
+
+            // ✅ Only ONE return
             return [
                 'success' => true,
                 'message' => 'Complete order data successfully written to Firebase',
                 'drivers_count' => count($driverIDs),
                 'search_radius' => $searchRadius,
-                'order_data' => $orderData // Optional: return the data for debugging
             ];
             
         } catch (\Exception $e) {

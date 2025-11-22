@@ -39,6 +39,39 @@ class OrderController extends Controller
         $this->orderPaymentService = $orderPaymentService;
     }
 
+    public function updateOrderRadius(Request $request)
+    {
+        try {
+            $orderId = $request->order_id;
+            $radius = $request->radius;
+            
+            $order = Order::find($orderId);
+            if (!$order || $order->status != OrderStatus::Pending) {
+                return response()->json(['success' => false]);
+            }
+            
+            // This runs in web context - has gRPC!
+            $driverLocationService = app(\App\Services\DriverLocationService::class);
+            
+            $result = $driverLocationService->findAndStoreOrderInFirebase(
+                $request->user_lat,
+                $request->user_lng,
+                $orderId,
+                $request->service_id,
+                $radius * 1000,
+                OrderStatus::Pending->value
+            );
+            
+            \Log::info("Updated Firebase for order {$orderId} at {$radius}km via HTTP");
+            
+            return response()->json(['success' => true, 'result' => $result]);
+            
+        } catch (\Exception $e) {
+            \Log::error("Error in updateOrderRadius: " . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function markAsDelivered(Request $request, $id)
     {
         $user = Auth::guard('user-api')->user();

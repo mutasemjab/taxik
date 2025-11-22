@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\StatusPayment;
+use App\Models\OrderRejection;
 use App\Models\OrderStatusHistory;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,50 @@ class OrderDriverController extends Controller
     public function __construct(OrderPaymentService $orderPaymentService)
     {
         $this->orderPaymentService = $orderPaymentService;
+    }
+
+    public function rejectOrder($orderId)
+    {
+        try {
+            $driverId = auth()->id();
+            $order = Order::find($orderId);
+            
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Order not found'
+                ], 404);
+            }
+            
+            // Check if order is still pending
+            if ($order->status != OrderStatus::Pending) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Order is no longer available'
+                ], 400);
+            }
+            
+            // Record the rejection
+            OrderRejection::firstOrCreate([
+                'order_id' => $orderId,
+                'driver_id' => $driverId,
+            ]);
+            
+            \Log::info("Driver {$driverId} rejected order {$orderId}");
+            
+            return response()->json([
+                'status' => true,
+                'message' => 'Order rejected successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error("Error rejecting order: " . $e->getMessage());
+            
+            return response()->json([
+                'status' => false,
+                'message' => 'Error rejecting order'
+            ], 500);
+        }
     }
 
     public function index(Request $request)

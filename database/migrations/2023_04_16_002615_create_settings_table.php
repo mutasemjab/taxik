@@ -27,6 +27,8 @@ return new class extends Migration
             ['key' => "fee_when_driver_cancel_order_more_times", 'value' => 0.5], // fixed
             ['key' => "new_user_register_add_balance", 'value' => 0], // fixed
             ['key' => "new_driver_register_add_balance", 'value' => 0], // fixed
+            ['key' => "find_drivers_in_radius", 'value' => 5], // km
+            ['key' => "maximum_radius_to_find_drivers", 'value' => 20], // km
         ]);
 
     }

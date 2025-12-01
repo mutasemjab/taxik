@@ -50,7 +50,8 @@ class OrderDriverController extends Controller
             if ($order->status != OrderStatus::Pending) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Order is no longer available'
+                    'message' => 'Order is no longer available',
+                    'type' => 'not_found',
                 ], 400);
             }
             
@@ -343,6 +344,7 @@ class OrderDriverController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Order is no longer available for acceptance',
+                    'type' => 'not_found',
                     'current_status' => $order->getStatusText()
                 ], 400);
             }

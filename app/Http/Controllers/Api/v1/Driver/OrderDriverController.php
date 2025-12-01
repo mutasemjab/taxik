@@ -42,6 +42,7 @@ class OrderDriverController extends Controller
             if (!$order) {
                 return response()->json([
                     'status' => false,
+                    'type' => 'not_found',
                     'message' => 'Order not found'
                 ], 404);
             }

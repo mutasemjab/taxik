@@ -572,7 +572,11 @@ class OrderController extends Controller
             ->first();
         
         if (!$order) {
-            return $this->error_response('Order not found', null);
+            return response()->json([
+                    'status' => false,
+                    'type' => 'not_found',
+                    'message' => 'Order not found'
+                ], 404);
         }
         
         $validator = Validator::make($request->all(), [

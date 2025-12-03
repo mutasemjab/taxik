@@ -39,7 +39,7 @@ class OrderDriverController extends Controller
         try {
             $driverId = auth()->id();
             $order = Order::find($orderId);
-            
+
             if (!$order) {
                 return response()->json([
                     'status' => false,
@@ -47,7 +47,7 @@ class OrderDriverController extends Controller
                     'message' => 'Order not found'
                 ], 404);
             }
-            
+
             // Check if order is still pending
             if ($order->status != OrderStatus::Pending) {
                 return response()->json([
@@ -56,23 +56,22 @@ class OrderDriverController extends Controller
                     'type' => 'not_found',
                 ], 400);
             }
-            
+
             // Record the rejection
             OrderRejection::firstOrCreate([
                 'order_id' => $orderId,
                 'driver_id' => $driverId,
             ]);
-            
+
             \Log::info("Driver {$driverId} rejected order {$orderId}");
-            
+
             return response()->json([
                 'status' => true,
                 'message' => 'Order rejected successfully'
             ]);
-            
         } catch (\Exception $e) {
             \Log::error("Error rejecting order: " . $e->getMessage());
-            
+
             return response()->json([
                 'status' => false,
                 'message' => 'Error rejecting order'
@@ -419,7 +418,7 @@ class OrderDriverController extends Controller
             'live_fare' => 'required_if:status,' . OrderStatus::waitingPayment->value . '|numeric|min:0',
             'live_distance' => 'required_if:status,' . OrderStatus::waitingPayment->value . '|numeric|min:0',
             'waiting_time' => 'required_if:status,' . OrderStatus::waitingPayment->value . '|integer|min:0',
-            // NEW: Optional returned amount field
+            // NEW: Optional returned amount field for Delivered status
             'returned_amount' => 'nullable|numeric|min:0.01',
         ]);
 
@@ -464,11 +463,6 @@ class OrderDriverController extends Controller
                 $order->live_distance = $liveDistance;
                 $order->in_trip_waiting_minutes = $inTripWaitingMinutes;
 
-                // Store returned amount if provided (will be processed when status = Delivered)
-                if ($request->has('returned_amount') && $request->input('returned_amount') > 0) {
-                    $order->returned_amount = (float) $request->input('returned_amount');
-                }
-
                 // Calculate the final price using the new method
                 $pricingDetails = $this->calculateFinalPriceFromLiveData(
                     $order,
@@ -502,16 +496,21 @@ class OrderDriverController extends Controller
                     'live_distance' => $liveDistance,
                     'in_trip_waiting' => $inTripWaitingMinutes,
                     'driver_waiting_charges' => $pricingDetails['driver_waiting_details']['waiting_charges'],
-                    'final_price' => $pricingDetails['final_price'],
-                    'returned_amount' => $order->returned_amount ?? 0
+                    'final_price' => $pricingDetails['final_price']
                 ]);
             }
 
             // Process payment when status is delivered
             $paymentDetails = null;
             $balanceTransferDetails = null;
-            
+
             if ($newStatus === OrderStatus::Delivered) {
+                // Store returned amount if provided (sent with Delivered status)
+                if ($request->has('returned_amount') && $request->input('returned_amount') > 0) {
+                    $order->returned_amount = (float) $request->input('returned_amount');
+                    $order->save();
+                }
+
                 $result = $this->orderPaymentService->markAsDeliveredAndProcessPayment($order, $driver);
 
                 if (!$result['success']) {
@@ -521,16 +520,18 @@ class OrderDriverController extends Controller
                 $order = $result['order'];
                 $paymentDetails = $result['payment_details'];
 
+                $driver->refresh();
+
                 // Process returned amount if exists and payment is cash
-                if ($order->returned_amount > 0 && $order->payment_method === 'cash') {
+                if ($order->returned_amount > 0 && $order->payment_method === PaymentMethod::Cash) {
                     $balanceTransferResult = $this->processReturnedAmount($order, $driver);
-                    
+
                     if (!$balanceTransferResult['success']) {
                         throw new \Exception($balanceTransferResult['error']);
                     }
-                    
+
                     $balanceTransferDetails = $balanceTransferResult['details'];
-                    
+
                     Log::info("Order {$order->id}: Returned amount processed", [
                         'amount' => $order->returned_amount,
                         'driver_new_balance' => $balanceTransferDetails['driver_new_balance']
@@ -589,11 +590,11 @@ class OrderDriverController extends Controller
         }
     }
 
-   private function processReturnedAmount($order, $driver)
+    private function processReturnedAmount($order, $driver)
     {
         try {
             $amount = $order->returned_amount;
-            
+
             // Validate user exists
             if (!$order->user) {
                 return [
@@ -602,16 +603,19 @@ class OrderDriverController extends Controller
                 ];
             }
 
+            // Get fresh driver data from database
+            $driverModel = Driver::find($driver->id);
+
             // Check if driver has sufficient balance
-            if ($driver->balance < $amount) {
+            if ($driverModel->balance < $amount) {
                 return [
                     'success' => false,
-                    'error' => 'Insufficient balance in driver wallet. Balance: ' . $driver->balance . ', Required: ' . $amount
+                    'error' => 'Insufficient balance in driver wallet. Balance: ' . $driverModel->balance . ', Required: ' . $amount
                 ];
             }
 
             // Deduct amount from driver's wallet balance
-            $driver->decrement('balance', $amount);
+            $driverModel->decrement('balance', $amount);
 
             // Add amount to user's wallet balance
             $order->user->increment('balance', $amount);
@@ -620,7 +624,7 @@ class OrderDriverController extends Controller
             $userTransaction = WalletTransaction::create([
                 'order_id' => $order->id,
                 'user_id' => $order->user_id,
-                'driver_id' => $driver->id,
+                'driver_id' => null,
                 'admin_id' => null,
                 'amount' => $amount,
                 'type_of_transaction' => 1, // 1 = add
@@ -630,7 +634,7 @@ class OrderDriverController extends Controller
             // Create wallet transaction record for DRIVER (withdrawal)
             $driverTransaction = WalletTransaction::create([
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'user_id' => null,
                 'driver_id' => $driver->id,
                 'admin_id' => null,
                 'amount' => $amount,
@@ -638,8 +642,8 @@ class OrderDriverController extends Controller
                 'note' => "Change paid to user from order #{$order->number}"
             ]);
 
-            // Refresh driver to get updated balance
-            $driver->refresh();
+            // Get updated balance
+            $driverModel->refresh();
 
             return [
                 'success' => true,
@@ -647,7 +651,7 @@ class OrderDriverController extends Controller
                     'amount' => $amount,
                     'user_id' => $order->user_id,
                     'user_name' => $order->user->name,
-                    'driver_new_balance' => $driver->balance,
+                    'driver_new_balance' => $driverModel->balance,
                     'user_transaction_id' => $userTransaction->id,
                     'driver_transaction_id' => $driverTransaction->id,
                     'processed_at' => now()->format('Y-m-d H:i:s')
@@ -673,7 +677,7 @@ class OrderDriverController extends Controller
     private function calculateFinalPriceFromLiveData(Order $order, float $liveFare, float $liveDistance, int $inTripWaitingMinutes)
     {
         $service = $order->service;
-        
+
         // Step 1: Start with the live fare from mobile 
         // This ALREADY includes: base distance fare + in-trip waiting charges
         $baseFare = $liveFare;

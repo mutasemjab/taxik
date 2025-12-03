@@ -17,7 +17,6 @@ class OrderPaymentService
    public function markAsDeliveredAndProcessPayment(Order $order, $driver = null)
     {
         try {
-            DB::beginTransaction();
 
             // Update order status to delivered
             $order->status = OrderStatus::Delivered;
@@ -36,7 +35,6 @@ class OrderPaymentService
             // Save order changes
             $order->save();
 
-            DB::commit();
 
             return [
                 'success' => true,
@@ -44,7 +42,6 @@ class OrderPaymentService
                 'payment_details' => $paymentDetails
             ];
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Error processing order delivery and payment: ' . $e->getMessage());
 
             return [

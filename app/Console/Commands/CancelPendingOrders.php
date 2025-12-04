@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Enums\OrderStatus;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 class CancelPendingOrders extends Command
@@ -20,7 +21,8 @@ class CancelPendingOrders extends Command
      */
     protected $description = 'Cancel orders that have been pending for more than specified hours';
 
-    protected $firestore;
+    protected $projectId;
+    protected $baseUrl;
 
     /**
      * Create a new command instance.
@@ -28,6 +30,8 @@ class CancelPendingOrders extends Command
     public function __construct()
     {
         parent::__construct();
+        $this->projectId = config('firebase.project_id');
+        $this->baseUrl = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents";
     }
 
     /**
@@ -35,14 +39,6 @@ class CancelPendingOrders extends Command
      */
     public function handle()
     {
-        // Initialize Firestore from service container (avoids gRPC error)
-        try {
-            $this->firestore = app('firebase.firestore')->database();
-        } catch (\Exception $e) {
-            Log::error('Failed to initialize Firestore in CancelPendingOrders command: ' . $e->getMessage());
-            $this->error('Failed to initialize Firestore. Check logs.');
-        }
-
         $hoursThreshold = $this->option('hours');
         $this->info("Starting to process pending orders older than {$hoursThreshold} hour(s)...");
 
@@ -66,37 +62,35 @@ class CancelPendingOrders extends Command
         $failCount = 0;
 
         foreach ($pendingOrders as $order) {
-        try {
-            // ✅ Use ->value to get the string value
-            $order->status = OrderStatus::CancelCronJob->value;
-            $order->reason_for_cancel = "Order automatically cancelled after being pending for {$hoursThreshold} hour(s) without driver acceptance.";
-            $order->save();
+            try {
+                // Update order status using the enum value
+                $order->status = OrderStatus::CancelCronJob->value;
+                $order->reason_for_cancel = "Order automatically cancelled after being pending for {$hoursThreshold} hour(s) without driver acceptance.";
+                $order->save();
 
-            // Try to remove from Firestore (will fail silently if Firestore not available)
-            if ($this->firestore) {
+                // Remove from Firestore using REST API
                 $this->removeOrderFromFirestore($order->id);
+
+                $successCount++;
+                $this->info("✓ Order #{$order->id} cancelled successfully.");
+                
+                Log::info("Order #{$order->id} automatically cancelled by cron job", [
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                    'created_at' => $order->created_at,
+                    'hours_pending' => $order->created_at->diffInHours(now())
+                ]);
+
+            } catch (\Exception $e) {
+                $failCount++;
+                $this->error("✗ Failed to cancel order #{$order->id}: " . $e->getMessage());
+                
+                Log::error("Failed to cancel order #{$order->id} in cron job", [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
             }
-
-            $successCount++;
-            $this->info("✓ Order #{$order->id} cancelled successfully.");
-            
-            Log::info("Order #{$order->id} automatically cancelled by cron job", [
-                'order_id' => $order->id,
-                'user_id' => $order->user_id,
-                'created_at' => $order->created_at,
-                'hours_pending' => $order->created_at->diffInHours(now())
-            ]);
-
-        } catch (\Exception $e) {
-            $failCount++;
-            $this->error("✗ Failed to cancel order #{$order->id}: " . $e->getMessage());
-            
-            Log::error("Failed to cancel order #{$order->id} in cron job", [
-                'order_id' => $order->id,
-                'error' => $e->getMessage()
-            ]);
         }
-    }
 
         $this->info("\n=== Summary ===");
         $this->info("Total orders processed: {$pendingOrders->count()}");
@@ -113,25 +107,27 @@ class CancelPendingOrders extends Command
     }
 
     /**
-     * Remove order from Firestore
+     * Remove order from Firestore using REST API
      */
     private function removeOrderFromFirestore($orderId)
     {
-        if (!$this->firestore) {
-            Log::warning("Firestore not initialized, skipping Firebase removal for order #{$orderId}");
-            return;
-        }
-
         try {
-            // Remove from ride_requests collection
-            $rideRequestsCollection = $this->firestore->collection('ride_requests');
-            $rideRequestsCollection->document((string)$orderId)->delete();
+            $response = Http::timeout(10)->delete(
+                "{$this->baseUrl}/ride_requests/{$orderId}"
+            );
 
-            Log::info("Order #{$orderId} removed from Firestore ride_requests collection");
+            if ($response->successful() || $response->status() === 404) {
+                Log::info("Order #{$orderId} removed from Firestore ride_requests collection");
+            } else {
+                Log::warning("Failed to remove order #{$orderId} from Firestore", [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+            }
             
         } catch (\Exception $e) {
             Log::error("Error removing order #{$orderId} from Firestore: " . $e->getMessage());
-            throw $e;
+            // Don't throw exception - we don't want Firestore errors to stop the cancellation
         }
     }
 }

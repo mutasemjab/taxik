@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Enums\OrderStatus;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 class CleanupFinishedOrders extends Command
@@ -20,7 +21,8 @@ class CleanupFinishedOrders extends Command
      */
     protected $description = 'Remove all finished orders (completed/cancelled) from Firestore that are older than specified hours';
 
-    protected $firestore;
+    protected $projectId;
+    protected $baseUrl;
 
     /**
      * Create a new command instance.
@@ -28,6 +30,8 @@ class CleanupFinishedOrders extends Command
     public function __construct()
     {
         parent::__construct();
+        $this->projectId = config('firebase.project_id');
+        $this->baseUrl = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents";
     }
 
     /**
@@ -35,15 +39,6 @@ class CleanupFinishedOrders extends Command
      */
     public function handle()
     {
-        // Initialize Firestore from service container (avoids gRPC error)
-        try {
-            $this->firestore = app('firebase.firestore')->database();
-        } catch (\Exception $e) {
-            Log::error('Failed to initialize Firestore in CleanupFinishedOrders command: ' . $e->getMessage());
-            $this->error('Firestore not initialized. Please check Firebase configuration.');
-            return Command::FAILURE;
-        }
-
         $hoursThreshold = $this->option('hours');
         $this->info("Starting cleanup of finished orders older than {$hoursThreshold} hour(s) from Firestore...");
 
@@ -131,27 +126,35 @@ class CleanupFinishedOrders extends Command
     }
 
     /**
-     * Remove order from Firestore
+     * Remove order from Firestore using REST API
      */
     private function removeOrderFromFirestore($orderId)
     {
         try {
-            $rideRequestsCollection = $this->firestore->collection('ride_requests');
-            $document = $rideRequestsCollection->document((string)$orderId);
+            // First, try to get the document to check if it exists
+            $getResponse = Http::timeout(10)->get(
+                "{$this->baseUrl}/ride_requests/{$orderId}"
+            );
 
-            // Check if document exists
-            $snapshot = $document->snapshot();
-            
-            if (!$snapshot->exists()) {
+            if ($getResponse->status() === 404) {
                 return 'not_found';
             }
 
             // Delete the document
-            $document->delete();
+            $deleteResponse = Http::timeout(10)->delete(
+                "{$this->baseUrl}/ride_requests/{$orderId}"
+            );
 
-            Log::info("Finished order #{$orderId} removed from Firestore successfully");
-
-            return true;
+            if ($deleteResponse->successful()) {
+                Log::info("Finished order #{$orderId} removed from Firestore successfully");
+                return true;
+            } else {
+                Log::error("Failed to delete order #{$orderId} from Firestore", [
+                    'status' => $deleteResponse->status(),
+                    'body' => $deleteResponse->body()
+                ]);
+                return false;
+            }
             
         } catch (\Exception $e) {
             Log::error("Error removing finished order #{$orderId} from Firestore: " . $e->getMessage());

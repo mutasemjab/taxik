@@ -64,9 +64,10 @@ class CancelPendingOrders extends Command
         foreach ($pendingOrders as $order) {
             try {
                 // Update order status using the enum value
-                $order->status = OrderStatus::CancelCronJob->value;
-                $order->reason_for_cancel = "Order automatically cancelled after being pending for {$hoursThreshold} hour(s) without driver acceptance.";
-                $order->save();
+                $order->update([
+                    'status' => OrderStatus::CancelCronJob->value,
+                    'reason_for_cancel' => "Order automatically cancelled after being pending for {$hoursThreshold} hour(s) without driver acceptance."
+                ]);
 
                 // Remove from Firestore using REST API
                 $this->removeOrderFromFirestore($order->id);

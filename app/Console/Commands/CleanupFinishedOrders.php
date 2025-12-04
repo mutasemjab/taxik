@@ -64,7 +64,9 @@ class CleanupFinishedOrders extends Command
         $this->info("Found {$finishedOrders->count()} finished order(s) to remove from Firestore.");
 
         // Group by status for reporting
-        $byStatus = $finishedOrders->groupBy('status');
+        $byStatus = $finishedOrders->groupBy(function ($order) {
+            return $order->status->value;
+        });
         $this->info("\nBreakdown by status:");
         foreach ($byStatus as $status => $orders) {
             $this->info("  - {$status}: {$orders->count()} orders");

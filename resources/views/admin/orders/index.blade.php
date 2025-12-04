@@ -190,7 +190,7 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 {{ __('messages.Total_Revenue') }}</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ${{ number_format($orders->where('status', 'delivered')->sum('total_price_after_discount'), 2) }}
+                               JD {{ number_format($orders->where('status', 'delivered')->sum('total_price_after_discount'), 2) }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -286,19 +286,19 @@
                                 <div class="price-info">
                                     @if($order->discount_value > 0)
                                     <div class="text-muted">
-                                        <small><s>${{ number_format($order->total_price_before_discount, 2) }}</s></small>
+                                        <small><s>JD {{ number_format($order->total_price_before_discount, 2) }}</s></small>
                                     </div>
                                     <div class="text-success font-weight-bold">
-                                        ${{ number_format($order->total_price_after_discount, 2) }}
+                                        JD {{ number_format($order->total_price_after_discount, 2) }}
                                     </div>
                                     <div>
                                         <span class="badge badge-warning">
-                                            -${{ number_format($order->discount_value, 2) }} ({{ $order->getDiscountPercentage() }}%)
+                                            -JD {{ number_format($order->discount_value, 2) }} ({{ $order->getDiscountPercentage() }}%)
                                         </span>
                                     </div>
                                     @else
                                     <div class="text-success font-weight-bold">
-                                        ${{ number_format($order->total_price_after_discount, 2) }}
+                                        JD {{ number_format($order->total_price_after_discount, 2) }}
                                     </div>
                                     @endif
                                 </div>
@@ -306,10 +306,10 @@
                             <td>
                                 <div class="commission-info">
                                     <div class="text-primary">
-                                        <small>{{ __('messages.Driver') }}: ${{ number_format($order->net_price_for_driver, 2) }}</small>
+                                        <small>{{ __('messages.Driver') }}: JD {{ number_format($order->net_price_for_driver, 2) }}</small>
                                     </div>
                                     <div class="text-info">
-                                        <small>{{ __('messages.Admin') }}: ${{ number_format($order->commision_of_admin, 2) }}</small>
+                                        <small>{{ __('messages.Admin') }}: JD {{ number_format($order->commision_of_admin, 2) }}</small>
                                     </div>
                                 </div>
                             </td>
@@ -345,11 +345,6 @@
                                     <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm mb-1" title="{{ __('messages.Edit') }}">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    @if(!$order->isCompleted() && !$order->isCancelled())
-                                    <button class="btn btn-warning btn-sm mb-1" onclick="updateOrderStatus({{ $order->id }})" title="{{ __('messages.Update_Status') }}">
-                                        <i class="fas fa-sync"></i>
-                                    </button>
-                                    @endif
                                     <button class="btn btn-danger btn-sm" onclick="deleteOrder({{ $order->id }})" title="{{ __('messages.Delete') }}">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -374,104 +369,6 @@
         </div>
     </div>
 </div>
-
-<!-- Status Update Modal -->
-<div class="modal fade" id="statusUpdateModal" tabindex="-1" role="dialog" aria-labelledby="statusUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="statusUpdateModalLabel">{{ __('messages.Update_Order_Status') }}</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="statusUpdateForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="status">{{ __('messages.Status') }}</label>
-                        <select class="form-control" id="modal_status" name="status" required>
-                            <option value="pending">{{ __('messages.Pending') }}</option>
-                            <option value="driver_accepted">{{ __('messages.Driver_Accepted') }}</option>
-                            <option value="driver_go_to_user">{{ __('messages.Driver_Going_To_User') }}</option>
-                            <option value="user_with_driver">{{ __('messages.User_With_Driver') }}</option>
-                            <option value="delivered">{{ __('messages.Delivered') }}</option>
-                            <option value="user_cancel_order">{{ __('messages.User_Cancelled') }}</option>
-                            <option value="driver_cancel_order">{{ __('messages.Driver_Cancelled') }}</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="cancelReasonGroup" style="display: none;">
-                        <label for="reason_for_cancel">{{ __('messages.Cancellation_Reason') }}</label>
-                        <textarea class="form-control" id="reason_for_cancel" name="reason_for_cancel" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('messages.Close') }}</button>
-                    <button type="submit" class="btn btn-primary">{{ __('messages.Update') }}</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endsection
-
-@section('script')
-<script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "order": [[0, "desc"]],
-            "pageLength": 25,
-            "responsive": true,
-            "columnDefs": [
-                { "orderable": false, "targets": [-1] } // Disable sorting on Actions column
-            ]
-        });
-        
-        // Date validation
-        $('#date_to').on('change', function() {
-            var startDate = $('#date_from').val();
-            var endDate = $(this).val();
-            
-            if (startDate && endDate && startDate > endDate) {
-                alert("{{ __('messages.Date_Range_Error') }}");
-                $(this).val('');
-            }
-        });
-
-        // Status change handler for cancellation reason
-        $('#modal_status').on('change', function() {
-            var status = $(this).val();
-            if (status === 'user_cancel_order' || status === 'driver_cancel_order') {
-                $('#cancelReasonGroup').show();
-                $('#reason_for_cancel').prop('required', true);
-            } else {
-                $('#cancelReasonGroup').hide();
-                $('#reason_for_cancel').prop('required', false);
-            }
-        });
-    });
-
-    function updateOrderStatus(orderId) {
-        $('#statusUpdateForm').attr('action', `/admin/orders/${orderId}/status`);
-        $('#statusUpdateModal').modal('show');
-    }
-
-    function deleteOrder(orderId) {
-        if (confirm("{{ __('messages.Delete_Confirm') }}")) {
-            document.getElementById(`delete-form-${orderId}`).submit();
-        }
-    }
-
-    // Auto-refresh for real-time updates (optional)
-    setInterval(function() {
-        // Only refresh if no modals are open
-        if (!$('.modal').hasClass('show')) {
-            // You can implement auto-refresh logic here
-            // location.reload();
-        }
-    }, 300000); // Refresh every 5 minutes
-</script>
 
 <style>
     .route-info {

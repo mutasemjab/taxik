@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Reports;
+
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
@@ -100,7 +101,8 @@ class OrderStatusReportController extends Controller
         }
         
         // Add current status duration (if order is not completed/cancelled)
-        if ($previousHistory && !in_array($order->status->value, ['completed', 'user_cancel_order', 'driver_cancel_order'])) {
+        $statusValue = is_object($order->status) ? $order->status->value : $order->status;
+        if ($previousHistory && !in_array($statusValue, ['completed', 'user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'])) {
             $startTime = Carbon::parse($previousHistory->changed_at);
             $endTime = now();
             $duration = $startTime->diffInMinutes($endTime);
@@ -178,16 +180,17 @@ class OrderStatusReportController extends Controller
         
         foreach ($orders as $order) {
             $totalDuration = $this->calculateOrderTotalDuration($order->id);
+            $statusValue = is_object($order->status) ? $order->status->value : $order->status;
             
             $csvData[] = [
                 $order->id,
                 $order->user ? $order->user->name : 'N/A',
                 $order->driver ? $order->driver->name : 'N/A',
                 $order->service ? $order->service->name_en : 'N/A',
-                $order->getStatusText(),
+                ucfirst(str_replace('_', ' ', $statusValue)),
                 $this->formatDuration($totalDuration),
                 $order->created_at->format('Y-m-d H:i:s'),
-                $order->status->value == 'completed' ? $order->updated_at->format('Y-m-d H:i:s') : 'N/A'
+                $statusValue == 'completed' ? $order->updated_at->format('Y-m-d H:i:s') : 'N/A'
             ];
         }
         
@@ -210,9 +213,9 @@ class OrderStatusReportController extends Controller
     }
     
     /**
-     * Calculate total duration for an order
+     * Calculate total duration for an order (PUBLIC METHOD)
      */
-    private function calculateOrderTotalDuration($orderId)
+    public function calculateOrderTotalDuration($orderId)
     {
         $histories = OrderStatusHistory::where('order_id', $orderId)
             ->orderBy('changed_at', 'asc')
@@ -226,9 +229,10 @@ class OrderStatusReportController extends Controller
         $lastChange = $histories->last();
         
         $order = Order::find($orderId);
+        $statusValue = is_object($order->status) ? $order->status->value : $order->status;
         
         // If order is completed or cancelled, use last status change time
-        if (in_array($order->status->value, ['completed', 'user_cancel_order', 'driver_cancel_order'])) {
+        if (in_array($statusValue, ['completed', 'user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'])) {
             return Carbon::parse($firstChange->changed_at)->diffInMinutes(Carbon::parse($lastChange->changed_at));
         }
         
@@ -237,9 +241,9 @@ class OrderStatusReportController extends Controller
     }
     
     /**
-     * Format duration in minutes to human-readable format
+     * Format duration in minutes to human-readable format (PUBLIC METHOD)
      */
-    private function formatDuration($minutes)
+    public function formatDuration($minutes)
     {
         if ($minutes < 1) {
             return '< 1 min';

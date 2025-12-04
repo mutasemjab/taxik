@@ -52,7 +52,7 @@
                                     {{ __('messages.Accepted') }}
                                 </option>
                                 <option value="on_the_way" {{ request('status') == 'on_the_way' ? 'selected' : '' }}>
-                                    {{ __('messages.On_Way') }}
+                                    {{ __('messages.On_The_Way') }}
                                 </option>
                                 <option value="started" {{ request('status') == 'started' ? 'selected' : '' }}>
                                     {{ __('messages.Started') }}
@@ -155,8 +155,51 @@
                     <tbody>
                         @forelse($orders as $order)
                         @php
-                            $totalDuration = app('App\Http\Controllers\Admin\OrderStatusReportController')->calculateOrderTotalDuration($order->id);
-                            $durationFormatted = app('App\Http\Controllers\Admin\OrderStatusReportController')->formatDuration($totalDuration);
+                            // Get status value (handle enum)
+                            $statusValue = is_object($order->status) ? $order->status->value : $order->status;
+                            
+                            // Get status badge class
+                            $badgeClass = 'badge-secondary';
+                            if ($statusValue == 'completed') {
+                                $badgeClass = 'badge-success';
+                            } elseif (in_array($statusValue, ['user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'])) {
+                                $badgeClass = 'badge-danger';
+                            } elseif ($statusValue == 'waiting_payment') {
+                                $badgeClass = 'badge-warning';
+                            } elseif (in_array($statusValue, ['accepted', 'on_the_way', 'arrived', 'started'])) {
+                                $badgeClass = 'badge-info';
+                            }
+                            
+                            // Calculate duration
+                            $histories = \App\Models\OrderStatusHistory::where('order_id', $order->id)
+                                ->orderBy('changed_at', 'asc')
+                                ->get();
+                            
+                            $totalDuration = 0;
+                            if ($histories->isNotEmpty()) {
+                                $firstChange = $histories->first();
+                                $lastChange = $histories->last();
+                                
+                                if (in_array($statusValue, ['completed', 'user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'])) {
+                                    $totalDuration = \Carbon\Carbon::parse($firstChange->changed_at)->diffInMinutes(\Carbon\Carbon::parse($lastChange->changed_at));
+                                } else {
+                                    $totalDuration = \Carbon\Carbon::parse($firstChange->changed_at)->diffInMinutes(now());
+                                }
+                            }
+                            
+                            // Format duration
+                            if ($totalDuration < 1) {
+                                $durationFormatted = '< 1 min';
+                            } else {
+                                $hours = floor($totalDuration / 60);
+                                $mins = $totalDuration % 60;
+                                
+                                if ($hours > 0) {
+                                    $durationFormatted = $hours . 'h ' . $mins . 'm';
+                                } else {
+                                    $durationFormatted = $mins . 'm';
+                                }
+                            }
                         @endphp
                         <tr>
                             <td>
@@ -186,8 +229,8 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="badge badge-{{ $order->getStatusClass() }} px-3 py-2">
-                                    {{ $order->getStatusText() }}
+                                <span class="badge {{ $badgeClass }} px-3 py-2">
+                                    {{ __(ucfirst(str_replace('_', ' ', $statusValue))) }}
                                 </span>
                             </td>
                             <td>{{ $order->created_at->format('Y-m-d H:i') }}</td>
@@ -226,4 +269,12 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('styles')
+<style>
+.table td {
+    vertical-align: middle;
+}
+</style>
 @endsection

@@ -6,7 +6,12 @@
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">{{ __('messages.View_Order') }} #{{ $order->id }}</h1>
+        <h1 class="h3 mb-0 text-gray-800">
+            {{ __('messages.View_Order') }} #{{ $order->id }}
+            @if($order->number)
+                <small class="text-muted">({{ $order->number }})</small>
+            @endif
+        </h1>
         <div>
             <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary">
                 <i class="fas fa-edit"></i> {{ __('messages.Edit') }}
@@ -31,59 +36,50 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">{{ __('messages.Order_Status') }}</h6>
             <div>
-                <span class="badge badge-{{ $order->getStatusClass() }} px-3 py-2">
-                    {{ $order->getStatusText() }}
+                @php
+                    $statusValue = is_object($order->status) ? $order->status->value : $order->status;
+                @endphp
+                <span class="badge badge-lg px-3 py-2
+                    @if($statusValue == 'completed') badge-success
+                    @elseif(in_array($statusValue, ['user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'])) badge-danger
+                    @elseif($statusValue == 'waiting_payment') badge-warning
+                    @else badge-info
+                    @endif">
+                    {{ __(ucfirst(str_replace('_', ' ', $statusValue))) }}
                 </span>
             </div>
         </div>
         <div class="card-body">
+            @php
+                // Extract enum values at the top for reuse
+                $statusValue = is_object($order->status) ? $order->status->value : $order->status;
+                $paymentMethod = is_object($order->payment_method) ? $order->payment_method->value : $order->payment_method;
+                $paymentStatus = is_object($order->status_payment) ? $order->status_payment->value : $order->status_payment;
+            @endphp
             <div class="row">
                 <div class="col-md-8">
-                    <!-- Status Progress -->
-                    <div class="position-relative mb-4">
-                        <div class="progress" style="height: 3px;">
-                            @if($order->status >= 1 && $order->status <= 5)
-                                @php
-                                    $progressPercentage = ($order->status - 1) / 4 * 100;
-                                @endphp
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $progressPercentage }}%" 
-                                     aria-valuenow="{{ $progressPercentage }}" aria-valuemin="0" aria-valuemax="100"></div>
-                            @elseif($order->status == 6 || $order->status == 7)
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" 
-                                     aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                            @endif
+                    <!-- Status Timeline -->
+                    <div class="timeline">
+                        <div class="timeline-item {{ $statusValue == 'pending' ? 'active' : 'completed' }}">
+                            <i class="fas fa-clock"></i> {{ __('messages.Pending') }}
                         </div>
-                        <div class="d-flex justify-content-between mt-2">
-                            <div class="text-center" style="width: 20%;">
-                                <div class="rounded-circle {{ $order->status >= 1 ? 'bg-success' : 'bg-secondary' }} text-white d-inline-flex justify-content-center align-items-center" style="width: 30px; height: 30px; position: relative; top: -15px;">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="small">{{ __('messages.Pending') }}</div>
-                            </div>
-                            <div class="text-center" style="width: 20%;">
-                                <div class="rounded-circle {{ $order->status >= 2 ? 'bg-success' : 'bg-secondary' }} text-white d-inline-flex justify-content-center align-items-center" style="width: 30px; height: 30px; position: relative; top: -15px;">
-                                    <i class="fas fa-check"></i>
-                                </div>
-                                <div class="small">{{ __('messages.Accepted') }}</div>
-                            </div>
-                            <div class="text-center" style="width: 20%;">
-                                <div class="rounded-circle {{ $order->status >= 3 ? 'bg-success' : 'bg-secondary' }} text-white d-inline-flex justify-content-center align-items-center" style="width: 30px; height: 30px; position: relative; top: -15px;">
-                                    <i class="fas fa-car"></i>
-                                </div>
-                                <div class="small">{{ __('messages.On_Way') }}</div>
-                            </div>
-                            <div class="text-center" style="width: 20%;">
-                                <div class="rounded-circle {{ $order->status >= 4 ? 'bg-success' : 'bg-secondary' }} text-white d-inline-flex justify-content-center align-items-center" style="width: 30px; height: 30px; position: relative; top: -15px;">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div class="small">{{ __('messages.In_Progress') }}</div>
-                            </div>
-                            <div class="text-center" style="width: 20%;">
-                                <div class="rounded-circle {{ $order->status >= 5 ? 'bg-success' : 'bg-secondary' }} text-white d-inline-flex justify-content-center align-items-center" style="width: 30px; height: 30px; position: relative; top: -15px;">
-                                    <i class="fas fa-flag-checkered"></i>
-                                </div>
-                                <div class="small">{{ __('messages.Delivered') }}</div>
-                            </div>
+                        <div class="timeline-item {{ in_array($statusValue, ['accepted', 'on_the_way', 'arrived', 'started', 'waiting_payment', 'completed']) ? 'completed' : '' }}">
+                            <i class="fas fa-check"></i> {{ __('messages.Accepted') }}
+                        </div>
+                        <div class="timeline-item {{ in_array($statusValue, ['on_the_way', 'arrived', 'started', 'waiting_payment', 'completed']) ? 'completed' : '' }}">
+                            <i class="fas fa-car"></i> {{ __('messages.On_The_Way') }}
+                        </div>
+                        <div class="timeline-item {{ in_array($statusValue, ['arrived', 'started', 'waiting_payment', 'completed']) ? 'completed' : '' }}">
+                            <i class="fas fa-map-marker-alt"></i> {{ __('messages.Arrived') }}
+                        </div>
+                        <div class="timeline-item {{ in_array($statusValue, ['started', 'waiting_payment', 'completed']) ? 'completed' : '' }}">
+                            <i class="fas fa-play"></i> {{ __('messages.Started') }}
+                        </div>
+                        <div class="timeline-item {{ in_array($statusValue, ['waiting_payment', 'completed']) ? 'completed' : '' }}">
+                            <i class="fas fa-credit-card"></i> {{ __('messages.Waiting_Payment') }}
+                        </div>
+                        <div class="timeline-item {{ $statusValue == 'completed' ? 'completed' : '' }}">
+                            <i class="fas fa-flag-checkered"></i> {{ __('messages.Completed') }}
                         </div>
                     </div>
                 </div>
@@ -94,16 +90,20 @@
                         <div class="form-group">
                             <label for="status">{{ __('messages.Change_Status') }}</label>
                             <select class="form-control" id="status" name="status">
-                                <option value="1" {{ $order->status == 1 ? 'selected' : '' }}>{{ __('messages.Pending') }}</option>
-                                <option value="2" {{ $order->status == 2 ? 'selected' : '' }}>{{ __('messages.Driver_Accepted') }}</option>
-                                <option value="3" {{ $order->status == 3 ? 'selected' : '' }}>{{ __('messages.Driver_Going_To_User') }}</option>
-                                <option value="4" {{ $order->status == 4 ? 'selected' : '' }}>{{ __('messages.User_With_Driver') }}</option>
-                                <option value="5" {{ $order->status == 5 ? 'selected' : '' }}>{{ __('messages.Delivered') }}</option>
-                                <option value="6" {{ $order->status == 6 ? 'selected' : '' }}>{{ __('messages.User_Cancelled') }}</option>
-                                <option value="7" {{ $order->status == 7 ? 'selected' : '' }}>{{ __('messages.Driver_Cancelled') }}</option>
+                                <option value="pending" {{ $statusValue == 'pending' ? 'selected' : '' }}>{{ __('messages.Pending') }}</option>
+                                <option value="accepted" {{ $statusValue == 'accepted' ? 'selected' : '' }}>{{ __('messages.Accepted') }}</option>
+                                <option value="on_the_way" {{ $statusValue == 'on_the_way' ? 'selected' : '' }}>{{ __('messages.On_The_Way') }}</option>
+                                <option value="arrived" {{ $statusValue == 'arrived' ? 'selected' : '' }}>{{ __('messages.Arrived') }}</option>
+                                <option value="started" {{ $statusValue == 'started' ? 'selected' : '' }}>{{ __('messages.Started') }}</option>
+                                <option value="waiting_payment" {{ $statusValue == 'waiting_payment' ? 'selected' : '' }}>{{ __('messages.Waiting_Payment') }}</option>
+                                <option value="completed" {{ $statusValue == 'completed' ? 'selected' : '' }}>{{ __('messages.Completed') }}</option>
+                                <option value="user_cancel_order" {{ $statusValue == 'user_cancel_order' ? 'selected' : '' }}>{{ __('messages.User_Cancelled') }}</option>
+                                <option value="driver_cancel_order" {{ $statusValue == 'driver_cancel_order' ? 'selected' : '' }}>{{ __('messages.Driver_Cancelled') }}</option>
+                                <option value="cancel_cron_job" {{ $statusValue == 'cancel_cron_job' ? 'selected' : '' }}>{{ __('messages.Cancelled_Auto') }}</option>
                             </select>
                         </div>
-                        <div class="form-group cancel-reason-container" style="display: {{ in_array($order->status, [6, 7]) ? 'block' : 'none' }};">
+                        <div class="form-group cancel-reason-container" 
+                             style="display: {{ in_array($statusValue, ['user_cancel_order', 'driver_cancel_order', 'cancel_cron_job']) ? 'block' : 'none' }};">
                             <label for="reason_for_cancel">{{ __('messages.Cancellation_Reason') }}</label>
                             <textarea class="form-control" id="reason_for_cancel" name="reason_for_cancel" rows="2">{{ $order->reason_for_cancel }}</textarea>
                         </div>
@@ -114,7 +114,7 @@
                 </div>
             </div>
 
-            @if($order->isCancelled() && $order->reason_for_cancel)
+            @if(in_array($statusValue, ['user_cancel_order', 'driver_cancel_order', 'cancel_cron_job']) && $order->reason_for_cancel)
             <div class="alert alert-danger mt-3">
                 <strong>{{ __('messages.Cancellation_Reason') }}:</strong> {{ $order->reason_for_cancel }}
             </div>
@@ -122,137 +122,155 @@
         </div>
     </div>
 
-    <!-- Waiting Charges Details Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-info">
-            <i class="fas fa-clock"></i> {{ __('messages.Waiting_Charges_Details') }}
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <!-- Pre-Trip Waiting (Arrived → Started) -->
-            <div class="col-md-6">
-                <h6 class="font-weight-bold text-primary mb-3">
-                    <i class="fas fa-user-clock"></i> {{ __('messages.Pre_Trip_Waiting') }}
-                </h6>
-                
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <tbody>
-                            <tr>
-                                <th width="50%">{{ __('messages.Arrived_At') }}</th>
-                                <td>
-                                    @if($order->arrived_at)
-                                        {{ $order->arrived_at->format('Y-m-d H:i:s') }}
-                                    @else
-                                        <span class="text-muted">{{ __('messages.Not_Set') }}</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{{ __('messages.Total_Waiting_Minutes') }}</th>
-                                <td>
-                                    <span class="badge badge-info px-3 py-2">
-                                        {{ $order->total_waiting_minutes }} {{ __('messages.Minutes') }}
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{{ __('messages.Waiting_Charges') }}</th>
-                                <td>
-                                    <span class="badge badge-success px-3 py-2">
-                                        {{ number_format($order->waiting_charges, 2) }} {{ __('messages.JD') }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="alert alert-light border mb-0">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle"></i> 
-                        {{ __('messages.Pre_Trip_Waiting_Info') }}
-                    </small>
-                </div>
-            </div>
-
-            <!-- In-Trip Waiting (Traffic, Lights) -->
-            <div class="col-md-6">
-                <h6 class="font-weight-bold text-warning mb-3">
-                    <i class="fas fa-traffic-light"></i> {{ __('messages.In_Trip_Waiting') }}
-                </h6>
-                
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <tbody>
-                            <tr>
-                                <th width="50%">{{ __('messages.In_Trip_Waiting_Minutes') }}</th>
-                                <td>
-                                    <span class="badge badge-warning px-3 py-2">
-                                        {{ $order->in_trip_waiting_minutes }} {{ __('messages.Minutes') }}
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{{ __('messages.In_Trip_Waiting_Charges') }}</th>
-                                <td>
-                                    <span class="badge badge-success px-3 py-2">
-                                        {{ number_format($order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{{ __('messages.Total_Waiting_Charges') }}</th>
-                                <td>
-                                    <span class="badge badge-primary px-3 py-2">
-                                        {{ number_format($order->waiting_charges + $order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="alert alert-light border mb-0">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle"></i> 
-                        {{ __('messages.In_Trip_Waiting_Info_Show') }}
-                    </small>
-                </div>
-            </div>
+    <!-- Trip Tracking Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-success">
+                <i class="fas fa-route"></i> {{ __('messages.Trip_Tracking') }}
+            </h6>
         </div>
-
-        @if($order->waiting_charges > 0 || $order->in_trip_waiting_charges > 0)
-        <hr class="my-3">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card bg-light">
-                    <div class="card-body p-3">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-calculator"></i> 
-                                    {{ __('messages.Total_Waiting_Impact') }}
-                                </h6>
-                                <small class="text-muted">
-                                    {{ __('messages.Total_Waiting_Impact_Description') }}
-                                </small>
-                            </div>
-                            <div class="col-md-4 text-right">
-                                <h4 class="mb-0 text-success">
-                                    +{{ number_format($order->waiting_charges + $order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
-                                </h4>
-                            </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">{{ __('messages.Estimated_Time') }}</h6>
+                            <h4 class="mb-0">{{ $order->estimated_time ?? 'N/A' }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">{{ __('messages.Live_Distance') }}</h6>
+                            <h4 class="mb-0">{{ number_format($order->live_distance, 2) }} {{ __('messages.KM') }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">{{ __('messages.Actual_Duration') }}</h6>
+                            <h4 class="mb-0">{{ $order->actual_trip_duration_minutes ?? 'N/A' }} {{ __('messages.Minutes') }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">{{ __('messages.Returned_Amount') }}</h6>
+                            <h4 class="mb-0 text-success">{{ number_format($order->returned_amount ?? 0, 2) }} {{ __('messages.JD') }}</h4>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th width="30%">{{ __('messages.Trip_Started_At') }}</th>
+                            <td>{{ $order->trip_started_at ? $order->trip_started_at->format('Y-m-d H:i:s') : __('messages.Not_Started') }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ __('messages.Trip_Completed_At') }}</th>
+                            <td>{{ $order->trip_completed_at ? $order->trip_completed_at->format('Y-m-d H:i:s') : __('messages.Not_Completed') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        @endif
     </div>
-</div>
+
+    <!-- Waiting Charges Details Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-info">
+                <i class="fas fa-clock"></i> {{ __('messages.Waiting_Charges_Details') }}
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Pre-Trip Waiting -->
+                <div class="col-md-6">
+                    <h6 class="font-weight-bold text-primary mb-3">
+                        <i class="fas fa-user-clock"></i> {{ __('messages.Pre_Trip_Waiting') }}
+                    </h6>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <th width="50%">{{ __('messages.Arrived_At') }}</th>
+                                    <td>
+                                        @if($order->arrived_at)
+                                            {{ $order->arrived_at->format('Y-m-d H:i:s') }}
+                                        @else
+                                            <span class="text-muted">{{ __('messages.Not_Set') }}</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>{{ __('messages.Total_Waiting_Minutes') }}</th>
+                                    <td>
+                                        <span class="badge badge-info px-3 py-2">
+                                            {{ $order->total_waiting_minutes }} {{ __('messages.Minutes') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>{{ __('messages.Waiting_Charges') }}</th>
+                                    <td>
+                                        <span class="badge badge-success px-3 py-2">
+                                            {{ number_format($order->waiting_charges, 2) }} {{ __('messages.JD') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- In-Trip Waiting -->
+                <div class="col-md-6">
+                    <h6 class="font-weight-bold text-warning mb-3">
+                        <i class="fas fa-traffic-light"></i> {{ __('messages.In_Trip_Waiting') }}
+                    </h6>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <th width="50%">{{ __('messages.In_Trip_Waiting_Minutes') }}</th>
+                                    <td>
+                                        <span class="badge badge-warning px-3 py-2">
+                                            {{ $order->in_trip_waiting_minutes }} {{ __('messages.Minutes') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>{{ __('messages.In_Trip_Waiting_Charges') }}</th>
+                                    <td>
+                                        <span class="badge badge-success px-3 py-2">
+                                            {{ number_format($order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>{{ __('messages.Total_Waiting_Charges') }}</th>
+                                    <td>
+                                        <span class="badge badge-primary px-3 py-2">
+                                            {{ number_format($order->waiting_charges + $order->in_trip_waiting_charges, 2) }} {{ __('messages.JD') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-lg-8">
@@ -270,25 +288,10 @@
                         </div>
                         <div class="col-md-6">
                             <h5 class="font-weight-bold">{{ __('messages.Dropoff_Location') }}</h5>
-                            <p>{{ $order->drop_name }}</p>
+                            <p>{{ $order->drop_name ?? __('messages.Not_Set') }}</p>
+                            @if($order->drop_lat && $order->drop_lng)
                             <small class="text-muted">{{ __('messages.Coordinates') }}: {{ $order->drop_lat }}, {{ $order->drop_lng }}</small>
-                        </div>
-                    </div>
-
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h6 class="m-0 font-weight-bold">{{ __('messages.Route_Information') }}</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4 text-center">
-                                    <h6>{{ __('messages.Distance') }}</h6>
-                                    <h3 class="text-primary">{{ $order->getDistance() }} {{ __('messages.KM') }}</h3>
-                                </div>
-                                <div class="col-md-8">
-                                    <div id="map" style="height: 200px; width: 100%;"></div>
-                                </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
 
@@ -299,6 +302,12 @@
                                     <th width="30%">{{ __('messages.ID') }}</th>
                                     <td>{{ $order->id }}</td>
                                 </tr>
+                                @if($order->number)
+                                <tr>
+                                    <th>{{ __('messages.Order_Number') }}</th>
+                                    <td><span class="badge badge-primary">{{ $order->number }}</span></td>
+                                </tr>
+                                @endif
                                 <tr>
                                     <th>{{ __('messages.Service') }}</th>
                                     <td>
@@ -311,6 +320,15 @@
                                         @endif
                                     </td>
                                 </tr>
+                                @if($order->coupon)
+                                <tr>
+                                    <th>{{ __('messages.Coupon') }}</th>
+                                    <td>
+                                        <span class="badge badge-success">{{ $order->coupon->code }}</span>
+                                        ({{ $order->coupon->discount }}% {{ __('messages.Discount') }})
+                                    </td>
+                                </tr>
+                                @endif
                                 <tr>
                                     <th>{{ __('messages.Created_At') }}</th>
                                     <td>{{ $order->created_at->format('Y-m-d H:i:s') }}</td>
@@ -340,7 +358,7 @@
                                             <h6 class="card-title mb-0">{{ __('messages.Original_Price') }}</h6>
                                         </div>
                                         <div class="col-4 text-right">
-                                            <h6 class="mb-0">{{ $order->total_price_before_discount }}</h6>
+                                            <h6 class="mb-0">{{ number_format($order->total_price_before_discount, 2) }}</h6>
                                         </div>
                                     </div>
                                 </div>
@@ -354,7 +372,7 @@
                                             <h6 class="card-title mb-0 text-success">{{ __('messages.Discount') }}</h6>
                                         </div>
                                         <div class="col-4 text-right">
-                                            <h6 class="mb-0 text-success">-{{ $order->discount_value }}</h6>
+                                            <h6 class="mb-0 text-success">-{{ number_format($order->discount_value, 2) }}</h6>
                                         </div>
                                     </div>
                                 </div>
@@ -368,7 +386,7 @@
                                             <h6 class="card-title mb-0">{{ __('messages.Final_Price') }}</h6>
                                         </div>
                                         <div class="col-4 text-right">
-                                            <h6 class="mb-0">{{ $order->total_price_after_discount }}</h6>
+                                            <h6 class="mb-0">{{ number_format($order->total_price_after_discount, 2) }}</h6>
                                         </div>
                                     </div>
                                 </div>
@@ -383,7 +401,7 @@
                                             <h6 class="card-title mb-0">{{ __('messages.Driver_Earning') }}</h6>
                                         </div>
                                         <div class="col-4 text-right">
-                                            <h6 class="mb-0">{{ $order->net_price_for_driver }}</h6>
+                                            <h6 class="mb-0">{{ number_format($order->net_price_for_driver, 2) }}</h6>
                                         </div>
                                     </div>
                                 </div>
@@ -396,7 +414,7 @@
                                             <h6 class="card-title mb-0">{{ __('messages.Admin_Commission') }}</h6>
                                         </div>
                                         <div class="col-4 text-right">
-                                            <h6 class="mb-0">{{ $order->commision_of_admin }}</h6>
+                                            <h6 class="mb-0">{{ number_format($order->commision_of_admin, 2) }}</h6>
                                         </div>
                                     </div>
                                 </div>
@@ -409,15 +427,15 @@
                                             <strong>{{ __('messages.Payment_Method') }}</strong>
                                             <div class="mt-1">
                                                 <span class="badge badge-primary px-3 py-2">
-                                                    {{ $order->getPaymentMethodText() }}
+                                                    {{ __(ucfirst($paymentMethod)) }}
                                                 </span>
                                             </div>
                                         </div>
                                         <div class="col-md-6 text-right">
                                             <strong>{{ __('messages.Payment_Status') }}</strong>
                                             <div class="mt-1">
-                                                <span class="badge badge-{{ $order->getPaymentStatusClass() }} px-3 py-2">
-                                                    {{ $order->getPaymentStatusText() }}
+                                                <span class="badge px-3 py-2 {{ $paymentStatus == 'paid' ? 'badge-success' : 'badge-warning' }}">
+                                                    {{ __(ucfirst($paymentStatus)) }}
                                                 </span>
                                             </div>
                                         </div>
@@ -433,8 +451,8 @@
                             <div class="form-group">
                                 <label for="status_payment">{{ __('messages.Update_Payment_Status') }}</label>
                                 <select class="form-control" id="status_payment" name="status_payment">
-                                    <option value="1" {{ $order->status_payment == 1 ? 'selected' : '' }}>{{ __('messages.Pending') }}</option>
-                                    <option value="2" {{ $order->status_payment == 2 ? 'selected' : '' }}>{{ __('messages.Paid') }}</option>
+                                    <option value="pending" {{ $paymentStatus == 'pending' ? 'selected' : '' }}>{{ __('messages.Pending') }}</option>
+                                    <option value="paid" {{ $paymentStatus == 'paid' ? 'selected' : '' }}>{{ __('messages.Paid') }}</option>
                                 </select>
                             </div>
                             <button type="submit" class="btn btn-primary">
@@ -456,9 +474,11 @@
                     @if($order->user)
                     <div class="text-center mb-3">
                         @if($order->user->photo)
-                        <img src="{{ asset('assets/admin/uploads/' . $order->user->photo) }}" alt="{{ $order->user->name }}" class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
+                        <img src="{{ asset('assets/admin/uploads/' . $order->user->photo) }}" alt="{{ $order->user->name }}" 
+                             class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
                         @else
-                        <img src="{{ asset('assets/admin/img/undraw_profile.svg') }}" alt="No Image" class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
+                        <img src="{{ asset('assets/admin/img/undraw_profile.svg') }}" alt="No Image" 
+                             class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
                         @endif
                         <h5>{{ $order->user->name }}</h5>
                     </div>
@@ -476,16 +496,13 @@
                         @endif
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ __('messages.Wallet_Balance') }}
-                            <span class="badge badge-primary px-3 py-2">{{ $order->user->balance }}</span>
+                            <span class="badge badge-primary px-3 py-2">{{ number_format($order->user->balance, 2) }}</span>
                         </li>
                     </ul>
                     
                     <div class="d-flex justify-content-between">
                         <a href="{{ route('users.show', $order->user_id) }}" class="btn btn-info btn-sm">
                             <i class="fas fa-user"></i> {{ __('messages.View_Profile') }}
-                        </a>
-                        <a href="{{ route('orders.userOrders', $order->user_id) }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-list"></i> {{ __('messages.View_Orders') }}
                         </a>
                     </div>
                     @else
@@ -505,9 +522,11 @@
                     @if($order->driver)
                     <div class="text-center mb-3">
                         @if($order->driver->photo)
-                        <img src="{{ asset('assets/admin/uploads/' . $order->driver->photo) }}" alt="{{ $order->driver->name }}" class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
+                        <img src="{{ asset('assets/admin/uploads/' . $order->driver->photo) }}" alt="{{ $order->driver->name }}" 
+                             class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
                         @else
-                        <img src="{{ asset('assets/admin/img/undraw_profile.svg') }}" alt="No Image" class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
+                        <img src="{{ asset('assets/admin/img/undraw_profile.svg') }}" alt="No Image" 
+                             class="img-profile rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
                         @endif
                         <h5>{{ $order->driver->name }}</h5>
                     </div>
@@ -525,16 +544,13 @@
                         @endif
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ __('messages.Wallet_Balance') }}
-                            <span class="badge badge-primary px-3 py-2">{{ $order->driver->balance }}</span>
+                            <span class="badge badge-primary px-3 py-2">{{ number_format($order->driver->balance, 2) }}</span>
                         </li>
                     </ul>
                     
                     <div class="d-flex justify-content-between">
                         <a href="{{ route('drivers.show', $order->driver_id) }}" class="btn btn-info btn-sm">
                             <i class="fas fa-user"></i> {{ __('messages.View_Profile') }}
-                        </a>
-                        <a href="{{ route('orders.driverOrders', $order->driver_id) }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-list"></i> {{ __('messages.View_Orders') }}
                         </a>
                     </div>
                     @else
@@ -551,78 +567,15 @@
 
 @section('script')
 <script>
-    // Show/hide cancellation reason field based on status
     $(document).ready(function() {
         $('#status').on('change', function() {
             var status = $(this).val();
-            if (status == '6' || status == '7') {
+            if (['user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'].includes(status)) {
                 $('.cancel-reason-container').show();
             } else {
                 $('.cancel-reason-container').hide();
             }
         });
-        
-        // Initialize map if Google Maps API is loaded
-        if (typeof google !== 'undefined') {
-            initMap();
-        }
     });
-    
-    // Initialize map to show route
-    function initMap() {
-        var pickupLat = {{ $order->pick_lat }};
-        var pickupLng = {{ $order->pick_lng }};
-        var dropLat = {{ $order->drop_lat }};
-        var dropLng = {{ $order->drop_lng }};
-        
-        var map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 12,
-            center: {lat: (pickupLat + dropLat) / 2, lng: (pickupLng + dropLng) / 2}
-        });
-        
-        var pickupMarker = new google.maps.Marker({
-            position: {lat: pickupLat, lng: pickupLng},
-            map: map,
-            title: '{{ $order->pick_name }}',
-            icon: {
-                url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-            }
-        });
-        
-        var dropMarker = new google.maps.Marker({
-            position: {lat: dropLat, lng: dropLng},
-            map: map,
-            title: '{{ $order->drop_name }}',
-            icon: {
-                url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-            }
-        });
-        
-        var directionsService = new google.maps.DirectionsService();
-        var directionsRenderer = new google.maps.DirectionsRenderer({
-            suppressMarkers: true,
-            polylineOptions: {
-                strokeColor: '#4e73df',
-                strokeWeight: 5
-            }
-        });
-        
-        directionsRenderer.setMap(map);
-        
-        var request = {
-            origin: {lat: pickupLat, lng: pickupLng},
-            destination: {lat: dropLat, lng: dropLng},
-            travelMode: 'DRIVING'
-        };
-        
-        directionsService.route(request, function(result, status) {
-            if (status == 'OK') {
-                directionsRenderer.setDirections(result);
-            }
-        });
-    }
 </script>
-
-<!-- Optional: Load Google Maps API -->
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap"></script>
 @endsection

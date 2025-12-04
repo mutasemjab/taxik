@@ -55,7 +55,7 @@ return new class extends Migration
                 'user_cancel_order',
                 'driver_cancel_order',
                 'arrived',
-                'cancel_cron_jon',
+                'cancel_cron_job',
             ])->default('pending');
     
             $table->text('reason_for_cancel')->nullable();

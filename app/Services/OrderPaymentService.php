@@ -115,7 +115,7 @@ class OrderPaymentService
             'driver_id' => $driver->id,
             'amount' => $adminCommission,
             'type_of_transaction' => 2, // withdrawal
-            'note' => "Admin commission deduction for cash payment - Order #{$order->id}",
+            'note' => "خصم عمولة الإدارة للدفع النقدي - الطلب رقم {$order->id}",
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -145,7 +145,7 @@ class OrderPaymentService
             'driver_id' => $driver->id,
             'amount' => $driverEarning,
             'type_of_transaction' => 1, // addition
-            'note' => "Driver earning from visa payment - Order #{$order->id}",
+            'note' => "أرباح السائق من الدفع عبر فيزا - الطلب رقم {$order->id}",
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -182,7 +182,7 @@ class OrderPaymentService
             'user_id' => $user->id,
             'amount' => $totalPrice,
             'type_of_transaction' => 2, // withdrawal
-            'note' => "Payment for order #{$order->id} via wallet",
+            'note' => "الدفع للطلب رقم {$order->id} عبر المحفظة",
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -198,7 +198,7 @@ class OrderPaymentService
             'driver_id' => $driver->id,
             'amount' => $driverEarning,
             'type_of_transaction' => 1, // addition
-            'note' => "Driver earning from wallet payment - Order #{$order->id}",
+            'note' => "أرباح السائق من الدفع عبر المحفظة - الطلب رقم {$order->id}",
             'created_at' => now(),
             'updated_at' => now()
         ]);

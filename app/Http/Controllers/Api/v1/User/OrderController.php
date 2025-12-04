@@ -576,7 +576,7 @@ class OrderController extends Controller
                     'status' => false,
                     'type' => 'not_found',
                     'message' => 'Order not found'
-                ], 404);
+                ], 200);
         }
         
         $validator = Validator::make($request->all(), [
@@ -670,7 +670,7 @@ class OrderController extends Controller
             'user_id' => $userId,
             'amount' => $amount,
             'type_of_transaction' => 2, // withdrawal
-            'note' => "Cancellation fee for order after driver acceptance",
+            'note' => "رسوم إلغاء الطلب بعد قبول السائق",
             'created_at' => now(),
             'updated_at' => now()
         ]);

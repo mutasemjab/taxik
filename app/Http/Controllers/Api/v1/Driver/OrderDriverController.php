@@ -292,7 +292,7 @@ class OrderDriverController extends Controller
             'driver_id' => $driverId,
             'amount' => $amount,
             'type_of_transaction' => 2, // withdrawal
-            'note' => "Penalty for exceeding daily order cancellation limit",
+            'note' => "غرامة تجاوز الحد اليومي لإلغاء الطلبات",
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -628,7 +628,7 @@ class OrderDriverController extends Controller
                 'admin_id' => null,
                 'amount' => $amount,
                 'type_of_transaction' => 1, // 1 = add
-                'note' => "Change returned by driver from order #{$order->number}"
+                'note' => "الباقي المُعاد من السائق للطلب رقم {$order->number}",
             ]);
 
             // Create wallet transaction record for DRIVER (withdrawal)
@@ -639,7 +639,7 @@ class OrderDriverController extends Controller
                 'admin_id' => null,
                 'amount' => $amount,
                 'type_of_transaction' => 2, // 2 = withdrawal
-                'note' => "Change paid to user from order #{$order->number}"
+                'note' => "الباقي المدفوع للمستخدم للطلب رقم {$order->number}",
             ]);
 
             // Get updated balance

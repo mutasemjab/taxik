@@ -144,6 +144,12 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::get('drivers/transactions/{id}', [DriverController::class, 'transactions'])->name('drivers.transactions');
         Route::post('/complaints/{complaint}/update-status', [ComplaintController::class, 'updateStatus'])
             ->name('complaints.update-status');
+
+        // Ban routes
+        Route::get('drivers/{id}/ban', [DriverController::class, 'banForm'])->name('drivers.ban.form');
+        Route::post('drivers/{id}/ban', [DriverController::class, 'ban'])->name('drivers.ban');
+        Route::post('drivers/{id}/unban', [DriverController::class, 'unban'])->name('drivers.unban');
+        Route::get('drivers/{id}/ban-history', [DriverController::class, 'banHistory'])->name('drivers.ban.history');
     });
 });
 

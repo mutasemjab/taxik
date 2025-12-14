@@ -33,6 +33,12 @@ class Kernel extends ConsoleKernel
              ->withoutOverlapping()
              ->runInBackground()
              ->appendOutputTo(storage_path('logs/cleanup-finished-orders.log'));
+            $schedule->command('drivers:unban-expired')
+                 ->everyFiveMinutes()
+                 ->withoutOverlapping()
+                 ->runInBackground()
+                 ->appendOutputTo(storage_path('logs/ban-drivers.log'));
+
     }
 
     /**

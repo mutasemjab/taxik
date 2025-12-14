@@ -23,6 +23,9 @@ class HomeDriverController extends Controller
         // Get the authenticated driver
         $driver = auth('driver-api')->user();
         
+        // Get language from header (default to 'en')
+        $lang = $request->header('lang', 'en');
+        
         // Get driver's rating
         $rating = $driver->ratings()->avg('rating') ?? 0;
         
@@ -38,7 +41,7 @@ class HomeDriverController extends Controller
             ->value('value') ?? 0;
         
         // Check if driver's balance is below minimum required
-        $walletStatus = $this->checkWalletStatus($driver->balance, $minWalletBalance);
+        $walletStatus = $this->checkWalletStatus($driver->balance, $minWalletBalance, $lang);
         
         // Get today's statistics
         $todayStats = $this->getTodayStatistics($driver->id);
@@ -60,13 +63,62 @@ class HomeDriverController extends Controller
             'today_statistics' => $todayStats
         ];
         
+        // Add ban information if driver is banned
+        if ($driver->activate == 2) {
+            $responseData['ban_info'] = $this->getBanInfo($driver, $lang);
+        }
+        
         return $this->success_response('Home data retrieved successfully', $responseData);
+    }
+    
+    /**
+     * Get ban information for the driver
+     */
+    private function getBanInfo($driver, $lang)
+    {
+        $activeBan = $driver->activeBan;
+        
+        if (!$activeBan) {
+            $message = $lang === 'ar' ? 'تم حظر حسابك.' : 'Your account has been banned.';
+            
+            return [
+                'is_banned' => true,
+                'message' => $message,
+            ];
+        }
+
+        $message = $lang === 'ar' 
+            ? 'تم حظر حسابك. يمكنك فقط عرض المعلومات وسحب رصيدك.' 
+            : 'Your account has been banned. You can only view information and withdraw your balance.';
+
+        $banInfo = [
+            'is_banned' => true,
+            'is_permanent' => $activeBan->is_permanent,
+            'reason' => $activeBan->ban_reason,
+            'reason_text' => $activeBan->getReasonText($lang),
+            'description' => $activeBan->ban_description,
+            'banned_at' => $activeBan->banned_at->toDateTimeString(),
+            'banned_by' => $activeBan->admin ? $activeBan->admin->name : ($lang === 'ar' ? 'النظام' : 'System'),
+            'message' => $message,
+        ];
+
+        if (!$activeBan->is_permanent && $activeBan->ban_until) {
+            $banInfo['ban_until'] = $activeBan->ban_until->toDateTimeString();
+            $banInfo['remaining_time'] = $activeBan->getRemainingTime($lang);
+            $banInfo['remaining_time_human'] = $activeBan->ban_until->diffForHumans();
+        } else {
+            $banInfo['ban_until'] = null;
+            $banInfo['remaining_time'] = $lang === 'ar' ? 'دائم' : 'Permanent';
+            $banInfo['remaining_time_human'] = $lang === 'ar' ? 'حظر دائم' : 'Permanent ban';
+        }
+
+        return $banInfo;
     }
     
     /**
      * Check wallet status and determine if driver needs to recharge
      */
-    private function checkWalletStatus($currentBalance, $minBalance)
+    private function checkWalletStatus($currentBalance, $minBalance, $lang)
     {
         $isEligible = $currentBalance >= $minBalance;
         $needsRecharge = !$isEligible;
@@ -74,10 +126,16 @@ class HomeDriverController extends Controller
         
         $popupMessage = null;
         if ($needsRecharge) {
+            $title = $lang === 'ar' ? 'يتطلب شحن المحفظة' : 'Wallet Recharge Required';
+            $message = $lang === 'ar' 
+                ? "رصيد محفظتك هو {$currentBalance}. تحتاج إلى {$minBalance} على الأقل لاستلام الطلبات. يرجى شحن محفظتك بمبلغ {$requiredAmount} أو أكثر لبدء استلام الطلبات."
+                : "Your wallet balance is {$currentBalance}. You need at least {$minBalance} to receive orders. Please recharge your wallet with {$requiredAmount} or more to start receiving orders.";
+            $actionText = $lang === 'ar' ? 'شحن المحفظة' : 'Recharge Wallet';
+            
             $popupMessage = [
-                'title' => 'Wallet Recharge Required',
-                'message' => "Your wallet balance is {$currentBalance}. You need at least {$minBalance} to receive orders. Please recharge your wallet with {$requiredAmount} or more to start receiving orders.",
-                'action_text' => 'Recharge Wallet',
+                'title' => $title,
+                'message' => $message,
+                'action_text' => $actionText,
                 'show_popup' => true
             ];
         }

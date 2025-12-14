@@ -192,7 +192,7 @@ class UserController extends Controller
                     'admin_id' => auth()->guard('admin')->user()->id,
                     'amount' => $request->amount,
                     'type_of_transaction' => 1, // 1 for add
-                    'note' => $request->note ?? 'Balance top-up by admin',
+                    'note' => $request->note ??  'شحن رصيد من الشركة',
                 ]);
                 
                 DB::commit();

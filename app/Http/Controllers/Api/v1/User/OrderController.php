@@ -227,33 +227,20 @@ class OrderController extends Controller
                     ], 200);
                 }
 
-                // Check if user has already used this coupon
-                $hasUsedCoupon = DB::table('user_coupons')
+                // Check how many times THIS USER has used this coupon
+                $userUsageCount = DB::table('user_coupons')
                     ->where('user_id', auth()->id())
                     ->where('coupon_id', $coupon->id)
-                    ->exists();
+                    ->count();
 
-                if ($hasUsedCoupon) {
+                // Check usage limit per user (using number_of_used)
+                // If number_of_used is null, unlimited usage per user
+                if (!is_null($coupon->number_of_used) && $userUsageCount >= $coupon->number_of_used) {
                     return response()->json([
                         'status' => false,
-                        'type' => 'coupon_already_used',
-                        'message' => 'You have already used this coupon'
+                        'type' => 'coupon_usage_limit_reached',
+                        'message' => 'You have reached the maximum usage limit for this coupon'
                     ], 200);
-                }
-
-                // Check coupon usage limit (if number_of_used is not null)
-                if (!is_null($coupon->number_of_used)) {
-                    $currentUsageCount = DB::table('user_coupons')
-                        ->where('coupon_id', $coupon->id)
-                        ->count();
-
-                    if ($currentUsageCount >= $coupon->number_of_used) {
-                        return response()->json([
-                            'status' => false,
-                            'type' => 'coupon_usage_limit_reached',
-                            'message' => 'This coupon has reached its maximum usage limit'
-                        ], 200);
-                    }
                 }
 
                 // Check minimum amount

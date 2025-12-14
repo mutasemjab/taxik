@@ -92,11 +92,27 @@ class Driver extends Authenticatable
             ->withTimestamps();
     }
 
-       public function services()
+   public function services()
     {
         return $this->belongsToMany(Service::class, 'driver_services')
-            ->withPivot('status')
-            ->withTimestamps();
+                    ->withPivot('status', 'service_type')
+                    ->withTimestamps();
+    }
+
+    public function primaryServices()
+    {
+        return $this->belongsToMany(Service::class, 'driver_services')
+                    ->wherePivot('service_type', 1)
+                    ->withPivot('status', 'service_type')
+                    ->withTimestamps();
+    }
+
+    public function optionalServices()
+    {
+        return $this->belongsToMany(Service::class, 'driver_services')
+                    ->wherePivot('service_type', 2)
+                    ->withPivot('status', 'service_type')
+                    ->withTimestamps();
     }
 
     public function activeServices()
@@ -156,4 +172,72 @@ class Driver extends Authenticatable
         ]);
     }
 
+    public function bans()
+    {
+        return $this->hasMany(DriverBan::class);
+    }
+
+    public function activeBan()
+    {
+        return $this->hasOne(DriverBan::class)->where('is_active', true)->latest();
+    }
+
+    /**
+     * Check if driver is currently banned
+     */
+    public function isBanned()
+    {
+        return $this->activate == 2 && $this->activeBan()->exists();
+    }
+
+    /**
+     * Get current active ban
+     */
+    public function getCurrentBan()
+    {
+        return $this->activeBan;
+    }
+
+    /**
+     * Ban the driver
+     */
+    public function banDriver($adminId, $reason, $description = null, $banUntil = null, $isPermanent = false)
+    {
+        // Update driver status to banned
+        $this->update(['activate' => 2]);
+
+        // Create ban record
+        return $this->bans()->create([
+            'admin_id' => $adminId,
+            'ban_reason' => $reason,
+            'ban_description' => $description,
+            'banned_at' => now(),
+            'ban_until' => $banUntil,
+            'is_permanent' => $isPermanent,
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Unban the driver
+     */
+    public function unbanDriver($adminId = null, $reason = null)
+    {
+        // Update driver status to active
+        $this->update(['activate' => 1]);
+
+        // Deactivate current ban
+        $activeBan = $this->activeBan;
+        if ($activeBan) {
+            $activeBan->update([
+                'is_active' => false,
+                'unbanned_at' => now(),
+                'unbanned_by' => $adminId,
+                'unban_reason' => $reason,
+            ]);
+        }
+
+        return true;
+    }
+    
 }

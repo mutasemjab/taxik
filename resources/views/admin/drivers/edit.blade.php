@@ -71,10 +71,57 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="form-group">
+                            <label>{{ __('messages.Services') }}</label>
+                            
+                            <!-- Primary Service -->
+                            <div class="mb-3">
+                                <label class="font-weight-bold text-primary">{{ __('messages.Primary_Service') }} <span class="text-danger">*</span></label>
+                                <small class="d-block text-muted mb-2">{{ __('messages.Primary_service_cannot_be_disabled_by_driver') }}</small>
+                                <select name="primary_service_id" class="form-control" required>
+                                    <option value="">{{ __('messages.Select_Primary_Service') }}</option>
+                                    @foreach($allServices as $service)
+                                        <option value="{{ $service->id }}" 
+                                            {{ (old('primary_service_id') == $service->id) || 
+                                            (isset($driver) && $driver->services->where('pivot.service_type', 1)->contains($service->id)) ? 'selected' : '' }}>
+                                            {{ $service->name_en }} ({{ $service->name_ar }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            
+                            <!-- Optional Services -->
+                            <div class="mb-3">
+                                <label class="font-weight-bold text-info">{{ __('messages.Optional_Services') }}</label>
+                                <small class="d-block text-muted mb-2">{{ __('messages.Driver_can_toggle_these_services') }}</small>
+                                <div class="checkbox-list">
+                                    @foreach($allServices as $service)
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="optional_service_ids[]" value="{{ $service->id }}" 
+                                            @if(isset($driver) && $driver->services->where('pivot.service_type', 2)->contains($service->id))
+                                                checked
+                                            @elseif(old('optional_service_ids') && in_array($service->id, old('optional_service_ids')))
+                                                checked
+                                            @endif
+                                            >
+                                            <span>{{ $service->name_en }} ({{ $service->name_ar }})</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            
+                            @error('primary_service_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            @error('optional_service_ids')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                         
                         <div class="form-group">
                             <label for="balance">{{ __('messages.Balance') }}</label>
-                            <input type="number" step="0.01" class="form-control" id="balance" name="balance" value="{{ old('balance', $driver->balance) }}">
+                            <input type="number" step="0.01" class="form-control" id="balance" name="balance" value="{{ old('balance', $driver->balance) }}" readonly>
                         </div>
                         
                         <div class="form-group">
@@ -221,8 +268,30 @@
 
 @section('script')
 <script>
-    // Show image previews
     $(document).ready(function() {
+        // Function to update optional services based on primary selection
+        function updateOptionalServices() {
+            const primaryServiceId = $('select[name="primary_service_id"]').val();
+            
+            // Enable all optional service checkboxes first
+            $('input[name="optional_service_ids[]"]').prop('disabled', false);
+            
+            // Disable and uncheck the selected primary service in optional services
+            if (primaryServiceId) {
+                $('input[name="optional_service_ids[]"][value="' + primaryServiceId + '"]')
+                    .prop('disabled', true)
+                    .prop('checked', false);
+            }
+        }
+        
+        // Run on page load
+        updateOptionalServices();
+        
+        // Run when primary service changes
+        $('select[name="primary_service_id"]').on('change', function() {
+            updateOptionalServices();
+        });
+        
         // Show filename on file select
         $('.custom-file-input').on('change', function() {
             let fileName = $(this).val().split('\\').pop();

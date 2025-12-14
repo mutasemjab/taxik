@@ -14,10 +14,9 @@ class OrderPaymentService
     /**
      * Update order status to delivered and process payment
      */
-   public function markAsDeliveredAndProcessPayment(Order $order, $driver = null)
+    public function markAsDeliveredAndProcessPayment(Order $order, $driver = null)
     {
         try {
-
             // Update order status to delivered
             $order->status = OrderStatus::Delivered;
             $order->status_payment = StatusPayment::Paid;
@@ -34,7 +33,6 @@ class OrderPaymentService
 
             // Save order changes
             $order->save();
-
 
             return [
                 'success' => true,
@@ -56,21 +54,30 @@ class OrderPaymentService
      */
     public function processPayment($order, $driver = null)
     {
-        $totalPrice = $order->total_price_after_discount;
+        // Price breakdown:
+        $totalPriceBeforeDiscount = $order->total_price_before_discount; // e.g., 2 JD
+        $discountValue = $order->discount_value; // e.g., 1 JD (coupon discount)
+        $finalPrice = $order->total_price_after_discount; // e.g., 1 JD (what user pays)
 
-        // Get commission details from service
-        $commissionData = $this->getServiceCommission($order->service_id, $totalPrice);
+        // CRITICAL: Admin commission calculated from FULL PRICE (before discount)
+        $commissionData = $this->getServiceCommission($order->service_id, $totalPriceBeforeDiscount);
         $adminCommission = $commissionData['admin_commission'];
-        $driverEarning = $totalPrice - $adminCommission;
+
+        // Driver base earning (from full price - commission)
+        $driverBaseEarning = $totalPriceBeforeDiscount - $adminCommission;
 
         $paymentDetails = [
             'payment_method' => $order->payment_method->value,
             'payment_method_text' => $order->getPaymentMethodText(),
-            'total_price' => $totalPrice,
+            'total_price_before_discount' => $totalPriceBeforeDiscount,
+            'discount_value' => $discountValue,
+            'total_price_after_discount' => $finalPrice,
             'admin_commission_type' => $commissionData['type_text'],
             'admin_commission_value' => $commissionData['commission_value'],
             'admin_commission_amount' => $adminCommission,
-            'driver_earning' => $driverEarning,
+            'driver_base_earning' => $driverBaseEarning,
+            'discount_compensation' => $discountValue > 0 ? $discountValue : 0,
+            'driver_total_earning' => $driverBaseEarning,
             'transactions_created' => []
         ];
 
@@ -83,18 +90,18 @@ class OrderPaymentService
             throw new \Exception("Driver information not found for order #{$order->id}");
         }
 
-        // Process payment based on enum value
+        // Process payment based on method
         switch ($order->payment_method) {
             case PaymentMethod::Cash:
-                $this->processCashPayment($order, $driver, $adminCommission, $paymentDetails);
+                $this->processCashPayment($order, $driver, $adminCommission, $discountValue, $paymentDetails);
                 break;
 
             case PaymentMethod::Visa:
-                $this->processVisaPayment($order, $driver, $driverEarning, $paymentDetails);
+                $this->processVisaPayment($order, $driver, $driverBaseEarning, $discountValue, $paymentDetails);
                 break;
 
             case PaymentMethod::Wallet:
-                $this->processWalletPayment($order, $driver, $totalPrice, $driverEarning, $paymentDetails);
+                $this->processWalletPayment($order, $driver, $finalPrice, $driverBaseEarning, $discountValue, $paymentDetails);
                 break;
 
             default:
@@ -104,12 +111,9 @@ class OrderPaymentService
         return $paymentDetails;
     }
 
-    /**
-     * Process cash payment - deduct admin commission from driver wallet
-     */
-    private function processCashPayment($order, $driver, $adminCommission, &$paymentDetails)
+    private function processCashPayment($order, $driver, $adminCommission, $discountValue, &$paymentDetails)
     {
-        // Deduct admin commission from driver's wallet
+        // Step 1: Deduct admin commission from driver's wallet
         DB::table('wallet_transactions')->insert([
             'order_id' => $order->id,
             'driver_id' => $driver->id,
@@ -120,7 +124,6 @@ class OrderPaymentService
             'updated_at' => now()
         ]);
 
-        // Update driver's wallet balance
         DB::table('drivers')
             ->where('id', $driver->id)
             ->decrement('balance', $adminCommission);
@@ -128,101 +131,173 @@ class OrderPaymentService
         $paymentDetails['transactions_created'][] = [
             'type' => 'driver_commission_deduction',
             'amount' => $adminCommission,
-            'description' => 'Admin commission deducted from driver wallet for cash payment'
+            'description' => 'Admin commission deducted from driver wallet'
         ];
 
-        Log::info("Cash payment processed - Admin commission {$adminCommission} deducted from driver {$driver->id} for order {$order->id}");
+        // Step 2: Add discount compensation to driver's wallet
+        if ($discountValue > 0) {
+            DB::table('wallet_transactions')->insert([
+                'order_id' => $order->id,
+                'driver_id' => $driver->id,
+                'amount' => $discountValue,
+                'type_of_transaction' => 1, // addition
+                'note' => "تعويض الكوبون للطلب رقم {$order->id}",
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::table('drivers')
+                ->where('id', $driver->id)
+                ->increment('balance', $discountValue);
+
+            $paymentDetails['transactions_created'][] = [
+                'type' => 'discount_compensation',
+                'amount' => $discountValue,
+                'description' => 'Coupon discount compensation added to driver wallet'
+            ];
+        }
+
+        Log::info("Cash payment processed for order {$order->id}: Commission {$adminCommission}, Discount compensation {$discountValue}");
     }
 
     /**
-     * Process visa/card payment - add driver earning to driver wallet
+     * Process visa/card payment
+     * - User pays DISCOUNTED price via card (already processed)
+     * - Platform adds driver's earning to wallet
+     * - Platform compensates driver for discount
      */
-    private function processVisaPayment($order, $driver, $driverEarning, &$paymentDetails)
+    private function processVisaPayment($order, $driver, $driverBaseEarning, $discountValue, &$paymentDetails)
     {
-        // Add driver earning to driver's wallet
+        // Step 1: Add driver earning to driver's wallet
         DB::table('wallet_transactions')->insert([
             'order_id' => $order->id,
             'driver_id' => $driver->id,
-            'amount' => $driverEarning,
+            'amount' => $driverBaseEarning,
             'type_of_transaction' => 1, // addition
             'note' => "أرباح السائق من الدفع عبر فيزا - الطلب رقم {$order->id}",
             'created_at' => now(),
             'updated_at' => now()
         ]);
 
-        // Update driver's wallet balance
         DB::table('drivers')
             ->where('id', $driver->id)
-            ->increment('balance', $driverEarning);
+            ->increment('balance', $driverBaseEarning);
 
         $paymentDetails['transactions_created'][] = [
             'type' => 'driver_earning_addition',
-            'amount' => $driverEarning,
+            'amount' => $driverBaseEarning,
             'description' => 'Driver earning added to wallet from visa payment'
         ];
 
-        Log::info("Visa payment processed - Driver earning {$driverEarning} added to driver {$driver->id} for order {$order->id}");
+        // Step 2: Add discount compensation to driver's wallet
+        if ($discountValue > 0) {
+            DB::table('wallet_transactions')->insert([
+                'order_id' => $order->id,
+                'driver_id' => $driver->id,
+                'amount' => $discountValue,
+                'type_of_transaction' => 1, // addition
+                'note' => "تعويض الكوبون للطلب رقم {$order->id}",
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::table('drivers')
+                ->where('id', $driver->id)
+                ->increment('balance', $discountValue);
+
+            $paymentDetails['transactions_created'][] = [
+                'type' => 'discount_compensation',
+                'amount' => $discountValue,
+                'description' => 'Coupon discount compensation added to driver wallet'
+            ];
+        }
+
+        Log::info("Visa payment processed for order {$order->id}: Driver earning {$driverBaseEarning}, Discount compensation {$discountValue}");
     }
 
     /**
-     * Process wallet payment - deduct from user wallet and add to driver wallet
+     * Process wallet payment
+     * - User pays DISCOUNTED price from wallet
+     * - Platform adds driver's earning to wallet  
+     * - Platform compensates driver for discount
      */
-    private function processWalletPayment($order, $driver, $totalPrice, $driverEarning, &$paymentDetails)
+    private function processWalletPayment($order, $driver, $finalPrice, $driverBaseEarning, $discountValue, &$paymentDetails)
     {
         $user = $order->user;
 
         // Check if user has sufficient balance
-        if ($user->balance < $totalPrice) {
-            throw new \Exception("Insufficient user wallet balance. Required: {$totalPrice}, Available: {$user->balance}");
+        if ($user->balance < $finalPrice) {
+            throw new \Exception("Insufficient user wallet balance. Required: {$finalPrice}, Available: {$user->balance}");
         }
 
-        // Deduct total price from user's wallet
+        // Step 1: Deduct DISCOUNTED price from user's wallet
         DB::table('wallet_transactions')->insert([
             'order_id' => $order->id,
             'user_id' => $user->id,
-            'amount' => $totalPrice,
+            'amount' => $finalPrice,
             'type_of_transaction' => 2, // withdrawal
             'note' => "الدفع للطلب رقم {$order->id} عبر المحفظة",
             'created_at' => now(),
             'updated_at' => now()
         ]);
 
-        // Update user's balance
         DB::table('users')
             ->where('id', $user->id)
-            ->decrement('balance', $totalPrice);
+            ->decrement('balance', $finalPrice);
 
-        // Add driver earning to driver's wallet
+        $paymentDetails['transactions_created'][] = [
+            'type' => 'user_payment_deduction',
+            'amount' => $finalPrice,
+            'description' => 'Discounted price deducted from user wallet'
+        ];
+
+        // Step 2: Add driver earning to driver's wallet
         DB::table('wallet_transactions')->insert([
             'order_id' => $order->id,
             'driver_id' => $driver->id,
-            'amount' => $driverEarning,
+            'amount' => $driverBaseEarning,
             'type_of_transaction' => 1, // addition
             'note' => "أرباح السائق من الدفع عبر المحفظة - الطلب رقم {$order->id}",
             'created_at' => now(),
             'updated_at' => now()
         ]);
 
-        // Update driver's wallet balance
         DB::table('drivers')
             ->where('id', $driver->id)
-            ->increment('balance', $driverEarning);
-
-        $paymentDetails['transactions_created'][] = [
-            'type' => 'user_payment_deduction',
-            'amount' => $totalPrice,
-            'description' => 'Total price deducted from user wallet'
-        ];
+            ->increment('balance', $driverBaseEarning);
 
         $paymentDetails['transactions_created'][] = [
             'type' => 'driver_earning_addition',
-            'amount' => $driverEarning,
+            'amount' => $driverBaseEarning,
             'description' => 'Driver earning added to wallet from user payment'
         ];
 
-        $paymentDetails['user_remaining_balance'] = $user->balance - $totalPrice;
+        // Step 3: Add discount compensation to driver's wallet
+        if ($discountValue > 0) {
+            DB::table('wallet_transactions')->insert([
+                'order_id' => $order->id,
+                'driver_id' => $driver->id,
+                'amount' => $discountValue,
+                'type_of_transaction' => 1, // addition
+                'note' => "تعويض الكوبون للطلب رقم {$order->id}",
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
 
-        Log::info("Wallet payment processed - {$totalPrice} deducted from user {$user->id}, {$driverEarning} added to driver {$driver->id} for order {$order->id}");
+            DB::table('drivers')
+                ->where('id', $driver->id)
+                ->increment('balance', $discountValue);
+
+            $paymentDetails['transactions_created'][] = [
+                'type' => 'discount_compensation',
+                'amount' => $discountValue,
+                'description' => 'Coupon discount compensation added to driver wallet'
+            ];
+        }
+
+        $paymentDetails['user_remaining_balance'] = $user->balance - $finalPrice;
+
+        Log::info("Wallet payment processed for order {$order->id}: User paid {$finalPrice}, Driver earning {$driverBaseEarning}, Discount compensation {$discountValue}");
     }
 
     /**

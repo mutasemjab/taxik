@@ -72,7 +72,7 @@
                         
                         <div class="form-group">
                             <label for="balance">{{ __('messages.Balance') }}</label>
-                            <input type="number" step="0.01" class="form-control" id="balance" name="balance" value="{{ old('balance', 0) }}">
+                            <input type="number" step="0.01" class="form-control" id="balance" name="balance" value="{{ old('balance', 0) }}" readonly>
                         </div>
                         
                         <div class="form-group">

@@ -23,6 +23,7 @@ class Order extends Model
         'trip_completed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'arrived_at' => 'datetime',
 
     ];
 

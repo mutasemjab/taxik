@@ -18,7 +18,7 @@ class NotificationApiController extends Controller
     use Responses;
 
 
-        // Fetch notifications for a user
+    // Fetch notifications for a user
     public function getUserNotifications(Request $request)
     {
         $user = $request->user(); // assuming sanctum or passport is used for auth
@@ -50,22 +50,22 @@ class NotificationApiController extends Controller
             'notifications' => $notifications,
         ]);
     }
-    
-      public function sendToUser(Request $request)
+
+    public function sendToUser(Request $request)
     {
         $this->validate($request, [
             'user_id' => 'required|integer',
             'message' => 'required|string|max:500',
-            'sender_driver_id' => 'required|integer'
         ]);
 
         try {
-            $response = AdminFCMController::sendChatMessageToUser(
-                $request->message, 
-                $request->user_id,
-                $request->sender_driver_id
-            );
+            $driver = $request->user(); // ✅ Get authenticated driver
 
+            $response = AdminFCMController::sendChatMessageToUser(
+                $request->message,
+                $request->user_id,
+                $driver->id  // ✅ Use authenticated driver's ID
+            );
             if ($response) {
                 return response()->json([
                     'status' => true,
@@ -121,5 +121,3 @@ class NotificationApiController extends Controller
         }
     }
 }
-
-

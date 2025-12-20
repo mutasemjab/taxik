@@ -9,60 +9,53 @@ use Illuminate\Http\Request;
 class SettingController extends Controller
 {
 
-  public function index()
-  {
+    public function index()
+    {
 
-    $data = Setting::paginate(PAGINATION_COUNT);
+        $data = Setting::paginate(PAGINATION_COUNT);
 
-    return view('admin.settings.index', ['data' => $data]);
-  }
+        return view('admin.settings.index', ['data' => $data]);
+    }
 
 
 
-  public function edit($id)
-  {
-       if (auth()->user()->can('setting-edit')) {
-    $data=Setting::findorFail($id);
-    return view('admin.settings.edit',compact('data'));
-       }else{
+    public function edit($id)
+    {
+        if (auth()->user()->can('setting-edit')) {
+            $data = Setting::findorFail($id);
+            return view('admin.settings.edit', compact('data'));
+        } else {
             return redirect()->back()
-            ->with('error', "Access Denied");
-       }
-  }
+                ->with('error', "Access Denied");
+        }
+    }
 
-  public function update(Request $request, $id)
-  {
-      if (auth()->user()->can('setting-edit')) {
-          $setting = Setting::findOrFail($id);
+    public function update(Request $request, $id)
+    {
+        if (auth()->user()->can('setting-edit')) {
+            $setting = Setting::findOrFail($id);
 
-          // Validate input (only allow 'value' field)
-          $request->validate([
-              'value' => 'required|integer', // Adjust validation as needed
-          ]);
+            // Validate input (only allow 'value' field)
+            $request->validate([
+                'value' => 'required', // Adjust validation as needed
+            ]);
 
-          try {
-              // Update only the value field
-              $setting->value = $request->input('value');
+            try {
+                // Update only the value field
+                $setting->value = $request->input('value');
 
-              if ($setting->save()) {
-                  return redirect()->route('admin.setting.index')->with(['success' => 'Setting updated successfully']);
-              } else {
-                  return redirect()->back()->with(['error' => 'Something went wrong']);
-              }
-          } catch (\Exception $ex) {
-              return redirect()->back()
-                  ->with(['error' => 'An error occurred: ' . $ex->getMessage()])
-                  ->withInput();
-          }
-      } else {
-          return redirect()->back()->with('error', "Access Denied");
-      }
-  }
-
-
-
-
-
-
-
+                if ($setting->save()) {
+                    return redirect()->route('settings.index')->with(['success' => 'Setting updated successfully']);
+                } else {
+                    return redirect()->back()->with(['error' => 'Something went wrong']);
+                }
+            } catch (\Exception $ex) {
+                return redirect()->back()
+                    ->with(['error' => 'An error occurred: ' . $ex->getMessage()])
+                    ->withInput();
+            }
+        } else {
+            return redirect()->back()->with('error', "Access Denied");
+        }
+    }
 }

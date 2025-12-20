@@ -139,6 +139,12 @@ class Driver extends Authenticatable
         return $this->hasMany(Rating::class);
     }
 
+      public function representative()
+    {
+        return $this->belongsTo(Representive::class, 'representive_id');
+    }
+    
+
      public function addBalance($amount, $note = null, $adminId = null, $userId = null)
     {
         $this->increment('balance', $amount);

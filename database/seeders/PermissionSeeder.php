@@ -71,25 +71,20 @@ class PermissionSeeder extends Seeder
             'offer-edit',
             'offer-delete',
 
-            'transfer-table',
-            'transfer-add',
-            'transfer-edit',
-            'transfer-delete',
+            'representive-table',
+            'representive-add',
+            'representive-edit',
+            'representive-delete',
 
             'wallet-table',
             'wallet-add',
             'wallet-edit',
             'wallet-delete',
 
-            'dealer-table',
-            'dealer-add',
-            'dealer-edit',
-            'dealer-delete',
-
-            'cardPackage-table',
-            'cardPackage-add',
-            'cardPackage-edit',
-            'cardPackage-delete',
+            'countrCharge-table',
+            'countrCharge-add',
+            'countrCharge-edit',
+            'countrCharge-delete',
 
         ];
 

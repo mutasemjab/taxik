@@ -18,7 +18,9 @@ use App\Http\Controllers\Admin\WalletTransactionController;
 use App\Http\Controllers\Admin\WithdrawalRequestController;
 use App\Http\Controllers\Admin\AppConfigController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\RepresentiveController;
 use App\Http\Controllers\Admin\ComplaintController;
+use App\Http\Controllers\Admin\CountryChargeController;
 use App\Http\Controllers\Admin\DriverAlertAdminController;
 use App\Http\Controllers\Admin\RatingController;
 use App\Http\Controllers\Reports\OrderStatusReportController;
@@ -100,12 +102,14 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::resource('complaints', ComplaintController::class);
         Route::resource('app-configs', AppConfigController::class);
         Route::resource('settings', SettingController::class);
+        Route::resource('representives', RepresentiveController::class);
         Route::resource('users', UserController::class);
         Route::resource('drivers', DriverController::class);
         Route::resource('services', ServiceController::class);
         Route::resource('coupons', CouponController::class);
         Route::resource('pos', POSController::class);
         Route::resource('cards', CardController::class);
+        Route::resource('country-charges', CountryChargeController::class);
 
         Route::get('driver-alerts', [DriverAlertAdminController::class, 'index'])->name('admin.driver_alerts.index');
         Route::post('driver-alerts/{id}/status', [DriverAlertAdminController::class, 'updateStatus'])->name('admin.driver_alerts.updateStatus');

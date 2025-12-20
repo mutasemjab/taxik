@@ -50,6 +50,6 @@
     <script src="{{ asset('assets/admin/js/general.js') }}"></script>
 
     @yield('script')
-    @yield('js')
+    @stack('scripts')
 </body>
 </html>

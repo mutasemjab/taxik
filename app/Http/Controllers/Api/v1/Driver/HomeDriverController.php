@@ -27,7 +27,7 @@ class HomeDriverController extends Controller
         $lang = $request->header('lang', 'en');
         
         // Get driver's rating
-        $rating = $driver->ratings()->avg('rating') ?? 0;
+        $rating = $driver->ratings()->avg('rating') ?? 5;
         
         // Get only active services
         $activeServices = $driver->activeServices()->get();

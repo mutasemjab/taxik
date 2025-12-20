@@ -39,6 +39,9 @@ return new class extends Migration
             $table->string('car_license_front')->nullable();
             $table->string('car_license_back')->nullable();
             $table->string('no_criminal_record')->nullable();
+
+            $table->unsignedBigInteger('representive_id')->nullable();
+            $table->foreign('representive_id')->references('id')->on('representives')->onDelete('cascade');
             $table->rememberToken();
             $table->timestamps();
         });

@@ -39,15 +39,30 @@
                             <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $driver->name) }}" required>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="phone">{{ __('messages.Phone') }} <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $driver->phone) }}" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email">{{ __('messages.Email') }}</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $driver->email) }}">
-                        </div>
+                     <div class="form-group">
+                        <label for="phone">{{ __('messages.Phone') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $driver->phone) }}" required>
+                    </div>
+
+                    <!-- Add Representative Dropdown Here -->
+                    <div class="form-group">
+                        <label for="representive_id">{{ __('messages.Representative') }}</label>
+                        <select class="form-control" id="representive_id" name="representive_id">
+                            <option value="">{{ __('messages.Select_Representative') }}</option>
+                            @foreach($representatives as $representative)
+                                <option value="{{ $representative->id }}" 
+                                    {{ old('representive_id', $driver->representive_id) == $representative->id ? 'selected' : '' }}>
+                                    {{ $representative->name }} - {{ $representative->phone }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="form-text text-muted">{{ __('messages.Assign_representative_to_driver') }}</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">{{ __('messages.Email') }}</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ old('email', $driver->email) }}">
+                    </div>
                         
                     
                         

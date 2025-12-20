@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\v1\Driver\WithdrawalRequestDriverController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\v1\User\WalletController;
+use App\Http\Controllers\Api\v1\User\CountryChargeApiController;
 use App\Http\Controllers\Api\v1\User\AppConfigController;
 use App\Http\Controllers\Api\v1\User\AuthController;
 use App\Http\Controllers\Api\v1\User\UserAddressController;
@@ -37,6 +38,7 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 //Route unAuth
 Route::group(['prefix' => 'v1/user'], function () {
+    Route::get('/country-charges', [CountryChargeApiController::class, 'index']);
 
     //---------------- Auth --------------------//
     Route::get('/banners', [BannerController::class, 'index']);

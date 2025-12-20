@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api\v1\User;
 
 use App\Http\Controllers\Controller;
@@ -28,9 +29,9 @@ class OrderController extends Controller
 {
     use Responses;
 
-  protected $driverLocationService;
+    protected $driverLocationService;
     protected $orderPaymentService;
-    
+
     public function __construct(
         DriverLocationService $driverLocationService,
         OrderPaymentService $orderPaymentService
@@ -44,15 +45,15 @@ class OrderController extends Controller
         try {
             $orderId = $request->order_id;
             $radius = $request->radius;
-            
+
             $order = Order::find($orderId);
             if (!$order || $order->status != OrderStatus::Pending) {
                 return response()->json(['success' => false]);
             }
-            
+
             // This runs in web context - has gRPC!
             $driverLocationService = app(\App\Services\DriverLocationService::class);
-            
+
             $result = $driverLocationService->findAndStoreOrderInFirebase(
                 $request->user_lat,
                 $request->user_lng,
@@ -61,11 +62,10 @@ class OrderController extends Controller
                 $radius * 1000,
                 OrderStatus::Pending->value
             );
-            
+
             \Log::info("Updated Firebase for order {$orderId} at {$radius}km via HTTP");
-            
+
             return response()->json(['success' => true, 'result' => $result]);
-            
         } catch (\Exception $e) {
             \Log::error("Error in updateOrderRadius: " . $e->getMessage());
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
@@ -78,43 +78,43 @@ class OrderController extends Controller
         $order = Order::with(['service', 'user', 'driver'])->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
-            
+
         if (!$order) {
             return $this->error_response('Order not found', null);
         }
-        
+
         // Check if order can be marked as delivered
         $allowedStatuses = [
             OrderStatus::waitingPayment,
             OrderStatus::Arrived
         ];
-        
+
         if (!in_array($order->status, $allowedStatuses)) {
             return $this->error_response('Order cannot be marked as delivered at this stage', [
                 'current_status' => $order->status->value,
                 'allowed_statuses' => array_map(fn($status) => $status->value, $allowedStatuses)
             ]);
         }
-        
+
         try {
             // Use the service to mark as delivered and process payment
             $result = $this->orderPaymentService->markAsDeliveredAndProcessPayment($order);
-            
+
             if (!$result['success']) {
                 return $this->error_response('Error processing order delivery', $result['error']);
             }
-            
+
             $order = $result['order'];
             $paymentDetails = $result['payment_details'];
-            
+
             // Send notification about order completion
             EnhancedFCMService::sendOrderStatusToUser($id, OrderStatus::Delivered);
-            
+
             // You might want to notify the driver as well
             if ($order->driver) {
                 EnhancedFCMService::sendOrderStatusToDriver($id, OrderStatus::Delivered, 'Order has been confirmed as delivered by the user');
             }
-            
+
             $responseData = [
                 'order_id' => $order->id,
                 'status' => $order->status->value,
@@ -126,15 +126,14 @@ class OrderController extends Controller
                 'actual_duration_minutes' => $order->actual_trip_duration_minutes,
                 'payment_details' => $paymentDetails
             ];
-            
+
             return $this->success_response('Order marked as delivered successfully', $responseData);
-            
         } catch (\Exception $e) {
             Log::error('Error marking order as delivered: ' . $e->getMessage());
             return $this->error_response('Error marking order as delivered', $e->getMessage());
         }
     }
-   
+
 
     public function createOrder(Request $request)
     {
@@ -161,8 +160,8 @@ class OrderController extends Controller
 
         try {
             $service = Service::where('id', $request->service_id)
-                            ->where('activate', 1)
-                            ->first();
+                ->where('activate', 1)
+                ->first();
 
             if (!$service) {
                 return response()->json([
@@ -190,13 +189,26 @@ class OrderController extends Controller
             // Calculate price if not provided
             $calculatedPrice = $request->total_price_before_discount;
             if (!$calculatedPrice) {
-                $distance = $this->calculateDistance(
-                    $request->start_lat,
-                    $request->start_lng,
-                    $request->end_lat,
-                    $request->end_lng
-                );
-                $calculatedPrice = $service->start_price + ($distance * $service->price_per_km);
+                $distance = 0;
+
+                // Only calculate distance if both end_lat and end_lng are present
+                if (!is_null($request->end_lat) && !is_null($request->end_lng)) {
+                    $distance = $this->calculateDistance(
+                        $request->start_lat,
+                        $request->start_lng,
+                        $request->end_lat,
+                        $request->end_lng
+                    );
+                }
+
+                // Determine if it's evening time
+                $isEvening = $this->isEveningTime();
+
+                // Select pricing based on time of day
+                $startPrice = $isEvening ? $service->start_price_evening : $service->start_price_morning;
+                $pricePerKm = $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning;
+
+                $calculatedPrice = $startPrice + ($pricePerKm * $distance);
             }
 
             // Initialize discount variables
@@ -207,8 +219,8 @@ class OrderController extends Controller
             // Handle coupon validation and discount calculation
             if ($request->coupon_code) {
                 $coupon = Coupon::where('code', $request->coupon_code)
-                            ->where('activate', 1)
-                            ->first();
+                    ->where('activate', 1)
+                    ->first();
 
                 if (!$coupon) {
                     return response()->json([
@@ -255,9 +267,9 @@ class OrderController extends Controller
                 // Check coupon type restrictions
                 if ($coupon->coupon_type == 2) { // First ride only
                     $previousOrdersCount = Order::where('user_id', auth()->id())
-                                            ->whereIn('status', ['completed'])
-                                            ->count();
-                    
+                        ->whereIn('status', ['completed'])
+                        ->count();
+
                     if ($previousOrdersCount > 0) {
                         return response()->json([
                             'status' => false,
@@ -286,6 +298,24 @@ class OrderController extends Controller
                 $discountValue = min($discountValue, $calculatedPrice);
                 $finalPrice = $calculatedPrice - $discountValue;
                 $couponId = $coupon->id;
+            }
+
+            // Check wallet balance for wallet payment method
+            if ($paymentMethodValue === PaymentMethod::Wallet->value) {
+                $user = auth()->user();
+
+                if ($user->balance < $finalPrice) {
+                    return response()->json([
+                        'status' => false,
+                        'type' => 'insufficient_balance',
+                        'message' => 'Insufficient wallet balance',
+                        'data' => [
+                            'required_amount' => $finalPrice,
+                            'current_balance' => $user->balance,
+                            'shortage' => $finalPrice - $user->balance
+                        ]
+                    ], 200);
+                }
             }
 
             // Use DB transaction to ensure data consistency
@@ -359,8 +389,8 @@ class OrderController extends Controller
 
                 return response()->json([
                     'status' => true,
-                    'message' => $result['success'] 
-                        ? 'Order created successfully. Searching for drivers in ' . ($result['search_radius'] ?? $initialRadius) . 'km radius.' 
+                    'message' => $result['success']
+                        ? 'Order created successfully. Searching for drivers in ' . ($result['search_radius'] ?? $initialRadius) . 'km radius.'
                         : $result['message'],
                     'data' => [
                         'order' => $order->load(['service', 'coupon']),
@@ -383,12 +413,10 @@ class OrderController extends Controller
                         ]
                     ]
                 ], 200);
-
             } catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
-
         } catch (\Exception $e) {
             \Log::error('Error creating order: ' . $e->getMessage());
 
@@ -399,24 +427,35 @@ class OrderController extends Controller
         }
     }
 
+    /**
+     * Determine if current time is evening
+     * Evening: 22:00 (10 PM) to 06:00 (6 AM)
+     */
+    private function isEveningTime($dateTime = null)
+    {
+        $checkTime = $dateTime ?? now();
+        $hour = $checkTime->format('H');
+        return $hour >= 22 || $hour < 6;
+    }
 
     private function calculateDistance($lat1, $lng1, $lat2, $lng2)
     {
-        $earthRadius = 6371; // Earth's radius in kilometers
-        
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        
-        $a = sin($dLat/2) * sin($dLat/2) + 
-             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * 
-             sin($dLng/2) * sin($dLng/2);
-        
-        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-        $distance = $earthRadius * $c;
-        
-        return $distance;
+        $earthRadius = 6371; // Radius in kilometers
+
+        $lat1 = deg2rad($lat1);
+        $lng1 = deg2rad($lng1);
+        $lat2 = deg2rad($lat2);
+        $lng2 = deg2rad($lng2);
+
+        $latDelta = $lat2 - $lat1;
+        $lngDelta = $lng2 - $lng1;
+
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) +
+            cos($lat1) * cos($lat2) * pow(sin($lngDelta / 2), 2)));
+
+        return $earthRadius * $angle;
     }
-    
+
     /**
      * Display a listing of the user's orders
      *
@@ -426,7 +465,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        
+
         $validator = Validator::make($request->all(), [
             'status' => 'sometimes|in:1,2,3,4,5,6,7',
             'payment_status' => 'sometimes|in:1,2',
@@ -437,56 +476,56 @@ class OrderController extends Controller
             'from_date' => 'sometimes|date_format:Y-m-d',
             'to_date' => 'sometimes|date_format:Y-m-d|after_or_equal:from_date'
         ]);
-        
+
         if ($validator->fails()) {
             return $this->error_response('Validation error', $validator->errors());
         }
-        
+
         $query = Order::where('user_id', $user->id);
-        
-      
+
+
         // Apply sorting
         $sortBy = $request->sort_by ?? 'created_at';
         $sortDirection = $request->sort_direction ?? 'desc';
-        
+
         if ($sortBy === 'date') {
             $sortBy = 'created_at';
         } elseif ($sortBy === 'price') {
             $sortBy = 'total_price_after_discount';
         }
-        
+
         $query->orderBy($sortBy, $sortDirection);
-        
+
         // Pagination
         $perPage = $request->per_page ?? 15;
-        $orders = $query->with(['driver', 'service','coupon'])->paginate($perPage);
-        
-        // Transform data to include status text and other helper methods
-       $orders->getCollection()->transform(function ($order) use ($user) {
-        $order->status_text = $order->getStatusText();
-        $order->payment_method_text = $order->getPaymentMethodText();
-        $order->payment_status_text = $order->getPaymentStatusText();
-        $order->distance = $order->getDistance();
-    
-        $hasRated = \App\Models\Rating::where('user_id', $user->id)
-            ->where('order_id', $order->id)->where('driver_id', $order->driver_id)
-            ->exists();
-    
-        $order->is_review = $hasRated ? 1 : 2;
-    
-        if (empty($order->estimated_time) && !is_null($order->drop_lat) && !is_null($order->drop_lng)) {
-            $order->estimated_time = $this->calculateEstimatedTime(
-                $order->pick_lat,
-                $order->pick_lng,
-                $order->drop_lat,
-                $order->drop_lng
-            );
-        }
-    
-        return $order;
-      });
+        $orders = $query->with(['driver', 'service', 'coupon'])->paginate($perPage);
 
-        
+        // Transform data to include status text and other helper methods
+        $orders->getCollection()->transform(function ($order) use ($user) {
+            $order->status_text = $order->getStatusText();
+            $order->payment_method_text = $order->getPaymentMethodText();
+            $order->payment_status_text = $order->getPaymentStatusText();
+            $order->distance = $order->getDistance();
+
+            $hasRated = \App\Models\Rating::where('user_id', $user->id)
+                ->where('order_id', $order->id)->where('driver_id', $order->driver_id)
+                ->exists();
+
+            $order->is_review = $hasRated ? 1 : 2;
+
+            if (empty($order->estimated_time) && !is_null($order->drop_lat) && !is_null($order->drop_lng)) {
+                $order->estimated_time = $this->calculateEstimatedTime(
+                    $order->pick_lat,
+                    $order->pick_lng,
+                    $order->drop_lat,
+                    $order->drop_lng
+                );
+            }
+
+            return $order;
+        });
+
+
         $responseData = [
             'orders' => $orders,
             'meta' => [
@@ -496,11 +535,11 @@ class OrderController extends Controller
                 'total' => $orders->total()
             ]
         ];
-        
+
         return $this->success_response('Orders retrieved successfully', $responseData);
     }
-    
-    
+
+
     /**
      * Display the specified order
      *
@@ -510,34 +549,36 @@ class OrderController extends Controller
     public function show($id)
     {
         $user = Auth::user();
-        
+
         $order = Order::where('id', $id)
             ->where('user_id', $user->id)
             ->with([
-                'driver','driver.ratings',
-                'service','coupon'
+                'driver',
+                'driver.ratings',
+                'service',
+                'coupon'
             ])
             ->first();
-        
+
         if (!$order) {
             return $this->error_response('Order not found', null);
         }
-        
+
         // Add helper attributes
         $order->status_text = $order->getStatusText();
         $order->payment_method_text = $order->getPaymentMethodText();
         $order->payment_status_text = $order->getPaymentStatusText();
         $order->distance = $order->getDistance();
         $order->discount_percentage = $order->getDiscountPercentage();
-        
+
         $hasRated = \App\Models\Rating::where('user_id', $user->id)
             ->where('order_id', $order->id)->where('driver_id', $order->driver_id)
             ->exists();
-        
+
         $order->is_review = $hasRated ? 1 : 2;
 
 
-         if (empty($order->estimated_time) && !is_null($order->drop_lat) && !is_null($order->drop_lng)) {
+        if (empty($order->estimated_time) && !is_null($order->drop_lat) && !is_null($order->drop_lng)) {
             $order->estimated_time = $this->calculateEstimatedTime(
                 $order->pick_lat,
                 $order->pick_lng,
@@ -545,59 +586,59 @@ class OrderController extends Controller
                 $order->drop_lng
             );
             // Optionally save it to database
-            
+
         }
         return $this->success_response('Order details retrieved successfully', $order);
     }
-    
+
     public function cancelOrder(Request $request, $id)
     {
         $user = Auth::user();
-        
+
         $order = Order::with('service')->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
-        
+
         if (!$order) {
             return response()->json([
-                    'status' => false,
-                    'type' => 'not_found',
-                    'message' => 'Order not found'
-                ], 200);
+                'status' => false,
+                'type' => 'not_found',
+                'message' => 'Order not found'
+            ], 200);
         }
-        
+
         $validator = Validator::make($request->all(), [
             'reason_for_cancel' => 'required|string|max:255'
         ]);
-        
+
         if ($validator->fails()) {
             return $this->error_response('Validation error', $validator->errors());
         }
-        
+
         try {
             \DB::beginTransaction();
-            
+
             $isPendingOrder = $order->status === OrderStatus::Pending;
             $isDriverAccepted = $order->status === OrderStatus::DriverAccepted;
-            
+
             // Check if cancellation fee should be applied
             $cancellationFeeApplied = false;
             $cancellationFeeAmount = 0;
-            
+
             if ($isDriverAccepted && $order->service) {
                 $cancellationFeeAmount = $order->service->cancellation_fee;
-                
+
                 if ($cancellationFeeAmount > 0) {
-                     $this->deductCancellationFee($user->id, $order->id, $cancellationFeeAmount);
+                    $this->deductCancellationFee($user->id, $order->id, $cancellationFeeAmount);
                     $cancellationFeeApplied = true;
                 }
             }
-            
+
             if ($isPendingOrder) {
                 // Move pending order to spam_orders table
                 $spamOrder = $this->moveOrderToSpamTable($order, $request->reason_for_cancel);
                 $order->delete();
-                
+
                 $responseData = [
                     'order_id' => $id,
                     'spam_order_id' => $spamOrder->id,
@@ -613,12 +654,12 @@ class OrderController extends Controller
                 $order->status = OrderStatus::UserCancelOrder;
                 $order->reason_for_cancel = $request->reason_for_cancel;
                 $order->save();
-                
+
                 // Notify driver about cancellation
                 if ($order->driver_id) {
                     EnhancedFCMService::sendOrderStatusToDriver($id, OrderStatus::UserCancelOrder);
                 }
-                
+
                 $responseData = [
                     'order_id' => $order->id,
                     'status' => $order->status->value,
@@ -630,15 +671,14 @@ class OrderController extends Controller
                     'remaining_balance' => $user->fresh()->balance
                 ];
             }
-            
+
             \DB::commit();
-            
+
             return $this->success_response('Order cancelled successfully', $responseData);
-            
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('Error cancelling order: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error cancelling order: ' . $e->getMessage()
@@ -661,12 +701,11 @@ class OrderController extends Controller
             'created_at' => now(),
             'updated_at' => now()
         ]);
-        
+
         // Update user's balance
         \DB::table('users')
             ->where('id', $userId)
             ->decrement('balance', $amount);
-        
     }
 
 
@@ -700,7 +739,7 @@ class OrderController extends Controller
             'reason_for_cancel' => $reasonForCancel,
             'cancelled_at' => now(),
         ]);
-        
+
         return $spamOrder;
     }
 
@@ -713,34 +752,34 @@ class OrderController extends Controller
         if (is_null($lat2) || is_null($lng2)) {
             return null;
         }
-        
+
         // Calculate distance using existing method
         $distance = $this->calculateDistance($lat1, $lng1, $lat2, $lng2);
-        
+
         // Average speed in km/h (you can adjust this based on your city/service type)
         $averageSpeed = 30; // 30 km/h for city driving
-        
+
         // Calculate time in hours
         $timeInHours = $distance / $averageSpeed;
-        
+
         // Convert to minutes
         $timeInMinutes = $timeInHours * 60;
-        
+
         // Format the time string
         return $this->formatEstimatedTime($timeInMinutes);
     }
 
-    
-    
+
+
     private function formatEstimatedTime($minutes)
     {
         if ($minutes < 1) {
             return "Less than 1 minute";
         }
-        
+
         $hours = floor($minutes / 60);
         $remainingMinutes = round($minutes % 60);
-        
+
         if ($hours > 0) {
             if ($remainingMinutes > 0) {
                 return "{$hours} hour" . ($hours > 1 ? 's' : '') . " {$remainingMinutes} minute" . ($remainingMinutes > 1 ? 's' : '');
@@ -765,11 +804,10 @@ class OrderController extends Controller
             $order->drop_lat,
             $order->drop_lng
         );
-        
+
         if ($estimatedTime) {
             $order->estimated_time = $estimatedTime;
             $order->save();
         }
     }
-
 }

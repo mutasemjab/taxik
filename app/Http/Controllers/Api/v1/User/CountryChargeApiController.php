@@ -32,6 +32,7 @@ class CountryChargeApiController extends Controller
                             'id' => $chargeData->id,
                             'name' => $chargeData->name,
                             'phone' => $chargeData->phone,
+                            'service_provider' => $chargeData->service_provider,
                             'cliq_name' => $chargeData->cliq_name,
                             'created_at' => $chargeData->created_at->format('Y-m-d H:i:s'),
                         ];

@@ -1124,6 +1124,8 @@ return [
     'An error occurred while saving' => 'حدث خطأ أثناء الحفظ',
     'An error occurred while updating' => 'حدث خطأ أثناء التحديث',
     'An error occurred while deleting' => 'حدث خطأ أثناء الحذف',
+      'Service_provider' => 'مزود الخدمة',
+  'Enter service_provider' => 'ادخل مزود الخدمة',
    "" => "",
    "" => "",
    "" => "",

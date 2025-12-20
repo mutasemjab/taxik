@@ -71,6 +71,20 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <div class="form-group">
+                                                    <label>{{ __('messages.Service_provider') }} <span class="text-danger">*</span></label>
+                                                    <input type="text" 
+                                                           class="form-control @error('charge_data.'.$index.'.service_provider') is-invalid @enderror" 
+                                                           name="charge_data[{{ $index }}][service_provider]" 
+                                                           value="{{ old('charge_data.'.$index.'.service_provider', $data->service_provider) }}"
+                                                           placeholder="{{ __('messages.Enter service_provider') }}"
+                                                           required>
+                                                    @error('charge_data.'.$index.'.service_provider')
+                                                        <span class="invalid-feedback">{{ $message }}</span>
+                                                    @enderror
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
                                                     <label>{{ __('messages.Cliq Name') }} <span class="text-danger">*</span></label>
                                                     <input type="text" 
                                                            class="form-control @error('charge_data.'.$index.'.cliq_name') is-invalid @enderror" 
@@ -134,6 +148,12 @@ function addChargeData() {
                         <div class="form-group">
                             <label>{{ __('messages.Phone') }} <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="charge_data[${chargeDataIndex}][phone]" placeholder="{{ __('messages.Enter phone') }}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>{{ __('messages.Service_provider') }} <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="charge_data[${chargeDataIndex}][service_provider]" placeholder="{{ __('messages.Enter service_provider') }}" required>
                         </div>
                     </div>
                     <div class="col-md-3">

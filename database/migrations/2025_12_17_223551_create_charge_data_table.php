@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('phone');
+            $table->string('service_provider');
             $table->string('cliq_name');
             $table->unsignedBigInteger('country_charge_id');
             $table->foreign('country_charge_id')->references('id')->on('country_charges')->onDelete('cascade');

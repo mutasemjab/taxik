@@ -38,12 +38,14 @@ class CountryChargeController extends Controller
             'charge_data' => 'required|array|min:1',
             'charge_data.*.name' => 'required|string|max:255',
             'charge_data.*.phone' => 'required|string|max:20',
+            'charge_data.*.service_provider' => 'required|string|max:50',
             'charge_data.*.cliq_name' => 'required|string|max:255',
         ], [
             'charge_data.required' => __('messages.At least one charge data is required'),
             'charge_data.min' => __('messages.At least one charge data is required'),
             'charge_data.*.name.required' => __('messages.Name is required for all charge data'),
             'charge_data.*.phone.required' => __('messages.Phone is required for all charge data'),
+            'charge_data.*.service_provider.required' => __('messages.Service_provider is required for all charge data'),
             'charge_data.*.cliq_name.required' => __('messages.Cliq name is required for all charge data'),
         ]);
 
@@ -65,6 +67,7 @@ class CountryChargeController extends Controller
                 ChargeData::create([
                     'name' => $data['name'],
                     'phone' => $data['phone'],
+                    'service_provider' => $data['service_provider'],
                     'cliq_name' => $data['cliq_name'],
                     'country_charge_id' => $countryCharge->id,
                 ]);
@@ -95,12 +98,14 @@ class CountryChargeController extends Controller
             'charge_data' => 'required|array|min:1',
             'charge_data.*.name' => 'required|string|max:255',
             'charge_data.*.phone' => 'required|string|max:20',
+            'charge_data.*.service_provider' => 'required|string|max:50',
             'charge_data.*.cliq_name' => 'required|string|max:255',
         ], [
             'charge_data.required' => __('messages.At least one charge data is required'),
             'charge_data.min' => __('messages.At least one charge data is required'),
             'charge_data.*.name.required' => __('messages.Name is required for all charge data'),
             'charge_data.*.phone.required' => __('messages.Phone is required for all charge data'),
+            'charge_data.*.service_provider.required' => __('messages.Service_provider is required for all charge data'),
             'charge_data.*.cliq_name.required' => __('messages.Cliq name is required for all charge data'),
         ]);
 
@@ -125,6 +130,7 @@ class CountryChargeController extends Controller
                 ChargeData::create([
                     'name' => $data['name'],
                     'phone' => $data['phone'],
+                    'service_provider' => $data['service_provider'],
                     'cliq_name' => $data['cliq_name'],
                     'country_charge_id' => $countryCharge->id,
                 ]);

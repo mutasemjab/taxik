@@ -1087,5 +1087,8 @@ return [
     'An error occurred while saving' => 'An error occurred while saving',
     'An error occurred while updating' => 'An error occurred while updating',
     'An error occurred while deleting' => 'An error occurred while deleting',
+  'Service_provider' => 'Service provider',
+  'Enter service_provider' => 'Enter Service provider',
+  '' => '',
   '' => '',
 ];

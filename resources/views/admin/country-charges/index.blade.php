@@ -121,6 +121,7 @@
                                     <th>#</th>
                                     <th>{{ __('messages.Name') }}</th>
                                     <th>{{ __('messages.Phone') }}</th>
+                                    <th>{{ __('messages.Service_provider') }}</th>
                                     <th>{{ __('messages.Cliq Name') }}</th>
                                 </tr>
                             </thead>
@@ -130,6 +131,7 @@
                                         <td>{{ $loop->iteration }}</td>
                                         <td>{{ $data->name }}</td>
                                         <td>{{ $data->phone }}</td>
+                                        <td>{{ $data->service_provider }}</td>
                                         <td>{{ $data->cliq_name }}</td>
                                     </tr>
                                 @endforeach

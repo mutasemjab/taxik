@@ -10,6 +10,7 @@ class OTPService
 {
     private $smsConfig;
     private $otpConfig;
+    private $lang;
 
     public function __construct()
     {
@@ -25,6 +26,65 @@ class OTPService
             'expiry_minutes' => config('otp.expiry_minutes', 5),
             'message_template' => config('otp.message_template', 'Your OTP code is: {otp}. Valid for {minutes} minutes.'),
         ];
+
+        // Get language from request header, default to 'en'
+        $this->lang = request()->header('lang', 'en');
+    }
+
+    /**
+     * Get translated message
+     *
+     * @param string $key
+     * @param array $replace
+     * @return string
+     */
+    private function getMessage(string $key, array $replace = []): string
+    {
+        $messages = [
+            'en' => [
+                'otp_sent' => 'OTP sent successfully',
+                'rate_limit' => 'Please wait :minutes minute(s) before requesting another OTP.',
+                'invalid_otp' => 'Invalid OTP. Please try again.',
+                'otp_expired' => 'OTP has expired. Please request a new one.',
+                'otp_verified' => 'OTP verified successfully',
+                'otp_verified_test' => 'OTP verified successfully (test case)',
+                'sms_sent' => 'SMS sent successfully',
+                'sms_failed' => 'Failed to send SMS',
+                'send_otp_failed' => 'Failed to send OTP',
+            ],
+            'ar' => [
+                'otp_sent' => 'تم إرسال رمز التحقق بنجاح',
+                'rate_limit' => 'يرجى الانتظار :minutes دقيقة قبل طلب رمز تحقق جديد.',
+                'invalid_otp' => 'رمز التحقق غير صحيح. يرجى المحاولة مرة أخرى.',
+                'otp_expired' => 'انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.',
+                'otp_verified' => 'تم التحقق من الرمز بنجاح',
+                'otp_verified_test' => 'تم التحقق من الرمز بنجاح (حالة اختبار)',
+                'sms_sent' => 'تم إرسال الرسالة بنجاح',
+                'sms_failed' => 'فشل إرسال الرسالة',
+                'send_otp_failed' => 'فشل إرسال رمز التحقق',
+            ],
+        ];
+
+        $message = $messages[$this->lang][$key] ?? $messages['en'][$key];
+
+        // Replace placeholders
+        foreach ($replace as $key => $value) {
+            $message = str_replace(':' . $key, $value, $message);
+        }
+
+        return $message;
+    }
+
+    /**
+     * Set language for responses
+     *
+     * @param string $lang
+     * @return $this
+     */
+    public function setLanguage(string $lang): self
+    {
+        $this->lang = $lang;
+        return $this;
     }
 
     /**
@@ -118,7 +178,7 @@ class OTPService
             
             return [
                 'can_request' => false,
-                'message' => "Please wait {$remainingMinutes} minute(s) before requesting another OTP.",
+                'message' => $this->getMessage('rate_limit', ['minutes' => $remainingMinutes]),
                 'remaining_seconds' => $remainingSeconds
             ];
         }
@@ -224,7 +284,7 @@ class OTPService
                 Log::info('SMS sent successfully for mobile: ' . $formattedMobile);
                 return [
                     'success' => true,
-                    'message' => 'SMS sent successfully',
+                    'message' => $this->getMessage('sms_sent'),
                     'response' => $response
                 ];
             } else {
@@ -236,7 +296,7 @@ class OTPService
                 ]);
                 return [
                     'success' => false,
-                    'message' => 'Failed to send SMS',
+                    'message' => $this->getMessage('sms_failed'),
                     'error' => $curlError ?: 'HTTP Error: ' . $httpCode,
                     'response' => $response
                 ];
@@ -248,7 +308,7 @@ class OTPService
             ]);
             return [
                 'success' => false,
-                'message' => 'SMS sending failed with exception',
+                'message' => $this->getMessage('sms_failed'),
                 'error' => $e->getMessage()
             ];
         }
@@ -289,7 +349,7 @@ class OTPService
                 
                 return [
                     'success' => true,
-                    'message' => 'OTP sent successfully',
+                    'message' => $this->getMessage('otp_sent'),
                     'otp' => config('app.debug') ? $otp : null, // Only show OTP in debug mode
                 ];
             } else {
@@ -320,7 +380,7 @@ class OTPService
             
             return [
                 'success' => false,
-                'message' => 'Failed to send OTP',
+                'message' => $this->getMessage('send_otp_failed'),
                 'error' => $e->getMessage()
             ];
         }
@@ -354,7 +414,7 @@ class OTPService
             Log::info('Test case OTP verified for mobile: ' . $mobile);
             return [
                 'success' => true,
-                'message' => 'OTP verified successfully (test case)',
+                'message' => $this->getMessage('otp_verified_test'),
                 'is_test_case' => true
             ];
         }
@@ -363,7 +423,7 @@ class OTPService
         if ($this->verifyOTP($mobile, $otp)) {
             return [
                 'success' => true,
-                'message' => 'OTP verified successfully',
+                'message' => $this->getMessage('otp_verified'),
                 'is_test_case' => false
             ];
         }
@@ -372,7 +432,7 @@ class OTPService
         if ($this->otpExists($mobile)) {
             return [
                 'success' => false,
-                'message' => 'Invalid OTP. Please try again.',
+                'message' => $this->getMessage('invalid_otp'),
                 'error_code' => 'INVALID_OTP'
             ];
         }
@@ -380,7 +440,7 @@ class OTPService
         // OTP expired or not found
         return [
             'success' => false,
-            'message' => 'OTP has expired. Please request a new one.',
+            'message' => $this->getMessage('otp_expired'),
             'error_code' => 'OTP_EXPIRED'
         ];
     }

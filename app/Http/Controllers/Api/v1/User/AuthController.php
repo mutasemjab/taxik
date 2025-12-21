@@ -166,6 +166,7 @@ class AuthController extends Controller
         $userType = $request->user_type ?? 'user';
 
         $model = ($userType == 'driver') ? \App\Models\Driver::class : \App\Models\User::class;
+        $guard = ($userType == 'driver') ? 'driver-api' : 'user-api';
 
         $user = $model::where('phone', $phone)
             ->where('country_code', $countryCode)
@@ -177,7 +178,11 @@ class AuthController extends Controller
                 $user->save();
             }
 
-            $user->tokens()->delete();
+            // Delete tokens only for this specific guard/provider
+            // Store provider info in token name or client_id
+            $user->tokens()->each(function ($token) {
+                $token->revoke();
+            });
 
             $accessToken = $user->createToken('authToken')->accessToken;
 
@@ -196,7 +201,6 @@ class AuthController extends Controller
             'country_code' => $countryCode,
         ]);
     }
-
 
     public function register(Request $request)
     {

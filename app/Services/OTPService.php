@@ -99,6 +99,54 @@ class OTPService
     }
 
     /**
+     * Check if user can request OTP (rate limiting - 2 minutes cooldown)
+     *
+     * @param string $mobile
+     * @return array
+     */
+    public function canRequestOTP(string $mobile): array
+    {
+        $rateLimitKey = 'otp_rate_limit_' . $mobile;
+        
+        if (Cache::has($rateLimitKey)) {
+            $remainingSeconds = Cache::get($rateLimitKey);
+            $remainingMinutes = ceil($remainingSeconds / 60);
+            
+            Log::warning('OTP rate limit hit for mobile: ' . $mobile, [
+                'remaining_seconds' => $remainingSeconds
+            ]);
+            
+            return [
+                'can_request' => false,
+                'message' => "Please wait {$remainingMinutes} minute(s) before requesting another OTP.",
+                'remaining_seconds' => $remainingSeconds
+            ];
+        }
+        
+        return [
+            'can_request' => true
+        ];
+    }
+
+    /**
+     * Set rate limit after sending OTP (2 minutes cooldown)
+     *
+     * @param string $mobile
+     * @return void
+     */
+    private function setRateLimit(string $mobile): void
+    {
+        $rateLimitKey = 'otp_rate_limit_' . $mobile;
+        $cooldownSeconds = 120; // 2 minutes
+        
+        Cache::put($rateLimitKey, $cooldownSeconds, $cooldownSeconds);
+        
+        Log::info('OTP rate limit set for mobile: ' . $mobile, [
+            'cooldown_seconds' => $cooldownSeconds
+        ]);
+    }
+
+    /**
      * Send OTP via SMS
      *
      * @param string $mobile
@@ -207,7 +255,7 @@ class OTPService
     }
 
     /**
-     * Send OTP to mobile number (Generate + Store + Send)
+     * Send OTP to mobile number (Generate + Store + Send) with rate limiting
      *
      * @param string $mobile
      * @return array
@@ -215,6 +263,17 @@ class OTPService
     public function sendOTP(string $mobile): array
     {
         try {
+            // Check rate limiting first
+            $rateLimitCheck = $this->canRequestOTP($mobile);
+            if (!$rateLimitCheck['can_request']) {
+                return [
+                    'success' => false,
+                    'message' => $rateLimitCheck['message'],
+                    'error_code' => 'RATE_LIMIT_EXCEEDED',
+                    'remaining_seconds' => $rateLimitCheck['remaining_seconds']
+                ];
+            }
+
             // Generate OTP
             $otp = $this->generateOTP();
             
@@ -225,6 +284,9 @@ class OTPService
             $smsResult = $this->sendOTPSMS($mobile, $otp);
             
             if ($smsResult['success']) {
+                // Set rate limit only after successful SMS send
+                $this->setRateLimit($mobile);
+                
                 return [
                     'success' => true,
                     'message' => 'OTP sent successfully',
@@ -233,6 +295,21 @@ class OTPService
             } else {
                 // Remove OTP from cache if SMS failed
                 Cache::forget('otp_' . $mobile);
+                
+                // Log detailed error for debugging
+                Log::error('SMS Gateway Failed - Phone may not receive OTP:', [
+                    'mobile' => $mobile,
+                    'error' => $smsResult['error'] ?? 'Unknown error',
+                    'response' => $smsResult['response'] ?? 'No response',
+                    'possible_reasons' => [
+                        'Invalid phone number format',
+                        'SMS gateway credentials issue',
+                        'Network/carrier blocking',
+                        'Insufficient gateway balance',
+                        'Phone number not registered with carrier'
+                    ]
+                ]);
+                
                 return $smsResult;
             }
         } catch (\Exception $e) {

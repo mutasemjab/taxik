@@ -31,6 +31,16 @@
                         </a>
                     </li>
                 @endcan
+                
+                @can('dashboard-view')
+                    <li class="nav-item">
+                        <a href="{{ route('map') }}"
+                            class="nav-link {{ request()->routeIs('map') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tachometer-alt"></i>
+                            <p>{{ __('messages.live_map') }}</p>
+                        </a>
+                    </li>
+                @endcan
 
                 <!-- User Management Section -->
                 @canany(['user-table', 'user-add', 'user-edit', 'user-delete', 'driver-table', 'driver-add',

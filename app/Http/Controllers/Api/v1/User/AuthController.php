@@ -148,7 +148,7 @@ class AuthController extends Controller
         }
     }
 
-   public function checkPhone(Request $request)
+    public function checkPhone(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required|string',
@@ -168,14 +168,16 @@ class AuthController extends Controller
         $model = ($userType == 'driver') ? \App\Models\Driver::class : \App\Models\User::class;
 
         $user = $model::where('phone', $phone)
-                    ->where('country_code', $countryCode)
-                    ->first();
+            ->where('country_code', $countryCode)
+            ->first();
 
         if ($user) {
             if ($request->has('fcm_token')) {
                 $user->fcm_token = $request->fcm_token;
                 $user->save();
             }
+
+            $user->tokens()->delete();
 
             $accessToken = $user->createToken('authToken')->accessToken;
 
@@ -246,43 +248,43 @@ class AuthController extends Controller
             $welcomeBonusApplied = false;
 
             if ($userType === 'driver') {
-                 // Get welcome bonus for new driver
-            $welcomeBonus = $this->getSettingValue('new_driver_register_add_balance', 0);
-            
-            $userData['sos_phone'] = $request->sos_phone;
-            $userData['activate'] = 3;
-            $userData['status'] = 2;
-            $userData['balance'] = $welcomeBonus;
-            
-            // Merge other fields first
-            $userData = array_merge($userData, $request->only(['passenger_number', 'model', 'production_year', 'color', 'plate_number']));
-            
-            // Then add uploaded files (this ensures they won't be overwritten)
-            if ($request->hasFile('photo_of_car')) {
-                $userData['photo_of_car'] = uploadImage('assets/admin/uploads', $request->file('photo_of_car'));
-            }
-            
-            if ($request->hasFile('driving_license_front')) {
-                $userData['driving_license_front'] = uploadImage('assets/admin/uploads', $request->file('driving_license_front'));
-            }
-            
-            if ($request->hasFile('driving_license_back')) {
-                $userData['driving_license_back'] = uploadImage('assets/admin/uploads', $request->file('driving_license_back'));
-            }
-            
-            if ($request->hasFile('car_license_front')) {
-                $userData['car_license_front'] = uploadImage('assets/admin/uploads', $request->file('car_license_front'));
-            }
-            
-            if ($request->hasFile('car_license_back')) {
-                $userData['car_license_back'] = uploadImage('assets/admin/uploads', $request->file('car_license_back'));
-            }
-            
-            if ($request->hasFile('no_criminal_record')) {
-                $userData['no_criminal_record'] = uploadImage('assets/admin/uploads', $request->file('no_criminal_record'));
-            }
+                // Get welcome bonus for new driver
+                $welcomeBonus = $this->getSettingValue('new_driver_register_add_balance', 0);
 
-            $user = \App\Models\Driver::create($userData);
+                $userData['sos_phone'] = $request->sos_phone;
+                $userData['activate'] = 3;
+                $userData['status'] = 2;
+                $userData['balance'] = $welcomeBonus;
+
+                // Merge other fields first
+                $userData = array_merge($userData, $request->only(['passenger_number', 'model', 'production_year', 'color', 'plate_number']));
+
+                // Then add uploaded files (this ensures they won't be overwritten)
+                if ($request->hasFile('photo_of_car')) {
+                    $userData['photo_of_car'] = uploadImage('assets/admin/uploads', $request->file('photo_of_car'));
+                }
+
+                if ($request->hasFile('driving_license_front')) {
+                    $userData['driving_license_front'] = uploadImage('assets/admin/uploads', $request->file('driving_license_front'));
+                }
+
+                if ($request->hasFile('driving_license_back')) {
+                    $userData['driving_license_back'] = uploadImage('assets/admin/uploads', $request->file('driving_license_back'));
+                }
+
+                if ($request->hasFile('car_license_front')) {
+                    $userData['car_license_front'] = uploadImage('assets/admin/uploads', $request->file('car_license_front'));
+                }
+
+                if ($request->hasFile('car_license_back')) {
+                    $userData['car_license_back'] = uploadImage('assets/admin/uploads', $request->file('car_license_back'));
+                }
+
+                if ($request->hasFile('no_criminal_record')) {
+                    $userData['no_criminal_record'] = uploadImage('assets/admin/uploads', $request->file('no_criminal_record'));
+                }
+
+                $user = \App\Models\Driver::create($userData);
 
                 if ($request->has('option_ids') && is_array($request->option_ids)) {
                     $user->options()->attach($request->option_ids);
@@ -299,15 +301,14 @@ class AuthController extends Controller
                         'updated_at' => now()
                     ]);
                     $welcomeBonusApplied = true;
-
                 }
             } else {
                 // Get welcome bonus for new user
                 $welcomeBonus = $this->getSettingValue('new_user_register_add_balance', 0);
-                
+
                 $userData['referral_code'] = $this->generateReferralCode();
                 $userData['balance'] = $welcomeBonus; // Set initial balance
-                
+
                 $user = \App\Models\User::create($userData);
 
                 // Create wallet transaction if welcome bonus > 0
@@ -321,7 +322,6 @@ class AuthController extends Controller
                         'updated_at' => now()
                     ]);
                     $welcomeBonusApplied = true;
-
                 }
             }
 
@@ -339,15 +339,14 @@ class AuthController extends Controller
             if ($welcomeBonusApplied) {
                 $responseData['welcome_bonus'] = [
                     'amount' => $welcomeBonus,
-                    'message' => $userType === 'driver' 
-                        ? "Welcome! You've received {$welcomeBonus} JD as a welcome bonus." 
+                    'message' => $userType === 'driver'
+                        ? "Welcome! You've received {$welcomeBonus} JD as a welcome bonus."
                         : "Welcome! You've received {$welcomeBonus} JD as a welcome bonus.",
                     'current_balance' => $user->balance
                 ];
             }
 
             return $this->success_response('Registration successful', $responseData);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->error_response('Registration failed', $e->getMessage());
@@ -394,7 +393,7 @@ class AuthController extends Controller
         $otpResult = $this->otpService->verifyOTPWithTestCase($fullPhone, $request->otp);
 
         if ($otpResult['success']) {
-            return $this->success_response('OTP verified successfully',[]);
+            return $this->success_response('OTP verified successfully', []);
         }
 
         return $this->error_response($otpResult['message'], $otpResult['error_code'] ?? null);

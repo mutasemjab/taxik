@@ -178,12 +178,6 @@ class AuthController extends Controller
                 $user->save();
             }
 
-            // Delete tokens only for this specific guard/provider
-            // Store provider info in token name or client_id
-            $user->tokens()->each(function ($token) {
-                $token->revoke();
-            });
-
             $accessToken = $user->createToken('authToken')->accessToken;
 
             return $this->success_response('Success', [

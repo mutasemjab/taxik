@@ -1,92 +1,92 @@
-@extends("layouts.admin")
+@extends('layouts.admin')
 
-@section('css')
-@endsection
+@section('title', __('messages.Roles'))
 
 @section('content')
-    <!-- Start Content-->
-    <div class="container-fluid">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">{{ __('messages.Roles') }}</h3>
+                    <a href="{{ route('admin.role.create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> {{ __('messages.Add New Role') }}
+                    </a>
+                </div>
 
-        <div class="row">
-            <div class="col-12">
-                <div class="page-title-box">
-                    <div class="page-title-right">
-                        <ol class="breadcrumb m-0">
-                            <li class="breadcrumb-item"><a href="javascript: void(0);">{{ env('APP_NAME') }}</a></li>
-                            <li class="breadcrumb-item active">Role</li>
-                        </ol>
+                <div class="card-body">
+                    <!-- Search and Filter Form -->
+                    <form method="GET" action="{{ route('admin.role.index') }}" class="mb-3">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <input type="text" name="search" class="form-control"
+                                       placeholder="{{ __('messages.Search') }}"
+                                       value="{{ request('search') }}">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-info">
+                                    <i class="fas fa-search"></i> {{ __('messages.Search') }}
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <a href="{{ route('admin.role.index') }}" class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> {{ __('messages.Reset') }}
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Roles Table -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>{{ __('messages.Name') }}</th>
+                                    <th>{{ __('messages.Actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($data as $role)
+                                    <tr>
+                                        <td>{{ ($data->currentPage() - 1) * $data->perPage() + $loop->iteration }}</td>
+                                        <td>
+                                            <strong>{{ $role->name }}</strong>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ route('admin.role.edit', $role->id) }}"
+                                                   class="btn btn-sm btn-warning" title="{{ __('messages.Edit') }}">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form action="{{ route('admin.role.delete') }}" method="POST" style="display:inline;">
+                                                    @csrf
+                                                    <input type="hidden" name="id" value="{{ $role->id }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger"
+                                                            title="{{ __('messages.Delete') }}"
+                                                            onclick="return confirm('{{ __('messages.Are you sure you want to delete this role?') }}')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="3" class="text-center">{{ __('messages.No roles found') }}</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
-                    <h4 class="page-title">Role</h4>
+
+                    <!-- Pagination -->
+                    <div class="d-flex justify-content-center">
+                        {{ $data->appends(request()->query())->links() }}
+                    </div>
                 </div>
             </div>
         </div>
-
-
-        <div class="row">
-            <div class="col">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="row mb-2">
-                                <div class="col-md-12">
-
-                                </div>
-                            <div class="col-sm-4">
-
-                                {{ $data->links() }}
-
-                            </div>
-                            <div class="col-sm-8">
-                                <div class="text-sm-right">
-                                    <a type="button" href="{{ route("admin.role.create") }}"
-                                        class="btn btn-primary waves-effect waves-light mb-2 text-white">New Role
-                                    </a>
-                                </div>
-                            </div><!-- end col-->
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-centered table-nowrap table-hover mb-0">
-                                <thead class="thead-light">
-
-                                    <tr>
-                                         <th>Name</th>
-                                        <th>Permissions</th>
-                                         <th style="width: 82px;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($data as $value)
-                                        <tr>
-                                            <td><span class="font-weight-bold">{{ $value->name }}</span></td>
-                                            <td>
-                                                @foreach ($value->permissions as $permission)
-                                                    {{ $permission->name }}<br>
-                                                @endforeach
-                                            </td>
-                                             <td>
-                                                <a class="btn btn-sm btn-outline-info"
-                                                    href="{{ route("admin.role.edit",  $value->id) }}"><i
-                                                        class="mdi mdi-pencil-box"></i> Edit</a>
-                                              <a class="btn btn-sm btn-outline-danger" href="javascript:void(0)"
-                                                   @if (env('Environment') == 'sendbox') onclick="myFunction()" @else onclick="Delete('{{ $value->id }}','{{ route('admin.role.delete') }}')" @endif><i
-                                                        class="mdi mdi-trash-can"></i>Delete</a>
-
-                                            </td>
-                                        </tr>
-                                    @endforeach
-
-                                </tbody>
-                            </table>
-                        </div>
-
-                    </div> <!-- end card-body-->
-                </div> <!-- end card-->
-            </div>
-        </div>
-    </div> <!-- container -->
-@endsection
-
-@section('script')
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.1.3/dist/sweetalert2.min.js"></script>
-    <script src="{{ asset('assets/js/category.js') }}"></script>
+    </div>
+</div>
 @endsection

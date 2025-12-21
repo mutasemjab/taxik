@@ -71,7 +71,7 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <div class="form-group">
-                                                    <label>{{ __('messages.Service_provider') }} <span class="text-danger">*</span></label>
+                                                    <label>{{ __('messages.service_provider') }} <span class="text-danger">*</span></label>
                                                     <input type="text" 
                                                            class="form-control @error('charge_data.'.$index.'.service_provider') is-invalid @enderror" 
                                                            name="charge_data[{{ $index }}][service_provider]" 
@@ -152,7 +152,7 @@ function addChargeData() {
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label>{{ __('messages.Service_provider') }} <span class="text-danger">*</span></label>
+                            <label>{{ __('messages.service_provider') }} <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="charge_data[${chargeDataIndex}][service_provider]" placeholder="{{ __('messages.Enter service_provider') }}" required>
                         </div>
                     </div>

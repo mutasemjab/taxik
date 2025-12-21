@@ -244,6 +244,27 @@
                                 </div>
                             </div>
                         </div>
+                      
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    {{ __('messages.No_criminal_record') }}
+                                </div>
+                                <div class="card-body text-center">
+                                    @if($driver->no_criminal_record)
+                                    <img src="{{ asset('assets/admin/uploads/' . $driver->no_criminal_record) }}" alt="Car License Back" class="img-fluid rounded" style="max-height: 200px;">
+                                    <a href="{{ asset('assets/admin/uploads/' . $driver->no_criminal_record) }}" target="_blank" class="btn btn-sm btn-primary mt-2">
+                                        <i class="fas fa-eye"></i> {{ __('messages.View_Full_Size') }}
+                                    </a>
+                                    @else
+                                    <div class="bg-light rounded py-5">
+                                        <i class="fas fa-file-alt fa-3x text-gray-300"></i>
+                                        <p class="mt-2 text-gray-500">{{ __('messages.Not_Available') }}</p>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

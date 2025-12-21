@@ -11,6 +11,14 @@ use Illuminate\Support\Facades\Validator;
 
 class CouponController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:coupon-table')->only('index', 'show');
+        $this->middleware('permission:coupon-add')->only('create', 'store');
+        $this->middleware('permission:coupon-edit')->only('edit', 'update');
+        $this->middleware('permission:coupon-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the resource.
      *

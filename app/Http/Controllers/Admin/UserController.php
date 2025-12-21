@@ -15,6 +15,14 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:user-table')->only('index', 'show');
+        $this->middleware('permission:user-add')->only('create', 'store');
+        $this->middleware('permission:user-edit')->only('edit', 'update', 'topUp');
+        $this->middleware('permission:user-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the resource.
      *

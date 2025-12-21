@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:notification-add')->only('create', 'send');
+    }
+
     public function create()
     {
         $users=User::get();

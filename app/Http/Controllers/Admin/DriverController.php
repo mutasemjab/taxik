@@ -18,6 +18,15 @@ use Illuminate\Support\Str;
 
 class DriverController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:driver-table')->only('index', 'show', 'banHistory');
+        $this->middleware('permission:driver-add')->only('create', 'store');
+        $this->middleware('permission:driver-edit')->only('edit', 'update', 'topUp', 'transactions', 'banForm', 'ban', 'unban');
+        $this->middleware('permission:driver-delete')->only('destroy');
+    }
+
+
     /**
      * Display a listing of the resource.
      *

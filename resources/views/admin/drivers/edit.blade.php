@@ -265,6 +265,20 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-6">                     
+                        <div class="form-group">
+                            <label for="no_criminal_record">{{ __('messages.No_criminal_record') }}</label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="no_criminal_record" name="no_criminal_record">
+                                <label class="custom-file-label" for="no_criminal_record">{{ __('messages.Choose_file') }}</label>
+                            </div>
+                            <div class="mt-3" id="car-license-back-preview">
+                                @if($driver->no_criminal_record)
+                                <img src="{{ asset('assets/admin/uploads/' . $driver->no_criminal_record) }}" alt="Car License Back" class="img-fluid img-thumbnail" style="max-height: 150px;">
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group text-center mt-4">
@@ -336,6 +350,9 @@
                         break;
                     case 'car_license_back':
                         previewId = 'car-license-back-preview';
+                        break;
+                    case 'no_criminal_record':
+                        previewId = 'no-criminal-record-preview';
                         break;
                 }
                 

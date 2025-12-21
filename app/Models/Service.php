@@ -5,15 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 class Service extends Model
 {
-    use HasFactory;
+    use HasFactory,LogsActivity;
 
      protected $guarded=[];
     protected $appends = ['name','photo_url'];
 
   
+       // Activity Log Configuration
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']) // Log all attributes, or specify: ['name', 'price', 'number_of_cards']
+            ->logOnlyDirty() // Only log changed attributes
+            ->dontSubmitEmptyLogs()
+            ->useLogName('service') // Custom log name
+            ->setDescriptionForEvent(fn(string $eventName) => "Service has been {$eventName}");
+    }
     
     // Add a custom accessor for the photo URL
     public function getPhotoUrlAttribute()

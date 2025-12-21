@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\StatusPayment;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $guarded = [];
 
@@ -26,6 +28,17 @@ class Order extends Model
         'arrived_at' => 'datetime',
 
     ];
+
+     // Activity Log Configuration
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']) // Log all attributes, or specify: ['name', 'price', 'number_of_cards']
+            ->logOnlyDirty() // Only log changed attributes
+            ->dontSubmitEmptyLogs()
+            ->useLogName('order') // Custom log name
+            ->setDescriptionForEvent(fn(string $eventName) => "Order has been {$eventName}");
+    }
 
     public function coupon()
     {

@@ -5,10 +5,12 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Coupon extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
    protected $guarded = [];
       /**
@@ -20,6 +22,18 @@ class Coupon extends Model
         'start_date' => 'date',
         'end_date' => 'date',
     ];
+
+
+     // Activity Log Configuration
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']) // Log all attributes, or specify: ['name', 'price', 'number_of_cards']
+            ->logOnlyDirty() // Only log changed attributes
+            ->dontSubmitEmptyLogs()
+            ->useLogName('coupon') // Custom log name
+            ->setDescriptionForEvent(fn(string $eventName) => "Coupon has been {$eventName}");
+    }
 
     /**
      * Get the service associated with the coupon.

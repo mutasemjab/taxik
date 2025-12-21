@@ -17,6 +17,9 @@ class DriverAlertAdminController extends Controller
     public function __construct(DriverLocationService $driverLocationService)
     {
         $this->driverLocationService = $driverLocationService;
+        $this->middleware('permission:driver_alert-table')->only('index');
+        $this->middleware('permission:driver_alert-edit')->only('updateStatus', 'notify');
+        $this->middleware('permission:driver_alert-delete')->only('destroy');
     }
 
 

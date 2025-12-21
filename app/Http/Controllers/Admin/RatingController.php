@@ -15,6 +15,14 @@ use Illuminate\Http\Request;
 
 class RatingController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:rating-table')->only('index', 'show');
+        $this->middleware('permission:rating-add')->only('create', 'store');
+        $this->middleware('permission:rating-edit')->only('edit', 'update');
+        $this->middleware('permission:rating-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the ratings.
      *

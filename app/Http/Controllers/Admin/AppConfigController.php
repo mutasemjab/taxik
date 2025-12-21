@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Validator;
 
 class AppConfigController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:app-config-table')->only('index', 'show');
+        $this->middleware('permission:app-config-add')->only('create', 'store');
+        $this->middleware('permission:app-config-edit')->only('edit', 'update');
+        $this->middleware('permission:app-config-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the resource.
      */

@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\DB;
 
 class CardController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:card-table')->only('index', 'show');
+        $this->middleware('permission:card-add')->only('create', 'store');
+        $this->middleware('permission:card-edit')->only('edit', 'update');
+        $this->middleware('permission:card-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the resource.
      */

@@ -15,6 +15,14 @@ use Illuminate\Validation\Rule;
 
 class ServiceController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:service-table')->only('index', 'show');
+        $this->middleware('permission:service-add')->only('create', 'store');
+        $this->middleware('permission:service-edit')->only('edit', 'update');
+        $this->middleware('permission:service-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the resource.
      *

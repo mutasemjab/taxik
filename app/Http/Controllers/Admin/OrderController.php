@@ -14,6 +14,14 @@ use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:order-table')->only('index', 'show', 'filter', 'userOrders', 'driverOrders');
+        $this->middleware('permission:order-add')->only('create', 'store');
+        $this->middleware('permission:order-edit')->only('edit', 'update', 'updateStatus', 'updatePaymentStatus');
+        $this->middleware('permission:order-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the resource.
      */

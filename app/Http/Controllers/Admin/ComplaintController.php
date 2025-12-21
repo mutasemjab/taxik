@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Validator;
 
 class ComplaintController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:complaint-table')->only('index', 'show');
+        $this->middleware('permission:complaint-add')->only('create', 'store');
+        $this->middleware('permission:complaint-edit')->only('edit', 'update', 'updateStatus');
+        $this->middleware('permission:complaint-delete')->only('destroy');
+    }
+
     /**
      * Display a listing of the complaints.
      *

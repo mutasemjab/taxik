@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\DB;
 
 class OrderStatusReportController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:report-table|report-view')->only('index', 'show');
+        $this->middleware('permission:report-export')->only('export');
+    }
+
     /**
      * Display order status history report
      */

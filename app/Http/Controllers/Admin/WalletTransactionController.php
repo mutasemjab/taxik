@@ -13,6 +13,15 @@ use Illuminate\Support\Facades\Auth;
 
 class WalletTransactionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:wallet-table')->only('index', 'show', 'filter', 'userTransactions', 'driverTransactions');
+        $this->middleware('permission:wallet-add')->only('create', 'store');
+        $this->middleware('permission:wallet-edit')->only('edit', 'update');
+        $this->middleware('permission:wallet-delete')->only('destroy');
+    }
+
+
     /**
      * Display a listing of the resource.
      *

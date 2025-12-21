@@ -12,6 +12,14 @@ use Spatie\Permission\Models\Permission;
 use Gate;
 class RoleController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:role-table')->only('index');
+        $this->middleware('permission:role-add')->only('create', 'store');
+        $this->middleware('permission:role-edit')->only('edit', 'update');
+        $this->middleware('permission:role-delete')->only('delete');
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -43,9 +51,9 @@ class RoleController extends Controller
      */
     public function create()
     {
-
-        $data = Permission::where('guard_name','admin')->get();
-        return view('admin.roles.create', compact('data'));
+        $permissions = Permission::where('guard_name','admin')->get();
+        $groupedPermissions = $this->groupPermissions($permissions);
+        return view('admin.roles.create', compact('groupedPermissions'));
     }
 
     /**
@@ -110,11 +118,11 @@ class RoleController extends Controller
      */
     public function edit($id)
     {
-
         $permissions = Permission::where('guard_name','admin')->get();
+        $groupedPermissions = $this->groupPermissions($permissions);
         $role_permissions = DB::table('role_has_permissions')->where('role_id',$id)->pluck('permission_id')->toArray();
         $data = Role::find($id);
-         return view('admin.roles.edit', compact('permissions','role_permissions','data'));
+        return view('admin.roles.edit', compact('groupedPermissions','role_permissions','data'));
     }
 
     /**
@@ -164,9 +172,35 @@ class RoleController extends Controller
      */
     public function delete(Request $request)
     {
+        try {
+            Role::where('id', $request->id)->delete();
+            return redirect()->route('admin.role.index')->with('success', __('messages.Role Deleted Successfully'));
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+            return redirect()->back()->withErrors(__('messages.An error occurred while deleting'));
+        }
+    }
 
-        Role::where('id',$request->id)->delete();
-       return 1;
+    /**
+     * Group permissions by their prefix (resource)
+     * e.g., 'user-table', 'user-add' -> grouped under 'user'
+     */
+    private function groupPermissions($permissions)
+    {
+        $grouped = [];
 
+        foreach ($permissions as $permission) {
+            // Extract the resource name (prefix before the dash)
+            $parts = explode('-', $permission->name);
+            $resource = $parts[0];
+
+            if (!isset($grouped[$resource])) {
+                $grouped[$resource] = [];
+            }
+
+            $grouped[$resource][] = $permission;
+        }
+
+        return $grouped;
     }
 }

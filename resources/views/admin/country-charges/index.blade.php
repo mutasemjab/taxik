@@ -7,7 +7,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h3 class="card-title">{{ __('messages.Country Charges') }}</h3>
-                    @can('countrCharge-add')
+                    @can('countryCharge-add')
                         <a href="{{ route('country-charges.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> {{ __('messages.Add Country Charge') }}
                         </a>
@@ -61,14 +61,14 @@
                                                 <i class="fas fa-eye"></i> {{ __('messages.View Details') }}
                                             </button>
                                             
-                                            @can('countrCharge-edit')
+                                            @can('countryCharge-edit')
                                                 <a href="{{ route('country-charges.edit', $countryCharge->id) }}" 
                                                    class="btn btn-sm btn-info">
                                                     <i class="fas fa-edit"></i> {{ __('messages.Edit') }}
                                                 </a>
                                             @endcan
                                             
-                                            @can('countrCharge-delete')
+                                            @can('countryCharge-delete')
                                                 <form action="{{ route('country-charges.destroy', $countryCharge->id) }}" 
                                                       method="POST" 
                                                       class="d-inline"
@@ -121,7 +121,6 @@
                                     <th>#</th>
                                     <th>{{ __('messages.Name') }}</th>
                                     <th>{{ __('messages.Phone') }}</th>
-                                    <th>{{ __('messages.Service_provider') }}</th>
                                     <th>{{ __('messages.Cliq Name') }}</th>
                                 </tr>
                             </thead>
@@ -131,7 +130,6 @@
                                         <td>{{ $loop->iteration }}</td>
                                         <td>{{ $data->name }}</td>
                                         <td>{{ $data->phone }}</td>
-                                        <td>{{ $data->service_provider }}</td>
                                         <td>{{ $data->cliq_name }}</td>
                                     </tr>
                                 @endforeach

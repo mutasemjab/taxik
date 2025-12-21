@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Validator;
 
 class WithdrawalRequestController  extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:withdrawal-table')->only('index', 'history');
+        $this->middleware('permission:withdrawal-edit')->only('approve', 'reject');
+    }
+
    public function index()
     {
         $pendingRequests = WithdrawalRequest::with(['user', 'driver'])

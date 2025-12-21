@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Driver extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable , LogsActivity;
 
     protected $guarded = [];
 
@@ -30,6 +31,17 @@ class Driver extends Authenticatable
         'no_criminal_record_url',
     ];
     
+      // Activity Log Configuration
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']) // Log all attributes, or specify: ['name', 'price', 'number_of_cards']
+            ->logOnlyDirty() // Only log changed attributes
+            ->dontSubmitEmptyLogs()
+            ->useLogName('driver') // Custom log name
+            ->setDescriptionForEvent(fn(string $eventName) => "Driver has been {$eventName}");
+    }
+
     /**
      * Helper method to generate image URLs
      *

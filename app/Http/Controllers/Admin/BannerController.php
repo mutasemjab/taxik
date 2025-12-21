@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Storage;
 
 class BannerController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:banner-table')->only('index', 'show');
+        $this->middleware('permission:banner-add')->only('create', 'store');
+        $this->middleware('permission:banner-edit')->only('edit', 'update');
+        $this->middleware('permission:banner-delete')->only('destroy');
+    }
+
     public function index()
     {
         $banners = DB::table('banners')->orderBy('created_at', 'desc')->get();

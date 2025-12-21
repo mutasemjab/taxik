@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\DB;
 
 class CardNumberController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:card-edit')->only('toggleStatus', 'toggleActivate');
+    }
+
      public function toggleStatus(CardNumber $cardNumber)
     {
         try {

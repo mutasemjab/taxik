@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\CardController;
 use App\Http\Controllers\Admin\CardNumberController;
 use App\Http\Controllers\Admin\CouponController;
@@ -66,6 +68,7 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         /*         end  update login admin                */
 
         /// Role and permission
+        Route::resource('admin', AdminController::class, ['as' => 'admin']);
         Route::resource('employee', 'App\Http\Controllers\Admin\EmployeeController', ['as' => 'admin']);
         Route::get('role', 'App\Http\Controllers\Admin\RoleController@index')->name('admin.role.index');
         Route::get('role/create', 'App\Http\Controllers\Admin\RoleController@create')->name('admin.role.create');
@@ -77,6 +80,11 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::get('/permissions/{guard_name}', function ($guard_name) {
             return response()->json(Permission::where('guard_name', $guard_name)->get());
         });
+
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+
+        // View logs for specific model instance
+        Route::get('activity-logs/{modelClass}/{modelId}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
 
 
 

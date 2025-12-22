@@ -54,6 +54,17 @@ class FCMController extends BaseController
                     ],
                     "android" => [
                         "priority" => "high"
+                    ],
+                    "apns" => [
+                        "headers" => [
+                            "apns-priority" => "10"
+                        ],
+                        "payload" => [
+                            "aps" => [
+                                "sound" => "notification_sound.wav",
+                                "badge" => 1
+                            ]
+                        ]
                     ]
                 ]
             ];
@@ -80,17 +91,19 @@ class FCMController extends BaseController
             } else {
                 $response = json_decode($result, true);
                 \Log::info("FCM Response for $userType ID $userId: " . json_encode($response));
-                
+
                 if (isset($response['name'])) {
                     return true;
                 } else {
                     \Log::error("FCM Error for $userType ID $userId: " . json_encode($response));
-                    
+
                     // Clear invalid token based on user type
-                    if (isset($response['error']['details'][0]['errorCode']) && 
-                        $response['error']['details'][0]['errorCode'] === 'UNREGISTERED') {
+                    if (
+                        isset($response['error']['details'][0]['errorCode']) &&
+                        $response['error']['details'][0]['errorCode'] === 'UNREGISTERED'
+                    ) {
                         \Log::info("FCM token cleanup for $userType ID $userId");
-                        
+
                         // if ($userType === 'driver') {
                         //     Driver::where('id', $userId)->update(['fcm_token' => null]);
                         // } else {
@@ -106,7 +119,7 @@ class FCMController extends BaseController
         }
     }
 
-   public static function sendMessageToAll($title, $body, $type = 0): bool
+    public static function sendMessageToAll($title, $body, $type = 0): bool
     {
         $users = collect();
 
@@ -151,7 +164,7 @@ class FCMController extends BaseController
     }
 
 
-    
+
     public static function sendChatMessageToDriver($message, $driver_id, $sender_user_id): bool
     {
         $driver = Driver::find($driver_id);
@@ -197,5 +210,4 @@ class FCMController extends BaseController
 
         return $sent;
     }
-
 }

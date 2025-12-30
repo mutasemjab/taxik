@@ -1171,4 +1171,87 @@ return [
     'currency' => 'JOD',
     'error_loading_locations' => 'Error loading driver locations. Please try again.',
     'no_drivers_to_center' => 'No drivers available to center the map.',
+     // Search and Filter
+    'Search' => 'Search',
+    'Search_By_Name_Phone_Email' => 'Search by name, phone, email...',
+    'All' => 'All',
+    'Min_Balance' => 'Min Balance',
+    'Max_Balance' => 'Max Balance',
+    'Reset' => 'Reset',
+    'Filter' => 'Filter',
+    
+    // Pagination
+    'Showing' => 'Showing',
+    'To' => 'to',
+    'Of' => 'of',
+    'Entries' => 'entries',
+    'Previous' => 'Previous',
+    'Next' => 'Next',
+    
+    // Status
+    'Active' => 'Active',
+    'Inactive' => 'Inactive',
+    'Banned' => 'Banned',
+    'Waiting_Approve' => 'Waiting Approval',
+    
+    // Drivers
+    'Drivers' => 'Drivers',
+    'Add_New_Driver' => 'Add New Driver',
+    'Driver_List' => 'Driver List',
+    'Ban_Driver' => 'Ban Driver',
+    'Unban_Driver' => 'Unban Driver',
+    'Ban_History' => 'Ban History',
+    'Banned_Permanently' => 'Banned Permanently',
+    'Banned_Until' => 'Banned Until',
+    
+    // Users
+    'Users' => 'Users',
+    'Add_New_User' => 'Add New User',
+    'User_List' => 'User List',
+    
+    // Common
+    'ID' => 'ID',
+    'Photo' => 'Photo',
+    'Name' => 'Name',
+    'Phone' => 'Phone',
+    'Email' => 'Email',
+    'Balance' => 'Balance',
+    'Current_Balance' => 'Current Balance',
+    'Status' => 'Status',
+    'Actions' => 'Actions',
+    'Car' => 'Car',
+    'Model' => 'Model',
+    'Color' => 'Color',
+    'N/A' => 'N/A',
+    'No_Image' => 'No Image',
+    
+    // Actions
+    'View' => 'View',
+    'Edit' => 'Edit',
+    'Delete' => 'Delete',
+    'Close' => 'Close',
+    'Cancel' => 'Cancel',
+    'Save' => 'Save',
+    
+    // Top Up
+    'Top_Up_Balance' => 'Top Up Balance',
+    'Top_Up_Balance_For' => 'Top Up Balance For',
+    'Amount' => 'Amount',
+    'Note' => 'Note',
+    'Add_To_Balance' => 'Add to Balance',
+    'Transactions' => 'Transactions',
+    
+    // Ban/Unban
+    'Current_Ban_Info' => 'Current Ban Information',
+    'Reason' => 'Reason',
+    'Type' => 'Type',
+    'Until' => 'Until',
+    'Remaining' => 'Remaining',
+    'Permanent' => 'Permanent',
+    'Temporary' => 'Temporary',
+    'Unban_Reason' => 'Unban Reason',
+    'Optional' => 'Optional',
+    'Enter_Reason_For_Unbanning' => 'Enter reason for unbanning this driver',
+    'Unban_Confirmation_Message' => 'Are you sure you want to unban this driver? This action will restore their account access.',
+
 ];

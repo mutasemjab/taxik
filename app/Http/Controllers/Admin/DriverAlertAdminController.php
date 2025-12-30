@@ -62,26 +62,61 @@ class DriverAlertAdminController extends Controller
     /**
      * Send notifications to nearby drivers
      */
-     public function notify($id)
+    public function notify($id)
     {
-        $alert = DriverAlert::findOrFail($id);
+        try {
+            $alert = DriverAlert::with('driver')->findOrFail($id);
 
-        // Using your service to get nearby drivers within 10 km
-        $result = $this->driverLocationService->findAndStoreOrderInFirebase(
-            $alert->lat,
-            $alert->lng,
-            $alert->id,
-            $serviceId = null,   // You can define a service ID if needed
-            $radius = 10         // 10 km radius
-        );
+            // Find nearby drivers within 10 km (without creating Firebase order)
+            $result = $this->driverLocationService->findNearbyDrivers(
+                $alert->lat,
+                $alert->lng,
+                10 // 10 km radius
+            );
 
-        if ($result['success'] && !empty($result['drivers'])) {
-            // Send FCM notification to these drivers
-            $title = '🚨 ' . __('messages.New Alert');
-            $body  = $alert->report;
-            EnhancedFCMService::sendBulkToDrivers($result['drivers_found'], $title, $body, ['alert_id' => $alert->id]);
+            if (!$result['success'] || empty($result['driver_ids'])) {
+                return redirect()->back()->with('error', __('messages.No_Nearby_Drivers_Found'));
+            }
+
+            // Prepare notification data
+            $title = '🚨 ' . 'انتبهوا';
+            $body = $alert->report;
+
+            $customData = [
+                'alert_id' => (string)$alert->id,
+                'type' => 'driver_alert',
+                'screen' => 'alert_details',
+                'action' => 'view_alert',
+                'lat' => (string)$alert->lat,
+                'lng' => (string)$alert->lng,
+                'address' => $alert->address ?? '',
+                'report' => $alert->report,
+                'driver_name' => $alert->driver->name ?? '',
+                'distance' => 'nearby'
+            ];
+
+            // Send FCM notification to nearby drivers
+            $fcmResult = EnhancedFCMService::sendBulkToDrivers(
+                $result['driver_ids'],
+                $title,
+                $body,
+                $customData
+            );
+
+            \Log::info("Alert {$id} notifications sent to {$result['count']} drivers. Sent: {$fcmResult['sent']}, Failed: {$fcmResult['failed']}");
+
+            // Update alert status to done (optional)
+            $alert->update(['status' => 'done']);
+
+            $message = __('messages.Notification_Sent_To_Drivers', [
+                'count' => $fcmResult['sent'],
+                'total' => $result['count']
+            ]);
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            \Log::error("Error sending alert notifications: " . $e->getMessage());
+            return redirect()->back()->with('error', __('messages.Error_Sending_Notifications'));
         }
-
-        return redirect()->back()->with('success', __('messages.Notify_Nearby'));
     }
 }

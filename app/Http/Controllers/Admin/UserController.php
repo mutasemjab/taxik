@@ -28,9 +28,40 @@ class UserController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::all();
+        $query = User::query();
+
+        // Search functionality
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by status
+        if ($request->has('status') && $request->status != '') {
+            $query->where('activate', $request->status);
+        }
+
+        // Filter by balance
+        if ($request->has('min_balance') && $request->min_balance != '') {
+            $query->where('balance', '>=', $request->min_balance);
+        }
+
+        if ($request->has('max_balance') && $request->max_balance != '') {
+            $query->where('balance', '<=', $request->max_balance);
+        }
+
+        // Order by newest first
+        $query->orderBy('created_at', 'desc');
+
+        // Paginate results
+        $users = $query->paginate(15)->appends($request->all());
+
         return view('admin.users.index', compact('users'));
     }
 
@@ -71,7 +102,7 @@ class UserController extends Controller
         }
 
         $userData = $request->except('photo');
-        
+
         // Generate a referral code if not provided
         if (!isset($userData['referral_code'])) {
             $userData['referral_code'] = Str::random(8);
@@ -79,9 +110,9 @@ class UserController extends Controller
 
         // Handle photo upload
         if ($request->has('photo')) {
-                $the_file_path = uploadImage('assets/admin/uploads', $request->photo);
-                 $userData['photo'] = $the_file_path;
-             }
+            $the_file_path = uploadImage('assets/admin/uploads', $request->photo);
+            $userData['photo'] = $the_file_path;
+        }
 
         User::create($userData);
 
@@ -99,7 +130,7 @@ class UserController extends Controller
     public function show($id)
     {
         $user = User::findOrFail($id);
-        
+
         return view('admin.users.show', compact('user'));
     }
 
@@ -112,7 +143,7 @@ class UserController extends Controller
     public function edit($id)
     {
         $user = User::findOrFail($id);
-        
+
         return view('admin.users.edit', compact('user'));
     }
 
@@ -148,10 +179,10 @@ class UserController extends Controller
         $userData = $request->except('photo');
 
         // Handle photo upload
-          if ($request->has('photo')) {
-                $the_file_path = uploadImage('assets/admin/uploads', $request->photo);
-                $userData['photo'] = $the_file_path;
-             }
+        if ($request->has('photo')) {
+            $the_file_path = uploadImage('assets/admin/uploads', $request->photo);
+            $userData['photo'] = $the_file_path;
+        }
 
         $user->update($userData);
 
@@ -169,8 +200,8 @@ class UserController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
-        
-        
+
+
         $user->delete();
 
         return redirect()
@@ -181,19 +212,19 @@ class UserController extends Controller
     public function topUp(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        
+
         if ($request->isMethod('post')) {
             $request->validate([
                 'amount' => 'required|numeric|min:0.01',
                 'note' => 'nullable|string|max:255',
             ]);
-            
+
             DB::beginTransaction();
             try {
                 // Update user balance
                 $user->balance += $request->amount;
                 $user->save();
-                
+
                 // Create transaction record
                 WalletTransaction::create([
                     'user_id' => $user->id,
@@ -202,7 +233,7 @@ class UserController extends Controller
                     'type_of_transaction' => 1, // 1 for add
                     'note' => $request->note ??  'شحن رصيد من الشركة',
                 ]);
-                
+
                 DB::commit();
                 return redirect()->route('users.index')
                     ->with('success', __('messages.Balance_Updated_Successfully'));
@@ -212,7 +243,5 @@ class UserController extends Controller
                     ->with('error', __('messages.Something_Went_Wrong'));
             }
         }
-        
     }
 }
-

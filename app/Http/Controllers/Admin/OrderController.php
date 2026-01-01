@@ -69,7 +69,7 @@ class OrderController extends Controller
         // Get users, drivers, and services for filter dropdowns
         $users = \App\Models\User::select('id', 'name', 'phone', 'email')->get();
         $drivers = \App\Models\Driver::select('id', 'name', 'phone', 'email')->get();
-        $services = \App\Models\Service::select('id', 'name', 'name_en')->get();
+        $services = \App\Models\Service::get();
 
         return view('admin.orders.index', compact('orders', 'users', 'drivers', 'services'));
     }

@@ -26,6 +26,9 @@ class Order extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'arrived_at' => 'datetime',
+        'wallet_amount_used' => 'decimal:2',
+        'cash_amount_due' => 'decimal:2',
+        'is_hybrid_payment' => 'boolean',
 
     ];
 

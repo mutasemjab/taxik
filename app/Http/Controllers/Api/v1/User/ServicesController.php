@@ -32,7 +32,7 @@ class ServicesController extends Controller
 
         // Only calculate distance if both end_lat and end_lng are present
         if (!is_null($endLat) && !is_null($endLng)) {
-            $distance = $this->calculateDistance($startLat, $startLng, $endLat, $endLng); // in KM
+            $distance = $this->calculateDistanceWithGoogle($startLat, $startLng, $endLat, $endLng); // in KM
         }
 
         $services = Service::where('activate', 1)
@@ -76,10 +76,51 @@ class ServicesController extends Controller
         return $hour >= 22 || $hour < 6;
     }
 
+    /**
+     * Calculate distance using Google Maps Distance Matrix API
+     * Returns distance in kilometers
+     */
+    private function calculateDistanceWithGoogle($originLat, $originLng, $destinationLat, $destinationLng)
+    {
+        try {
+            $apiKey = config('services.google.maps_api_key', 'AIzaSyCq8VmcHUs1cFqluiVU0nhdfJfpIQoTKc4');
+            
+            $origin = "{$originLat},{$originLng}";
+            $destination = "{$destinationLat},{$destinationLng}";
+            
+            $url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                . "?origins=" . urlencode($origin)
+                . "&destinations=" . urlencode($destination)
+                . "&mode=driving"
+                . "&key={$apiKey}";
+
+            $response = file_get_contents($url);
+            $data = json_decode($response, true);
+
+            // Check if the API request was successful
+            if ($data['status'] === 'OK' && isset($data['rows'][0]['elements'][0]['distance'])) {
+                // Distance is returned in meters, convert to kilometers
+                $distanceInMeters = $data['rows'][0]['elements'][0]['distance']['value'];
+                return $distanceInMeters / 1000; // Convert to KM
+            } else {
+                // Fallback to Haversine formula if API fails
+                \Log::warning('Google Distance Matrix API failed', [
+                    'status' => $data['status'] ?? 'unknown',
+                    'error_message' => $data['error_message'] ?? 'No error message'
+                ]);
+                return $this->calculateDistanceFallback($originLat, $originLng, $destinationLat, $destinationLng);
+            }
+        } catch (\Exception $e) {
+            // Fallback to Haversine formula on exception
+            \Log::error('Exception in Google Distance calculation', [
+                'message' => $e->getMessage()
+            ]);
+            return $this->calculateDistanceFallback($originLat, $originLng, $destinationLat, $destinationLng);
+        }
+    }
 
 
-
-    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
+       private function calculateDistanceFallback($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // Radius in kilometers
 
@@ -96,8 +137,5 @@ class ServicesController extends Controller
 
         return $earthRadius * $angle;
     }
-
-
-
 
 }

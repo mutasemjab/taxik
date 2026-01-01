@@ -164,33 +164,75 @@ class OrderDriverController extends Controller
 
 
     public function show($id)
-    {
-        $driver = Auth::guard('driver-api')->user();
+{
+    $driver = Auth::guard('driver-api')->user();
 
-        $order = Order::where('id', $id)
-            ->where('driver_id', $driver->id)
-            ->with([
-                'user:id,name,phone,country_code,photo,fcm_token',
-                'driver.ratings',
-                'driver',
-                'service',
-                'coupon'
-            ])
-            ->first();
+    $order = Order::where('id', $id)
+        ->where('driver_id', $driver->id)
+        ->with([
+            'user:id,name,phone,country_code,photo,fcm_token,balance',
+            'driver.ratings',
+            'driver',
+            'service',
+            'coupon'
+        ])
+        ->first();
 
-        if (!$order) {
-            return $this->error_response('Order not found', null);
-        }
-
-        // Add helper attributes
-        $order->status_text = $order->getStatusText();
-        $order->payment_method_text = $order->getPaymentMethodText();
-        $order->payment_status_text = $order->getPaymentStatusText();
-        $order->distance = $order->getDistance();
-        $order->discount_percentage = $order->getDiscountPercentage();
-
-        return $this->success_response('Order details retrieved successfully', $order);
+    if (!$order) {
+        return $this->error_response('Order not found', null);
     }
+
+    // Add helper attributes
+    $order->status_text = $order->getStatusText();
+    $order->payment_method_text = $order->getPaymentMethodText();
+    $order->payment_status_text = $order->getPaymentStatusText();
+    $order->distance = $order->getDistance();
+    $order->discount_percentage = $order->getDiscountPercentage();
+
+    // ========== HYBRID PAYMENT CALCULATION FOR DRIVER ==========
+    $paymentBreakdown = null;
+    if ($order->status == OrderStatus::waitingPayment && 
+        $order->payment_method == PaymentMethod::Wallet &&
+        $order->user) {
+        
+        $finalPrice = $order->total_price_after_discount;
+        $userBalance = $order->user->balance;
+        
+        if ($userBalance < $finalPrice) {
+            // Hybrid payment scenario
+            $walletAmount = $userBalance;
+            $cashAmount = $finalPrice - $walletAmount;
+            
+            $paymentBreakdown = [
+                'payment_type' => 'hybrid',
+                'total_amount' => $finalPrice,
+                'user_wallet_balance' => $userBalance,
+                'amount_from_wallet' => $walletAmount,
+                'amount_cash_to_collect' => $cashAmount,
+                'message' => 'سيتم تحويل ' . number_format($walletAmount, 2) . ' JD من محفظة المستخدم إلى محفظتك، وستقوم بتحصيل ' . number_format($cashAmount, 2) . ' JD نقداً',
+                'message_en' => 'JD ' . number_format($walletAmount, 2) . ' will be transferred from user wallet to your wallet, and you will collect JD ' . number_format($cashAmount, 2) . ' in cash'
+            ];
+        } else {
+            // Full wallet payment
+            $paymentBreakdown = [
+                'payment_type' => 'full_wallet',
+                'total_amount' => $finalPrice,
+                'user_wallet_balance' => $userBalance,
+                'amount_from_wallet' => $finalPrice,
+                'amount_cash_to_collect' => 0,
+                'message' => 'سيتم تحويل المبلغ كاملاً ' . number_format($finalPrice, 2) . ' JD من محفظة المستخدم',
+                'message_en' => 'Full amount of JD ' . number_format($finalPrice, 2) . ' will be transferred from user wallet'
+            ];
+        }
+    }
+    
+    $responseData = $order->toArray();
+    if ($paymentBreakdown) {
+        $responseData['payment_breakdown'] = $paymentBreakdown;
+    }
+
+    return $this->success_response('Order details retrieved successfully', $responseData);
+}
 
 
     public function cancelOrder(Request $request, $id)

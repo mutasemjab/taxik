@@ -572,11 +572,11 @@ class OrderController extends Controller
         $order->discount_percentage = $order->getDiscountPercentage();
 
         $hasRated = \App\Models\Rating::where('user_id', $user->id)
-            ->where('order_id', $order->id)->where('driver_id', $order->driver_id)
+            ->where('order_id', $order->id)
+            ->where('driver_id', $order->driver_id)
             ->exists();
 
         $order->is_review = $hasRated ? 1 : 2;
-
 
         if (empty($order->estimated_time) && !is_null($order->drop_lat) && !is_null($order->drop_lng)) {
             $order->estimated_time = $this->calculateEstimatedTime(
@@ -585,10 +585,52 @@ class OrderController extends Controller
                 $order->drop_lat,
                 $order->drop_lng
             );
-            // Optionally save it to database
-
         }
-        return $this->success_response('Order details retrieved successfully', $order);
+
+        // ========== HYBRID PAYMENT CALCULATION ==========
+        $paymentBreakdown = null;
+        if (
+            $order->status == OrderStatus::waitingPayment &&
+            $order->payment_method == PaymentMethod::Wallet
+        ) {
+
+            $finalPrice = $order->total_price_after_discount;
+            $userBalance = $user->balance;
+
+            if ($userBalance < $finalPrice) {
+                // User doesn't have enough in wallet - hybrid payment required
+                $walletAmount = $userBalance;
+                $cashAmount = $finalPrice - $walletAmount;
+
+                $paymentBreakdown = [
+                    'payment_type' => 'hybrid',
+                    'total_amount' => $finalPrice,
+                    'user_wallet_balance' => $userBalance,
+                    'amount_from_wallet' => $walletAmount,
+                    'amount_cash_required' => $cashAmount,
+                    'message' => 'سيتم خصم ' . number_format($walletAmount, 2) . ' JD من محفظتك والمبلغ المتبقي ' . number_format($cashAmount, 2) . ' JD سيتم دفعه نقداً',
+                    'message_en' => 'JD ' . number_format($walletAmount, 2) . ' will be deducted from your wallet and the remaining JD ' . number_format($cashAmount, 2) . ' will be paid in cash'
+                ];
+            } else {
+                // User has enough in wallet
+                $paymentBreakdown = [
+                    'payment_type' => 'full_wallet',
+                    'total_amount' => $finalPrice,
+                    'user_wallet_balance' => $userBalance,
+                    'amount_from_wallet' => $finalPrice,
+                    'amount_cash_required' => 0,
+                    'message' => 'سيتم خصم المبلغ كاملاً ' . number_format($finalPrice, 2) . ' JD من محفظتك',
+                    'message_en' => 'Full amount of JD ' . number_format($finalPrice, 2) . ' will be deducted from your wallet'
+                ];
+            }
+        }
+
+        $responseData = $order->toArray();
+        if ($paymentBreakdown) {
+            $responseData['payment_breakdown'] = $paymentBreakdown;
+        }
+
+        return $this->success_response('Order details retrieved successfully', $responseData);
     }
 
     public function cancelOrder(Request $request, $id)

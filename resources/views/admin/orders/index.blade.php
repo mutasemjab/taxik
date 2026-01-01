@@ -19,7 +19,7 @@
             <h6 class="m-0 font-weight-bold text-primary">{{ __('messages.Filter_Orders') }}</h6>
         </div>
         <div class="card-body">
-            <form action="{{ route('orders.filter') }}" method="GET">
+            <form action="{{ route('orders.index') }}" method="GET">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">

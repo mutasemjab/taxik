@@ -33,61 +33,59 @@ class DriverMapController extends Controller
     public function getDriverLocations(Request $request)
     {
         try {
-            // Fetch all driver documents from Firestore using REST API
-            $response = Http::timeout(10)->get("{$this->baseUrl}/drivers");
-
             $firebaseDriverIds = [];
             $firebaseLocations = [];
 
-            // Process Firebase data if available
-            if ($response->successful()) {
-                $firestoreData = $response->json();
+            // Fetch ALL documents from Firebase using pagination
+            $nextPageToken = null;
+            $pageSize = 300; // Maximum allowed by Firebase
 
-                if (isset($firestoreData['documents']) && is_array($firestoreData['documents'])) {
-                    foreach ($firestoreData['documents'] as $document) {
-                        // Extract driver ID from document name
-                        // Format: projects/{project}/databases/(default)/documents/drivers/{driverId}
-                        $documentName = $document['name'];
-                        $nameParts = explode('/', $documentName);
-                        $driverIdFromPath = end($nameParts);
-
-                        // Also try to get ID from the document fields
-                        $fields = $document['fields'] ?? [];
-                        $driverIdFromField = $this->getFieldValue($fields, 'id');
-
-                        // Use the ID from the document path (more reliable)
-                        $driverId = $driverIdFromPath;
-
-                        // Log for debugging
-                        \Log::info("Firebase document: path ID = {$driverIdFromPath}, field ID = {$driverIdFromField}");
-
-                        // Convert to integer to match MySQL ID type
-                        $driverId = (int)$driverId;
-
-                        $firebaseDriverIds[] = $driverId;
-
-                        $lat = $this->getFieldValue($fields, 'lat');
-                        $lng = $this->getFieldValue($fields, 'lng');
-
-                        // Store location data even if lat/lng might be empty
-                        $firebaseLocations[$driverId] = [
-                            'lat' => !empty($lat) ? (float)$lat : null,
-                            'lng' => !empty($lng) ? (float)$lng : null,
-                            'last_updated' => $this->getFieldValue($fields, 'updated_at') ?? now()->toISOString(),
-                            'has_valid_coordinates' => !empty($lat) && !empty($lng),
-                        ];
-                    }
+            do {
+                $url = "{$this->baseUrl}/drivers?pageSize={$pageSize}";
+                if ($nextPageToken) {
+                    $url .= "&pageToken=" . urlencode($nextPageToken);
                 }
-            }
+
+                $response = Http::timeout(10)->get($url);
+
+                if ($response->successful()) {
+                    $firestoreData = $response->json();
+
+                    if (isset($firestoreData['documents']) && is_array($firestoreData['documents'])) {
+                        foreach ($firestoreData['documents'] as $document) {
+                            $documentName = $document['name'];
+                            $nameParts = explode('/', $documentName);
+                            $driverIdFromPath = end($nameParts);
+
+                            $fields = $document['fields'] ?? [];
+
+                            // Convert to integer
+                            $driverId = (int)$driverIdFromPath;
+
+                            $firebaseDriverIds[] = $driverId;
+
+                            $lat = $this->getFieldValue($fields, 'lat');
+                            $lng = $this->getFieldValue($fields, 'lng');
+
+                            $firebaseLocations[$driverId] = [
+                                'lat' => !empty($lat) ? (float)$lat : null,
+                                'lng' => !empty($lng) ? (float)$lng : null,
+                                'last_updated' => $this->getFieldValue($fields, 'updated_at') ?? now()->toISOString(),
+                                'has_valid_coordinates' => !empty($lat) && !empty($lng),
+                            ];
+                        }
+                    }
+
+                    // Check if there are more pages
+                    $nextPageToken = $firestoreData['nextPageToken'] ?? null;
+                } else {
+                    break; // Stop if request fails
+                }
+            } while ($nextPageToken); // Continue if there's a next page
 
             // Get all active drivers from MySQL
             $drivers = Driver::where('activate', 1)->get();
             $driverLocations = [];
-
-            // Log MySQL driver IDs for debugging
-            $mysqlDriverIds = $drivers->pluck('id')->toArray();
-            \Log::info("MySQL Driver IDs: " . json_encode($mysqlDriverIds));
-            \Log::info("Firebase Driver IDs: " . json_encode($firebaseDriverIds));
 
             foreach ($drivers as $driver) {
                 $driverId = (int)$driver->id;
@@ -125,7 +123,7 @@ class DriverMapController extends Controller
                             'last_updated' => $location['last_updated'],
                             'has_location' => false,
                             'in_firebase' => true,
-                            'reason' => 'لا توجد إحداثيات صالحة' // No valid coordinates in Arabic
+                            'reason' => 'لا توجد إحداثيات صالحة'
                         ];
                     }
                 } else {
@@ -142,10 +140,13 @@ class DriverMapController extends Controller
                         'last_updated' => null,
                         'has_location' => false,
                         'in_firebase' => false,
-                        'reason' => 'غير موجود في Firebase' // Not in Firebase in Arabic
+                        'reason' => 'غير موجود في Firebase'
                     ];
                 }
             }
+
+            \Log::info("Total Firebase documents fetched: " . count($firebaseDriverIds));
+            \Log::info("Total MySQL drivers: " . count($drivers));
 
             return response()->json([
                 'success' => true,
@@ -153,8 +154,7 @@ class DriverMapController extends Controller
                 'total' => count($driverLocations),
                 'drivers_with_location' => count(array_filter($driverLocations, fn($d) => $d['has_location'])),
                 'drivers_without_location' => count(array_filter($driverLocations, fn($d) => !$d['has_location'])),
-                'firebase_driver_ids' => $firebaseDriverIds, // For debugging
-                'mysql_driver_ids' => $mysqlDriverIds, // For debugging
+                'total_firebase_documents' => count($firebaseDriverIds),
                 'timestamp' => now()->toISOString()
             ]);
         } catch (\Exception $e) {

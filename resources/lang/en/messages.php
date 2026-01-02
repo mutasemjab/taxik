@@ -1253,5 +1253,12 @@ return [
     'Optional' => 'Optional',
     'Enter_Reason_For_Unbanning' => 'Enter reason for unbanning this driver',
     'Unban_Confirmation_Message' => 'Are you sure you want to unban this driver? This action will restore their account access.',
-
+'drivers_without_location' => 'Drivers Without Location',
+'drivers_without_firebase_location' => 'Drivers Without Firebase Location',
+'drivers_without_location_description' => 'The following drivers exist in the database but have no location data in Firebase:',
+'driver_name' => 'Driver Name',
+'phone' => 'Phone',
+'status' => 'Status',
+'balance' => 'Balance',
+'currency' => 'JOD',
 ];

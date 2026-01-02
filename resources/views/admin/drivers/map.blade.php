@@ -137,59 +137,129 @@
         background-color: #dc3545;
         color: white;
     }
+
+    /* New styles for drivers without location */
+    .no-location-table {
+        width: 100%;
+        margin-top: 15px;
+        background: white;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .no-location-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .no-location-table th {
+        background-color: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+        font-size: 14px;
+    }
+
+    .no-location-table td {
+        padding: 12px;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 14px;
+    }
+
+    .no-location-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .no-location-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .driver-status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .driver-status-badge.online {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .driver-status-badge.offline {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
 </style>
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="page-header mb-4">
-                <h1>{{ __('messages.live_map') }}</h1>
-                <p class="text-muted">{{ __('messages.map_description') }}</p>
-            </div>
-            
-            <!-- Statistics Cards -->
-            <div class="driver-stats">
-                <div class="stat-card online">
-                    <h3>{{ __('messages.online_drivers') }}</h3>
-                    <div class="value" id="onlineCount">0</div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="page-header mb-4">
+                    <h1>{{ __('messages.live_map') }}</h1>
+                    <p class="text-muted">{{ __('messages.map_description') }}</p>
                 </div>
-                <div class="stat-card offline">
-                    <h3>{{ __('messages.offline_drivers') }}</h3>
-                    <div class="value" id="offlineCount">0</div>
+
+                <!-- Statistics Cards -->
+                <div class="driver-stats">
+                    <div class="stat-card online">
+                        <h3>{{ __('messages.online_drivers') }}</h3>
+                        <div class="value" id="onlineCount">0</div>
+                    </div>
+                    <div class="stat-card offline">
+                        <h3>{{ __('messages.offline_drivers') }}</h3>
+                        <div class="value" id="offlineCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ __('messages.total_drivers') }}</h3>
+                        <div class="value" id="totalCount">0</div>
+                    </div>
+                    <div class="stat-card" style="background-color: #fff3cd;">
+                        <h3>{{ __('messages.drivers_without_location') }}</h3>
+                        <div class="value" id="noLocationCount" style="color: #856404;">0</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>{{ __('messages.total_drivers') }}</h3>
-                    <div class="value" id="totalCount">0</div>
+
+                <!-- Drivers Without Location Section -->
+                <div class="alert alert-warning mt-3" id="noLocationAlert" style="display: none;">
+                    <h5 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        {{ __('messages.drivers_without_firebase_location') }}
+                    </h5>
+                    <p class="mb-2">{{ __('messages.drivers_without_location_description') }}</p>
+                    <div id="noLocationDriversList"></div>
                 </div>
-            </div>
-            
-            <!-- Last Update Info -->
-            <div class="last-update">
-                <i class="fas fa-clock"></i>
-                {{ __('messages.last_update') }}: <strong id="lastUpdateTime">--:--</strong>
-                <span class="refresh-indicator" id="refreshIndicator">
-                    <i class="fas fa-sync-alt"></i>
-                </span>
-            </div>
-            
-            <!-- Map Container -->
-            <div class="map-container mt-3">
-                <div class="map-controls">
-                    <button class="btn btn-primary btn-sm" id="refreshBtn">
-                        <i class="fas fa-sync-alt"></i> {{ __('messages.refresh_now') }}
-                    </button>
-                    <button class="btn btn-secondary btn-sm" id="centerMapBtn">
-                        <i class="fas fa-crosshairs"></i> {{ __('messages.center_map') }}
-                    </button>
+
+                <!-- Last Update Info -->
+                <div class="last-update">
+                    <i class="fas fa-clock"></i>
+                    {{ __('messages.last_update') }}: <strong id="lastUpdateTime">--:--</strong>
+                    <span class="refresh-indicator" id="refreshIndicator">
+                        <i class="fas fa-sync-alt"></i>
+                    </span>
                 </div>
-                <div id="driverMap"></div>
+
+                <!-- Map Container -->
+                <div class="map-container mt-3">
+                    <div class="map-controls">
+                        <button class="btn btn-primary btn-sm" id="refreshBtn">
+                            <i class="fas fa-sync-alt"></i> {{ __('messages.refresh_now') }}
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="centerMapBtn">
+                            <i class="fas fa-crosshairs"></i> {{ __('messages.center_map') }}
+                        </button>
+                    </div>
+                    <div id="driverMap"></div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 @endsection
+
 
 @section('script')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -260,8 +330,13 @@
         });
         markers = {};
         
-        // Add new markers
+        // Add new markers only for drivers with locations
         drivers.forEach(driver => {
+            // Skip drivers without location
+            if (!driver.has_location || driver.lat === null || driver.lng === null) {
+                return;
+            }
+            
             const isOnline = driver.status === 'online';
             const marker = L.marker([driver.lat, driver.lng], {
                 icon: createMarkerIcon(isOnline)
@@ -276,10 +351,63 @@
     function updateStats(drivers) {
         const onlineDrivers = drivers.filter(d => d.status === 'online');
         const offlineDrivers = drivers.filter(d => d.status === 'offline');
+        const noLocationDrivers = drivers.filter(d => !d.has_location);
         
         document.getElementById('onlineCount').textContent = onlineDrivers.length;
         document.getElementById('offlineCount').textContent = offlineDrivers.length;
         document.getElementById('totalCount').textContent = drivers.length;
+        document.getElementById('noLocationCount').textContent = noLocationDrivers.length;
+    }
+
+    // Display drivers without location
+    function displayDriversWithoutLocation(drivers) {
+        const noLocationDrivers = drivers.filter(d => !d.has_location);
+        const alert = document.getElementById('noLocationAlert');
+        const listContainer = document.getElementById('noLocationDriversList');
+        
+        if (noLocationDrivers.length > 0) {
+            alert.style.display = 'block';
+            
+            let tableHTML = `
+                <div class="no-location-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>{{ __('messages.driver_name') }}</th>
+                                <th>{{ __('messages.phone') }}</th>
+                                <th>{{ __('messages.status') }}</th>
+                                <th>{{ __('messages.balance') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            noLocationDrivers.forEach((driver, index) => {
+                const statusClass = driver.status === 'online' ? 'online' : 'offline';
+                const statusText = driver.status === 'online' ? '{{ __("messages.online") }}' : '{{ __("messages.offline") }}';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${driver.name}</strong></td>
+                        <td>${driver.phone || '-'}</td>
+                        <td><span class="driver-status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${driver.balance} {{ __('messages.currency') }}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            listContainer.innerHTML = tableHTML;
+        } else {
+            alert.style.display = 'none';
+        }
     }
     
     // Fetch driver locations
@@ -293,6 +421,7 @@
                 if (data.success) {
                     updateMarkers(data.drivers);
                     updateStats(data.drivers);
+                    displayDriversWithoutLocation(data.drivers);
                     
                     // Update last update time
                     const now = new Date();

@@ -35,49 +35,71 @@ class DriverMapController extends Controller
             // Fetch all driver documents from Firestore using REST API
             $response = Http::timeout(10)->get("{$this->baseUrl}/drivers");
 
-            if (!$response->successful()) {
-                throw new \Exception('Failed to fetch drivers from Firestore: ' . $response->body());
+            $firebaseDriverIds = [];
+            $firebaseLocations = [];
+
+            // Process Firebase data if available
+            if ($response->successful()) {
+                $firestoreData = $response->json();
+
+                if (isset($firestoreData['documents']) && is_array($firestoreData['documents'])) {
+                    foreach ($firestoreData['documents'] as $document) {
+                        $nameParts = explode('/', $document['name']);
+                        $driverId = end($nameParts);
+                        
+                        $firebaseDriverIds[] = $driverId;
+                        
+                        $fields = $document['fields'] ?? [];
+                        $lat = $this->getFieldValue($fields, 'lat');
+                        $lng = $this->getFieldValue($fields, 'lng');
+
+                        if (!empty($lat) && !empty($lng)) {
+                            $firebaseLocations[$driverId] = [
+                                'lat' => (float)$lat,
+                                'lng' => (float)$lng,
+                                'last_updated' => $this->getFieldValue($fields, 'updated_at') ?? now()->toISOString(),
+                            ];
+                        }
+                    }
+                }
             }
 
-            $firestoreData = $response->json();
+            // Get all active drivers from MySQL
+            $drivers = Driver::where('activate', 1)->get();
             $driverLocations = [];
 
-            // Check if documents exist
-            if (isset($firestoreData['documents']) && is_array($firestoreData['documents'])) {
-                foreach ($firestoreData['documents'] as $document) {
-                    // Extract driver ID from document name
-                    // Format: projects/{project}/databases/(default)/documents/drivers/{driverId}
-                    $nameParts = explode('/', $document['name']);
-                    $driverId = end($nameParts);
-
-                    // Extract fields from Firestore document
-                    $fields = $document['fields'] ?? [];
-                    
-                    // Get lat and lng from Firestore
-                    $lat = $this->getFieldValue($fields, 'lat');
-                    $lng = $this->getFieldValue($fields, 'lng');
-
-                    // Skip if no valid location
-                    if (empty($lat) || empty($lng)) {
-                        continue;
-                    }
-
-                    // Get driver info from MySQL
-                    $driver = Driver::find($driverId);
-
-                    if ($driver) {
-                        $driverLocations[] = [
-                            'id' => $driverId,
-                            'name' => $driver->name ?? 'Driver #' . $driverId,
-                            'phone' => $driver->phone ?? '',
-                            'status' => $driver->status == 1 ? 'online' : 'offline',
-                            'activate' => $driver->activate == 1,
-                            'balance' => $driver->balance ?? 0,
-                            'lat' => (float)$lat,
-                            'lng' => (float)$lng,
-                            'last_updated' => $this->getFieldValue($fields, 'updated_at') ?? now()->toISOString(),
-                        ];
-                    }
+            foreach ($drivers as $driver) {
+                $driverId = $driver->id;
+                
+                // Check if driver has location in Firebase
+                if (isset($firebaseLocations[$driverId])) {
+                    // Driver found in Firebase - use Firebase location
+                    $driverLocations[] = [
+                        'id' => $driverId,
+                        'name' => $driver->name ?? 'Driver #' . $driverId,
+                        'phone' => $driver->phone ?? '',
+                        'status' => $driver->status == 1 ? 'online' : 'offline', // From MySQL
+                        'activate' => $driver->activate == 1,
+                        'balance' => $driver->balance ?? 0,
+                        'lat' => $firebaseLocations[$driverId]['lat'],
+                        'lng' => $firebaseLocations[$driverId]['lng'],
+                        'last_updated' => $firebaseLocations[$driverId]['last_updated'],
+                        'has_location' => true,
+                    ];
+                } else {
+                    // Driver NOT found in Firebase - include with default location or null
+                    $driverLocations[] = [
+                        'id' => $driverId,
+                        'name' => $driver->name ?? 'Driver #' . $driverId,
+                        'phone' => $driver->phone ?? '',
+                        'status' => $driver->status == 1 ? 'online' : 'offline', // From MySQL
+                        'activate' => $driver->activate == 1,
+                        'balance' => $driver->balance ?? 0,
+                        'lat' => null,
+                        'lng' => null,
+                        'last_updated' => null,
+                        'has_location' => false,
+                    ];
                 }
             }
 
@@ -85,6 +107,8 @@ class DriverMapController extends Controller
                 'success' => true,
                 'drivers' => $driverLocations,
                 'total' => count($driverLocations),
+                'drivers_with_location' => count(array_filter($driverLocations, fn($d) => $d['has_location'])),
+                'drivers_without_location' => count(array_filter($driverLocations, fn($d) => !$d['has_location'])),
                 'timestamp' => now()->toISOString()
             ]);
 
@@ -106,24 +130,7 @@ class DriverMapController extends Controller
     public function getDriverLocation($driverId)
     {
         try {
-            // Fetch specific driver document from Firestore
-            $response = Http::timeout(10)->get("{$this->baseUrl}/drivers/{$driverId}");
-
-            if ($response->status() === 404) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Driver location not found in Firebase'
-                ], 404);
-            }
-
-            if (!$response->successful()) {
-                throw new \Exception('Failed to fetch driver from Firestore');
-            }
-
-            $document = $response->json();
-            $fields = $document['fields'] ?? [];
-
-            // Get driver info from MySQL
+            // Get driver info from MySQL first
             $driver = Driver::find($driverId);
 
             if (!$driver) {
@@ -133,17 +140,37 @@ class DriverMapController extends Controller
                 ], 404);
             }
 
+            // Try to fetch location from Firestore
+            $response = Http::timeout(10)->get("{$this->baseUrl}/drivers/{$driverId}");
+
+            $locationData = [
+                'id' => $driverId,
+                'name' => $driver->name,
+                'phone' => $driver->phone,
+                'status' => $driver->status == 1 ? 'online' : 'offline', // From MySQL
+                'activate' => $driver->activate == 1,
+                'balance' => $driver->balance ?? 0,
+            ];
+
+            if ($response->successful()) {
+                $document = $response->json();
+                $fields = $document['fields'] ?? [];
+
+                $locationData['lat'] = (float)$this->getFieldValue($fields, 'lat');
+                $locationData['lng'] = (float)$this->getFieldValue($fields, 'lng');
+                $locationData['last_updated'] = $this->getFieldValue($fields, 'updated_at') ?? now()->toISOString();
+                $locationData['has_location'] = true;
+            } else {
+                // Driver not in Firebase
+                $locationData['lat'] = null;
+                $locationData['lng'] = null;
+                $locationData['last_updated'] = null;
+                $locationData['has_location'] = false;
+            }
+
             return response()->json([
                 'success' => true,
-                'driver' => [
-                    'id' => $driverId,
-                    'name' => $driver->name,
-                    'phone' => $driver->phone,
-                    'status' => $driver->status == 1 ? 'online' : 'offline',
-                    'lat' => (float)$this->getFieldValue($fields, 'lat'),
-                    'lng' => (float)$this->getFieldValue($fields, 'lng'),
-                    'last_updated' => $this->getFieldValue($fields, 'updated_at') ?? now()->toISOString(),
-                ]
+                'driver' => $locationData
             ]);
 
         } catch (\Exception $e) {
@@ -158,8 +185,6 @@ class DriverMapController extends Controller
 
     /**
      * Helper method to extract value from Firestore field structure
-     * Firestore REST API returns fields in this format:
-     * { "fieldName": { "stringValue": "value" } } or { "fieldName": { "doubleValue": 1.23 } }
      */
     private function getFieldValue($fields, $fieldName)
     {
@@ -169,7 +194,6 @@ class DriverMapController extends Controller
 
         $field = $fields[$fieldName];
 
-        // Check for different value types
         if (isset($field['stringValue'])) {
             return $field['stringValue'];
         }

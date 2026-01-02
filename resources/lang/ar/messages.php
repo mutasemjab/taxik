@@ -1287,4 +1287,13 @@ return [
   'Optional' => 'اختياري',
   'Enter_Reason_For_Unbanning' => 'أدخل سبب إلغاء حظر هذا السائق',
   'Unban_Confirmation_Message' => 'هل أنت متأكد من إلغاء حظر هذا السائق؟ سيتم استعادة وصوله إلى الحساب.',
+  // Arabic (ar/messages.php)
+  'drivers_without_location' => 'السائقون بدون موقع',
+  'drivers_without_firebase_location' => 'السائقون بدون موقع في Firebase',
+  'drivers_without_location_description' => 'السائقون التاليون موجودون في قاعدة البيانات ولكن ليس لديهم بيانات موقع في Firebase:',
+  'driver_name' => 'اسم السائق',
+  'phone' => 'الهاتف',
+  'status' => 'الحالة',
+  'balance' => 'الرصيد',
+  'currency' => 'دينار',
 ];

@@ -298,7 +298,8 @@ class DriverController extends Controller
             'driving_license_front',
             'driving_license_back',
             'car_license_front',
-            'car_license_back'
+            'car_license_back',
+            'no_criminal_record',
         ];
 
         foreach ($imageFields as $field) {

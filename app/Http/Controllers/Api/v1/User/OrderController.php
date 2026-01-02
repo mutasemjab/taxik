@@ -308,7 +308,7 @@ class OrderController extends Controller
                     return response()->json([
                         'status' => false,
                         'type' => 'insufficient_balance',
-                        'message' => 'Insufficient wallet balance',
+                        'message' => 'لا يوجد معك رصيد كافي في المحفظة',
                         'data' => [
                             'required_amount' => $finalPrice,
                             'current_balance' => $user->balance,

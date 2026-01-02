@@ -1296,4 +1296,6 @@ return [
   'status' => 'الحالة',
   'balance' => 'الرصيد',
   'currency' => 'دينار',
+  'driver_id' => 'الرقم',
+  'reason' => 'السبب',
 ];

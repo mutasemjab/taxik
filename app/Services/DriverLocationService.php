@@ -265,53 +265,70 @@ class DriverLocationService
     }
 
     /**
-     * Get driver locations from Firestore using REST API
+     * Get driver locations from Firestore using REST API with PAGINATION
      */
     private function getDriverLocationsFromFirestore(array $driverIds)
     {
         $driversWithLocations = [];
 
         try {
-            // Fetch all drivers from Firestore in one request
-            $response = Http::timeout(10)->get("{$this->baseUrl}/drivers");
+            $nextPageToken = null;
+            $pageSize = 300; // Maximum allowed by Firebase
+            
+            do {
+                // Build URL with pagination
+                $url = "{$this->baseUrl}/drivers?pageSize={$pageSize}";
+                if ($nextPageToken) {
+                    $url .= "&pageToken=" . urlencode($nextPageToken);
+                }
+                
+                $response = Http::timeout(10)->get($url);
 
-            if (!$response->successful()) {
-                \Log::error('Failed to fetch drivers from Firestore: ' . $response->body());
-                return [];
-            }
+                if (!$response->successful()) {
+                    \Log::error('Failed to fetch drivers from Firestore: ' . $response->body());
+                    break; // Stop pagination on error
+                }
 
-            $firestoreData = $response->json();
+                $firestoreData = $response->json();
 
-            // Process documents if they exist
-            if (isset($firestoreData['documents']) && is_array($firestoreData['documents'])) {
-                foreach ($firestoreData['documents'] as $document) {
-                    // Extract driver ID from document name
-                    $nameParts = explode('/', $document['name']);
-                    $driverId = (int)end($nameParts);
+                // Process documents if they exist
+                if (isset($firestoreData['documents']) && is_array($firestoreData['documents'])) {
+                    foreach ($firestoreData['documents'] as $document) {
+                        // Extract driver ID from document name
+                        $nameParts = explode('/', $document['name']);
+                        $driverId = (int)end($nameParts);
 
-                    // Only process drivers that are in our available list
-                    if (!in_array($driverId, $driverIds)) {
-                        continue;
-                    }
+                        // Only process drivers that are in our available list
+                        if (!in_array($driverId, $driverIds)) {
+                            continue;
+                        }
 
-                    $fields = $document['fields'] ?? [];
+                        $fields = $document['fields'] ?? [];
 
-                    // Get lat and lng from Firestore
-                    $lat = $this->getFieldValue($fields, 'lat');
-                    $lng = $this->getFieldValue($fields, 'lng');
+                        // Get lat and lng from Firestore
+                        $lat = $this->getFieldValue($fields, 'lat');
+                        $lng = $this->getFieldValue($fields, 'lng');
 
-                    // Check if location data exists and is valid
-                    if (!empty($lat) && !empty($lng)) {
-                        $driversWithLocations[] = [
-                            'id' => $driverId,
-                            'lat' => (float)$lat,
-                            'lng' => (float)$lng,
-                        ];
-                    } else {
-                        \Log::debug("Driver {$driverId} has no valid location data in Firestore");
+                        // Check if location data exists and is valid
+                        if (!empty($lat) && !empty($lng)) {
+                            $driversWithLocations[] = [
+                                'id' => $driverId,
+                                'lat' => (float)$lat,
+                                'lng' => (float)$lng,
+                            ];
+                        } else {
+                            \Log::debug("Driver {$driverId} has no valid location data in Firestore");
+                        }
                     }
                 }
-            }
+                
+                // Check if there are more pages
+                $nextPageToken = $firestoreData['nextPageToken'] ?? null;
+                
+            } while ($nextPageToken); // Continue if there's a next page
+            
+            \Log::info("Fetched " . count($driversWithLocations) . " drivers with valid locations from Firestore");
+            
         } catch (\Exception $e) {
             \Log::error('Error fetching from Firestore: ' . $e->getMessage());
         }

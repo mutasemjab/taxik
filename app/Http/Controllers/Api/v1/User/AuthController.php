@@ -229,7 +229,10 @@ class AuthController extends Controller
         }
 
         if ($validator->fails()) {
-            return $this->error_response('Validation error', $validator->errors());
+            // Get first validation error message for the message field
+            $errorMessage = $validator->errors()->first();
+            // Keep all validation errors in the data field
+            return $this->error_response($errorMessage, $validator->errors());
         }
 
         try {

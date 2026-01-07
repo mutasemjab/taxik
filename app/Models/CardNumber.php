@@ -32,6 +32,13 @@ class CardNumber extends Model
         return $this->belongsTo(Card::class);
     }
 
+
+
+    public function usages()
+    {
+        return $this->hasMany(CardUsage::class);
+    }
+
     /**
      * Get activate status text
      */
@@ -47,8 +54,8 @@ class CardNumber extends Model
     {
         return $this->status == self::STATUS_USED ? __('messages.used') : __('messages.not_used');
     }
-    
-     public function getFormattedNumberAttribute()
+
+    public function getFormattedNumberAttribute()
     {
         return chunk_split($this->number, 4, '-');
     }

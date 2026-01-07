@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\CountryChargeController;
 use App\Http\Controllers\Admin\DriverAlertAdminController;
 use App\Http\Controllers\Admin\DriverMapController;
+use App\Http\Controllers\Reports\FinancialReportController;
 use App\Http\Controllers\Admin\RatingController;
 use App\Http\Controllers\Reports\OrderStatusReportController;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
@@ -62,6 +63,38 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
                 ->name('order-status-export');
         });
 
+   // تقارير السائقين
+    Route::get('/financial-reports', [FinancialReportController::class, 'index'])
+        ->name('financial-reports.index')
+        ->middleware('permission:financial-reports-list');
+    
+    // تفاصيل سائق محدد
+    Route::get('/financial-reports/driver/{driver}', [FinancialReportController::class, 'driverDetails'])
+        ->name('financial-reports.driver-details')
+        ->middleware('permission:financial-reports-list');
+    
+    // تقرير نقاط البيع
+    Route::get('/financial-reports/pos', [FinancialReportController::class, 'posReport'])
+        ->name('financial-reports.pos-report')
+        ->middleware('permission:financial-reports-list');
+    
+    // التقرير الإجمالي
+    Route::get('/financial-reports/overall', [FinancialReportController::class, 'overallSummary'])
+        ->name('financial-reports.overall-summary')
+        ->middleware('permission:financial-reports-list');
+    
+    // تصدير التقارير
+    Route::get('/financial-reports/export', [FinancialReportController::class, 'exportDriversReport'])
+        ->name('financial-reports.export')
+        ->middleware('permission:financial-reports-export');
+    
+    Route::get('/financial-reports/pdf', [FinancialReportController::class, 'exportDriversReportPDF'])
+        ->name('financial-reports.pdf')
+        ->middleware('permission:financial-reports-export');
+    
+    Route::get('/financial-reports/pos/export', [FinancialReportController::class, 'exportPOSReport'])
+        ->name('financial-reports.pos-export')
+        ->middleware('permission:financial-reports-export');
 
         /*         start  update login admin                 */
         Route::get('/admin/edit/{id}', [LoginController::class, 'editlogin'])->name('admin.login.edit');

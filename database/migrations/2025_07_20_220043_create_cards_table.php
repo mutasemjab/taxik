@@ -17,9 +17,11 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('pos_id')->nullable();
             $table->foreign('pos_id')->references('id')->on('p_o_s')->onDelete('cascade');
-             $table->string('name');
-             $table->double('price');
-             $table->double('number_of_cards');
+            $table->string('name');
+            $table->double('price'); // سعر البطاقة الأساسي (10)
+            $table->double('pos_commission_percentage')->default(0); // نسبة نقطة البيع
+            $table->double('driver_recharge_amount'); // المبلغ اللي بيتشحن للسائق (4 أو 5)
+            $table->double('number_of_cards');
             $table->timestamps();
         });
     }

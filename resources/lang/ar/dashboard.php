@@ -74,4 +74,7 @@ return [
     'refresh' => 'تحديث',
     'export' => 'تصدير',
     'filter' => 'تصفية',
+    'online_now' => 'متصل الآن',
+'minutes' => 'دقيقة',
+'today' => 'اليوم',
 ];

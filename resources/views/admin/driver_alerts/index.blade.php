@@ -10,9 +10,9 @@
             <tr>
                 <th>{{ __('messages.ID') }}</th>
                 <th>{{ __('messages.Driver') }}</th>
-                <th>{{ __('messages.Report') }}</th>
-                <th>{{ __('messages.Lat') }}</th>
-                <th>{{ __('messages.Lng') }}</th>
+                <th>{{ __('messages.Reason') }}</th>
+                <th>{{ __('messages.Latitude') }}</th>
+                <th>{{ __('messages.Longitude') }}</th>
                 <th>{{ __('messages.address') }}</th>
                 <th>{{ __('messages.Note') }}</th>
                 <th>{{ __('messages.Status') }}</th>

@@ -24,7 +24,7 @@
                                     <th>{{ __('messages.Name') }}</th>
                                     <th>{{ __('messages.Phone') }}</th>
                                     <th>{{ __('messages.Commission') }} (%)</th>
-                                    <th>{{ __('messages.Created At') }}</th>
+                                    <th>{{ __('messages.Created_At') }}</th>
                                     <th>{{ __('messages.Actions') }}</th>
                                 </tr>
                             </thead>

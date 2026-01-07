@@ -11,7 +11,7 @@ use Spatie\Activitylog\LogOptions;
 
 class Driver extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable , LogsActivity;
+    use HasApiTokens, HasFactory, Notifiable, LogsActivity;
 
     protected $guarded = [];
 
@@ -30,8 +30,8 @@ class Driver extends Authenticatable
         'car_license_back_url',
         'no_criminal_record_url',
     ];
-    
-      // Activity Log Configuration
+
+    // Activity Log Configuration
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -54,40 +54,40 @@ class Driver extends Authenticatable
             $baseUrl = rtrim(config('app.url'), '/');
             return $baseUrl . '/assets/admin/uploads/' . $imageName;
         }
-        
+
         return null;
     }
-    
+
     // Accessor for photo URL
     public function getPhotoUrlAttribute()
     {
         return $this->getImageUrl($this->photo);
     }
-    
+
     // Accessor for photo_of_car URL
     public function getPhotoOfCarUrlAttribute()
     {
         return $this->getImageUrl($this->photo_of_car);
     }
-    
+
     // Accessor for driving_license_front URL
     public function getDrivingLicenseFrontUrlAttribute()
     {
         return $this->getImageUrl($this->driving_license_front);
     }
-    
+
     // Accessor for driving_license_back URL
     public function getDrivingLicenseBackUrlAttribute()
     {
         return $this->getImageUrl($this->driving_license_back);
     }
-    
+
     // Accessor for car_license_front URL
     public function getCarLicenseFrontUrlAttribute()
     {
         return $this->getImageUrl($this->car_license_front);
     }
-    
+
     // Accessor for car_license_back URL
     public function getCarLicenseBackUrlAttribute()
     {
@@ -97,41 +97,51 @@ class Driver extends Authenticatable
     {
         return $this->getImageUrl($this->no_criminal_record);
     }
-    
-   public function options()
+
+    public function options()
     {
         return $this->belongsToMany(Option::class, 'driver_options')
             ->withTimestamps();
     }
 
-   public function services()
+    public function registrationPayment()
+    {
+        return $this->hasOne(DriverRegistrationPayment::class);
+    }
+
+    public function registrationPayments()
+    {
+        return $this->hasMany(DriverRegistrationPayment::class);
+    }
+
+    public function services()
     {
         return $this->belongsToMany(Service::class, 'driver_services')
-                    ->withPivot('status', 'service_type')
-                    ->withTimestamps();
+            ->withPivot('status', 'service_type')
+            ->withTimestamps();
     }
 
     public function primaryServices()
     {
         return $this->belongsToMany(Service::class, 'driver_services')
-                    ->wherePivot('service_type', 1)
-                    ->withPivot('status', 'service_type')
-                    ->withTimestamps();
+            ->wherePivot('service_type', 1)
+            ->withPivot('status', 'service_type')
+            ->withTimestamps();
     }
 
     public function optionalServices()
     {
         return $this->belongsToMany(Service::class, 'driver_services')
-                    ->wherePivot('service_type', 2)
-                    ->withPivot('status', 'service_type')
-                    ->withTimestamps();
+            ->wherePivot('service_type', 2)
+            ->withPivot('status', 'service_type')
+            ->withTimestamps();
     }
 
     public function activeServices()
     {
         return $this->belongsToMany(Service::class, 'driver_services')
-                    ->withPivot('status')
-                    ->wherePivot('status', 1);
+            ->withPivot('status')
+            ->wherePivot('status', 1);
     }
 
 
@@ -140,7 +150,7 @@ class Driver extends Authenticatable
     {
         return $this->hasMany(DriverService::class);
     }
-   
+
     public function walletTransactions()
     {
         return $this->hasMany(WalletTransaction::class);
@@ -151,13 +161,13 @@ class Driver extends Authenticatable
         return $this->hasMany(Rating::class);
     }
 
-      public function representative()
+    public function representative()
     {
         return $this->belongsTo(Representive::class, 'representive_id');
     }
-    
 
-     public function addBalance($amount, $note = null, $adminId = null, $userId = null)
+
+    public function addBalance($amount, $note = null, $adminId = null, $userId = null)
     {
         $this->increment('balance', $amount);
 
@@ -216,6 +226,17 @@ class Driver extends Authenticatable
         return $this->activeBan;
     }
 
+
+    public function withdrawalRequests()
+    {
+        return $this->hasMany(WithdrawalRequest::class);
+    }
+
+    public function cardUsages()
+    {
+        return $this->hasMany(CardUsage::class);
+    }
+
     /**
      * Ban the driver
      */
@@ -257,5 +278,4 @@ class Driver extends Authenticatable
 
         return true;
     }
-    
 }

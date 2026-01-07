@@ -76,4 +76,7 @@ return [
     'refresh' => 'Refresh',
     'export' => 'Export',
     'filter' => 'Filter',
+    'online_now' => 'Online Now',
+'minutes' => 'Minutes',
+'today' => 'Today',
 ];

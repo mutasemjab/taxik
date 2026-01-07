@@ -231,15 +231,7 @@
                     </div>
                 </div>
 
-                <!-- Drivers Without Location Section -->
-                <div class="alert alert-warning mt-3" id="noLocationAlert" style="display: none;">
-                    <h5 class="alert-heading">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        {{ __('messages.drivers_without_firebase_location') }}
-                    </h5>
-                    <p class="mb-2">{{ __('messages.drivers_without_location_description') }}</p>
-                    <div id="noLocationDriversList"></div>
-                </div>
+
 
                 <!-- Last Update Info -->
                 <div class="last-update">
@@ -261,6 +253,16 @@
                         </button>
                     </div>
                     <div id="driverMap"></div>
+                </div>
+
+                <!-- Drivers Without Location Section -->
+                <div class="alert alert-warning mt-3" id="noLocationAlert" style="display: none;">
+                    <h5 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ __('messages.drivers_without_firebase_location') }}
+                    </h5>
+                    <p class="mb-2">{{ __('messages.drivers_without_location_description') }}</p>
+                    <div id="noLocationDriversList"></div>
                 </div>
             </div>
         </div>
@@ -312,7 +314,7 @@
         function createPopupContent(driver) {
             const statusClass = driver.status === 'online' ? 'online' : 'offline';
             const statusText = driver.status === 'online' ? '{{ __('messages.online') }}' :
-            '{{ __('messages.offline') }}';
+                '{{ __('messages.offline') }}';
 
             return `
             <div class="driver-popup">

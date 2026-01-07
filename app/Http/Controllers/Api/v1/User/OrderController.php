@@ -833,23 +833,5 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Calculate estimated time and update it in the order
-     * @param Order $order
-     * @return void
-     */
-    private function updateEstimatedTime($order)
-    {
-        $estimatedTime = $this->calculateEstimatedTime(
-            $order->pick_lat,
-            $order->pick_lng,
-            $order->drop_lat,
-            $order->drop_lng
-        );
-
-        if ($estimatedTime) {
-            $order->estimated_time = $estimatedTime;
-            $order->save();
-        }
-    }
+  
 }

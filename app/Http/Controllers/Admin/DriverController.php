@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use App\Models\DriverBan;
+use App\Models\DriverRegistrationPayment;
 use App\Models\Option;
 use App\Models\Representive;
 use App\Models\Service;
 use App\Models\WalletTransaction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -100,7 +102,9 @@ class DriverController extends Controller
             'option_ids' => 'required|array',
             'option_ids.*' => 'required|exists:options,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-
+            'total_paid' => 'nullable|numeric|min:0',
+            'amount_kept' => 'nullable|numeric|min:0',
+            'amount_added_to_wallet' => 'nullable|numeric|min:0',
             // Services validation
             'primary_service_id' => 'required|exists:services,id',
             'optional_service_ids' => 'nullable|array',
@@ -142,7 +146,7 @@ class DriverController extends Controller
         ]);
 
         // Set default values
-        $driverData['balance'] = $request->has('balance') ? $request->balance : 0;
+        $driverData['balance'] = $request->has('balance') ? $request->amount_added_to_wallet : 0;
         $driverData['activate'] = $request->has('activate') ? $request->activate : 1;
 
         // Handle all image uploads
@@ -194,6 +198,29 @@ class DriverController extends Controller
         // Attach services
         $driver->services()->attach($servicesToAttach);
 
+        // إذا كان هناك دفعة تسجيل
+        if ($request->total_paid > 0 || $request->amount_kept > 0 || $request->amount_added_to_wallet > 0) {
+            $registrationPayment = DriverRegistrationPayment::create([
+                'driver_id' => $driver->id,
+                'total_paid' => $request->total_paid ?? 0,
+                'amount_kept' => $request->amount_kept ?? 0,
+                'amount_added_to_wallet' => $request->amount_added_to_wallet ?? 0,
+                'note' => $request->payment_note,
+                'admin_id' => Auth::guard('admin')->id(),
+            ]);
+
+            // إضافة معاملة محفظة إذا تم إضافة رصيد
+            if ($request->amount_added_to_wallet > 0) {
+                WalletTransaction::create([
+                    'driver_id' => $driver->id,
+                    'admin_id' => Auth::guard('admin')->id(),
+                    'amount' => $request->amount_added_to_wallet,
+                    'type_of_transaction' => 1, // إضافة
+                    'note' => 'رصيد تسجيل أولي - ' . ($request->payment_note ?? ''),
+                ]);
+            }
+        }
+
         return redirect()
             ->route('drivers.index')
             ->with('success', 'Driver created successfully');
@@ -220,7 +247,7 @@ class DriverController extends Controller
      */
     public function edit($id)
     {
-        $driver = Driver::with('services')->findOrFail($id);
+        $driver = Driver::with('registrationPayments.admin')->findOrFail($id);
         $options = Option::all();
         $allServices = Service::where('activate', 1)->get();
         $representatives = Representive::get(); // Add this line
@@ -244,7 +271,9 @@ class DriverController extends Controller
             'option_ids' => 'required|array',
             'option_ids.*' => 'required|exists:options,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-
+            'total_paid' => 'nullable|numeric|min:0',
+            'amount_kept' => 'nullable|numeric|min:0',
+            'amount_added_to_wallet' => 'nullable|numeric|min:0',
             // Services validation
             'primary_service_id' => 'required|exists:services,id',
             'optional_service_ids' => 'nullable|array',
@@ -347,6 +376,31 @@ class DriverController extends Controller
 
         // Sync services
         $driver->services()->sync($servicesToSync);
+
+        // إذا تم إضافة دفعة جديدة
+        if ($request->total_paid > 0 || $request->amount_kept > 0 || $request->amount_added_to_wallet > 0) {
+            DriverRegistrationPayment::create([
+                'driver_id' => $driver->id,
+                'total_paid' => $request->total_paid ?? 0,
+                'amount_kept' => $request->amount_kept ?? 0,
+                'amount_added_to_wallet' => $request->amount_added_to_wallet ?? 0,
+                'note' => $request->payment_note,
+                'admin_id' => Auth::guard('admin')->id(),
+            ]);
+
+            // تحديث رصيد السائق وإضافة معاملة محفظة
+            if ($request->amount_added_to_wallet > 0) {
+                $driver->increment('balance', $request->amount_added_to_wallet);
+
+                WalletTransaction::create([
+                    'driver_id' => $driver->id,
+                    'admin_id' => Auth::guard('admin')->id(),
+                    'amount' => $request->amount_added_to_wallet,
+                    'type_of_transaction' => 1, // إضافة
+                    'note' => 'دفعة إضافية - ' . ($request->payment_note ?? ''),
+                ]);
+            }
+        }
 
         return redirect()
             ->route('drivers.index')

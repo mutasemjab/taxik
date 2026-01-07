@@ -141,7 +141,7 @@ class WalletDriverController extends Controller
 
             // Add balance to driver wallet
             $walletTransaction = $driver->addBalance(
-                $card->price,
+                $card->driver_recharge_amount,
                 __('messages.card_usage_note', ['card_name' => $card->name, 'card_number' => $request->card_number])
             );
 
@@ -164,12 +164,12 @@ class WalletDriverController extends Controller
                     'id' => $driver->id,
                     'name' => $driver->name,
                     'balance' => $driver->fresh()->formatted_balance,
-                    'previous_balance' => number_format($driver->balance - $card->price, 2),
+                    'previous_balance' => number_format($driver->balance - $card->driver_recharge_amount, 2),
                 ],
                 'card' => [
                     'id' => $card->id,
                     'name' => $card->name,
-                    'price' => number_format($card->price, 2),
+                    'price' => number_format($card->driver_recharge_amount, 2),
                     'pos' => $card->pos ? $card->pos->name : null,
                 ],
                 'card_number' => [

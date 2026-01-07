@@ -321,6 +321,81 @@
                         </div>
                     </div>
 
+                    <!-- Registration Payment History -->
+                    <div class="card mt-4 mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="m-0 font-weight-bold">{{ __('messages.Registration_Payment_History') }}</h6>
+                        </div>
+                        <div class="card-body">
+                            @if ($driver->registrationPayments && $driver->registrationPayments->count() > 0)
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>{{ __('messages.Date') }}</th>
+                                                <th>{{ __('messages.Total_Paid') }}</th>
+                                                <th>{{ __('messages.Amount_Kept') }}</th>
+                                                <th>{{ __('messages.Added_To_Wallet') }}</th>
+                                                <th>{{ __('messages.Note') }}</th>
+                                                <th>{{ __('messages.Admin') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($driver->registrationPayments as $payment)
+                                                <tr>
+                                                    <td>{{ $payment->created_at->format('Y-m-d H:i') }}</td>
+                                                    <td>{{ number_format($payment->total_paid, 2) }} JD</td>
+                                                    <td>{{ number_format($payment->amount_kept, 2) }} JD</td>
+                                                    <td>{{ number_format($payment->amount_added_to_wallet, 2) }} JD</td>
+                                                    <td>{{ $payment->note ?? '-' }}</td>
+                                                    <td>{{ $payment->admin->name ?? '-' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <p class="text-muted">{{ __('messages.No_payment_history') }}</p>
+                            @endif
+
+                            <!-- Add New Payment -->
+                            <hr>
+                            <h6 class="font-weight-bold">{{ __('messages.Add_New_Payment') }}</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="total_paid">{{ __('messages.Total_Amount_Paid') }}</label>
+                                        <input type="number" step="0.01" class="form-control" id="total_paid"
+                                            name="total_paid" value="{{ old('total_paid', 0) }}" min="0">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="amount_kept">{{ __('messages.Amount_Kept_By_Admin') }}</label>
+                                        <input type="number" step="0.01" class="form-control" id="amount_kept"
+                                            name="amount_kept" value="{{ old('amount_kept', 0) }}" min="0">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label
+                                            for="amount_added_to_wallet">{{ __('messages.Amount_Added_To_Wallet') }}</label>
+                                        <input type="number" step="0.01" class="form-control"
+                                            id="amount_added_to_wallet" name="amount_added_to_wallet"
+                                            value="{{ old('amount_added_to_wallet', 0) }}" min="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="payment_note">{{ __('messages.Payment_Note') }}</label>
+                                <textarea class="form-control" id="payment_note" name="payment_note" rows="2">{{ old('payment_note') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group text-center mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> {{ __('messages.Update') }}

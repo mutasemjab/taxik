@@ -13,13 +13,7 @@
                 </div>
 
                 <div class="card-body">
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-
+                   
                     <form action="{{ route('cards.store') }}" method="POST">
                         @csrf
 
@@ -62,10 +56,41 @@
                                    name="price" 
                                    value="{{ old('price') }}" 
                                    placeholder="{{ __('messages.enter_price') }}"
-                                   step="0.01"
+                                   step="any"
                                    min="0"
                                    required>
                             @error('price')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                         
+                        <div class="mb-3">
+                            <label for="price" class="form-label">{{ __('messages.pos_commission_percentage') }} <span class="text-danger">*</span></label>
+                            <input type="number" 
+                                   class="form-control @error('pos_commission_percentage') is-invalid @enderror" 
+                                   id="pos_commission_percentage" 
+                                   name="pos_commission_percentage" 
+                                   value="{{ old('pos_commission_percentage') }}" 
+                                   placeholder="{{ __('messages.enter_pos_commission_percentage') }}"
+                                   step="any"
+                                   min="0"
+                                   required>
+                            @error('pos_commission_percentage')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-3">
+                            <label for="driver_recharge_amount" class="form-label">{{ __('messages.driver_recharge_amount') }} <span class="text-danger">*</span></label>
+                            <input type="number" 
+                                   class="form-control @error('driver_recharge_amount') is-invalid @enderror" 
+                                   id="driver_recharge_amount" 
+                                   name="driver_recharge_amount" 
+                                   value="{{ old('driver_recharge_amount') }}" 
+                                   placeholder="{{ __('messages.enter_driver_recharge_amount') }}"
+                                   step="any"
+                                   min="0"
+                                   required>
+                            @error('driver_recharge_amount')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

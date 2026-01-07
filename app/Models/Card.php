@@ -12,6 +12,8 @@ class Card extends Model
     
     protected $casts = [
         'price' => 'decimal:2',
+        'pos_commission_percentage' => 'decimal:2',
+        'driver_recharge_amount' => 'decimal:2',
         'number_of_cards' => 'integer',
     ];
 

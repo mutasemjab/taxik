@@ -54,6 +54,8 @@ class CardController extends Controller
             'pos_id' => 'nullable|exists:p_o_s,id',
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'pos_commission_percentage' => 'required|numeric|min:0',
+            'driver_recharge_amount' => 'required|numeric|min:0',
             'number_of_cards' => 'required|integer|min:1|max:10000',
         ]);
 
@@ -106,6 +108,8 @@ class CardController extends Controller
             'pos_id' => 'nullable|exists:p_o_s,id',
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'pos_commission_percentage' => 'required|numeric|min:0',
+            'driver_recharge_amount' => 'required|numeric|min:0',
             'number_of_cards' => 'required|integer|min:1|max:10000',
         ]);
 

@@ -361,12 +361,18 @@
                             <!-- Add New Payment -->
                             <hr>
                             <h6 class="font-weight-bold">{{ __('messages.Add_New_Payment') }}</h6>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                {{ __('messages.Adding_new_payment_will_create_new_record') }}
+                            </div>
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="total_paid">{{ __('messages.Total_Amount_Paid') }}</label>
                                         <input type="number" step="0.01" class="form-control" id="total_paid"
                                             name="total_paid" value="{{ old('total_paid', 0) }}" min="0">
+                                        <small
+                                            class="form-text text-muted">{{ __('messages.Total_amount_driver_paid_you') }}</small>
                                     </div>
                                 </div>
 
@@ -375,6 +381,8 @@
                                         <label for="amount_kept">{{ __('messages.Amount_Kept_By_Admin') }}</label>
                                         <input type="number" step="0.01" class="form-control" id="amount_kept"
                                             name="amount_kept" value="{{ old('amount_kept', 0) }}" min="0">
+                                        <small
+                                            class="form-text text-muted">{{ __('messages.Amount_you_keep_as_commission') }}</small>
                                     </div>
                                 </div>
 
@@ -384,7 +392,10 @@
                                             for="amount_added_to_wallet">{{ __('messages.Amount_Added_To_Wallet') }}</label>
                                         <input type="number" step="0.01" class="form-control"
                                             id="amount_added_to_wallet" name="amount_added_to_wallet"
-                                            value="{{ old('amount_added_to_wallet', 0) }}" min="0">
+                                            value="{{ old('amount_added_to_wallet', $defaultBalance ?? 0) }}"
+                                            min="0">
+                                        <small
+                                            class="form-text text-muted">{{ __('messages.Amount_added_to_driver_wallet') }}</small>
                                     </div>
                                 </div>
                             </div>
@@ -392,6 +403,11 @@
                             <div class="form-group">
                                 <label for="payment_note">{{ __('messages.Payment_Note') }}</label>
                                 <textarea class="form-control" id="payment_note" name="payment_note" rows="2">{{ old('payment_note') }}</textarea>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                {{ __('messages.Payment_calculation_info') }}
                             </div>
                         </div>
                     </div>
@@ -413,6 +429,9 @@
 @section('script')
     <script>
         $(document).ready(function() {
+            // القيمة الافتراضية من الإعدادات
+            const defaultBalance = {{ $defaultBalance ?? 0 }};
+            
             // Function to update optional services based on primary selection
             function updateOptionalServices() {
                 const primaryServiceId = $('select[name="primary_service_id"]').val();

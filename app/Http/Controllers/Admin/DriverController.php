@@ -9,6 +9,7 @@ use App\Models\DriverRegistrationPayment;
 use App\Models\Option;
 use App\Models\Representive;
 use App\Models\Service;
+use App\Models\Setting;
 use App\Models\WalletTransaction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -82,7 +83,10 @@ class DriverController extends Controller
     {
         $options = Option::all();
 
-        return view('admin.drivers.create', compact('options'));
+        // جلب القيمة الافتراضية من الإعدادات
+        $defaultBalance = Setting::where('key', 'new_driver_register_add_balance')->first()->value ?? 0;
+
+        return view('admin.drivers.create', compact('options', 'defaultBalance'));
     }
 
     /**
@@ -142,14 +146,18 @@ class DriverController extends Controller
             'no_criminal_record',
             'password',
             'primary_service_id',
-            'optional_service_ids'
+            'optional_service_ids',
+            'total_paid',
+            'amount_kept',
+            'amount_added_to_wallet',
+            'payment_note'
         ]);
 
-        // Set default values
-        $driverData['balance'] = $request->has('balance') ? $request->amount_added_to_wallet : 0;
+        // الرصيد الابتدائي يكون فقط من amount_added_to_wallet
+        $driverData['balance'] = $request->amount_added_to_wallet ?? 0;
         $driverData['activate'] = $request->has('activate') ? $request->activate : 1;
 
-        // Handle all image uploads
+        // معالجة الصور
         $imageFields = [
             'photo',
             'photo_of_car',
@@ -167,15 +175,14 @@ class DriverController extends Controller
 
         $driver = Driver::create($driverData);
 
-        // Attach options to the driver
+        // ربط الخيارات
         if ($request->has('option_ids') && is_array($request->option_ids)) {
             $driver->options()->attach($request->option_ids);
         }
 
-        // Handle services
+        // ربط الخدمات
         $servicesToAttach = [];
 
-        // Add primary service
         if ($request->has('primary_service_id')) {
             $servicesToAttach[$request->primary_service_id] = [
                 'service_type' => 1,
@@ -183,7 +190,6 @@ class DriverController extends Controller
             ];
         }
 
-        // Add optional services
         if ($request->has('optional_service_ids') && is_array($request->optional_service_ids)) {
             foreach ($request->optional_service_ids as $serviceId) {
                 if ($serviceId != $request->primary_service_id) {
@@ -195,12 +201,11 @@ class DriverController extends Controller
             }
         }
 
-        // Attach services
         $driver->services()->attach($servicesToAttach);
 
-        // إذا كان هناك دفعة تسجيل
+        // إضافة دفعة التسجيل (فقط إذا كان هناك قيم)
         if ($request->total_paid > 0 || $request->amount_kept > 0 || $request->amount_added_to_wallet > 0) {
-            $registrationPayment = DriverRegistrationPayment::create([
+            DriverRegistrationPayment::create([
                 'driver_id' => $driver->id,
                 'total_paid' => $request->total_paid ?? 0,
                 'amount_kept' => $request->amount_kept ?? 0,
@@ -209,7 +214,7 @@ class DriverController extends Controller
                 'admin_id' => Auth::guard('admin')->id(),
             ]);
 
-            // إضافة معاملة محفظة إذا تم إضافة رصيد
+            // إضافة معاملة محفظة فقط إذا تم إضافة رصيد
             if ($request->amount_added_to_wallet > 0) {
                 WalletTransaction::create([
                     'driver_id' => $driver->id,
@@ -250,12 +255,15 @@ class DriverController extends Controller
         $driver = Driver::with('registrationPayments.admin')->findOrFail($id);
         $options = Option::all();
         $allServices = Service::where('activate', 1)->get();
-        $representatives = Representive::get(); // Add this line
+        $representatives = Representive::get();
 
         // Get services already assigned to driver
         $driverServiceIds = $driver->services->pluck('id')->toArray();
 
-        return view('admin.drivers.edit', compact('driver', 'options', 'allServices', 'driverServiceIds', 'representatives'));
+        // جلب القيمة الافتراضية من الإعدادات
+        $defaultBalance = Setting::where('key', 'new_driver_register_add_balance')->first()->value ?? 0;
+
+        return view('admin.drivers.edit', compact('driver', 'options', 'allServices', 'driverServiceIds', 'representatives', 'defaultBalance'));
     }
 
     public function update(Request $request, $id)
@@ -267,7 +275,7 @@ class DriverController extends Controller
             'phone' => 'required|string|unique:drivers,phone,' . $id,
             'email' => 'nullable|email|unique:drivers,email,' . $id,
             'sos_phone' => 'nullable|string',
-            'representive_id' => 'nullable|exists:representives,id', // Add this line
+            'representive_id' => 'nullable|exists:representives,id',
             'option_ids' => 'required|array',
             'option_ids.*' => 'required|exists:options,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -301,6 +309,7 @@ class DriverController extends Controller
                 ->withInput();
         }
 
+        // استبعاد حقول الدفع من بيانات السائق
         $driverData = $request->except([
             'photo',
             'photo_of_car',
@@ -312,7 +321,11 @@ class DriverController extends Controller
             'password',
             'option_ids',
             'primary_service_id',
-            'optional_service_ids'
+            'optional_service_ids',
+            'total_paid',           // إزالة
+            'amount_kept',          // إزالة
+            'amount_added_to_wallet', // إزالة
+            'payment_note'          // إزالة
         ]);
 
         // Handle password
@@ -332,7 +345,7 @@ class DriverController extends Controller
         ];
 
         foreach ($imageFields as $field) {
-            if ($request->has($field)) {
+            if ($request->hasFile($field)) {
                 // Delete old file if exists
                 if ($driver->$field && file_exists('assets/admin/uploads/' . $driver->$field)) {
                     unlink('assets/admin/uploads/' . $driver->$field);
@@ -377,7 +390,7 @@ class DriverController extends Controller
         // Sync services
         $driver->services()->sync($servicesToSync);
 
-        // إذا تم إضافة دفعة جديدة
+        // إذا تم إضافة دفعة جديدة (فقط إذا كان هناك قيم)
         if ($request->total_paid > 0 || $request->amount_kept > 0 || $request->amount_added_to_wallet > 0) {
             DriverRegistrationPayment::create([
                 'driver_id' => $driver->id,

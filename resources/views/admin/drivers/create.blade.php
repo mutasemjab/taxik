@@ -275,7 +275,20 @@
 @section('script')
     <script>
         // Show image previews
-        $(document).ready(function() {
+      $(document).ready(function() {
+            // تعيين القيمة الافتراضية من الإعدادات
+            const defaultBalance = {{ $defaultBalance ?? 0 }};
+            
+            // عند تحميل الصفحة، إذا كانت القيمة فارغة
+            if ($('#amount_added_to_wallet').val() == 0) {
+                $('#amount_added_to_wallet').val(defaultBalance);
+                $('#balance').val(defaultBalance);
+            }
+            
+            // عند تغيير amount_added_to_wallet، تحديث balance
+            $('#amount_added_to_wallet').on('input', function() {
+                $('#balance').val($(this).val());
+            });
             // Show filename on file select
             $('.custom-file-input').on('change', function() {
                 let fileName = $(this).val().split('\\').pop();

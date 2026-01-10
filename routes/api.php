@@ -59,6 +59,7 @@ Route::group(['prefix' => 'v1/user'], function () {
     // Auth Route
     Route::group(['middleware' => ['auth:user-api']], function () {
 
+        Route::get('/home', [HomeController::class, 'index']);
         Route::post('/addBalance', [WalletController::class, 'addBalance']);
 
         Route::get('/active', [AuthController::class, 'active']);

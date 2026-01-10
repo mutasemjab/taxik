@@ -22,23 +22,29 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
-          $schedule->command('orders:cancel-pending')
+        $schedule->command('orders:cancel-pending')
             ->hourly()
             ->withoutOverlapping()
             ->runInBackground()
             ->appendOutputTo(storage_path('logs/cancel-pending-orders.log'));
-            
-            $schedule->command('orders:cleanup-finished')
-             ->hourly()
-             ->withoutOverlapping()
-             ->runInBackground()
-             ->appendOutputTo(storage_path('logs/cleanup-finished-orders.log'));
-            $schedule->command('drivers:unban-expired')
-                 ->everyFiveMinutes()
-                 ->withoutOverlapping()
-                 ->runInBackground()
-                 ->appendOutputTo(storage_path('logs/ban-drivers.log'));
 
+        $schedule->command('orders:cleanup-finished')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/cleanup-finished-orders.log'));
+
+        $schedule->command('drivers:unban-expired')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/ban-drivers.log'));
+
+        $schedule->command('challenges:check-expired')
+            ->daily()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/check-expired-challenges.log'));
     }
 
     /**
@@ -48,7 +54,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands()
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

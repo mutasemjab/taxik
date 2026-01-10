@@ -29,17 +29,16 @@ class Order extends Model
         'wallet_amount_used' => 'decimal:2',
         'cash_amount_due' => 'decimal:2',
         'is_hybrid_payment' => 'boolean',
-
     ];
 
      // Activity Log Configuration
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['*']) // Log all attributes, or specify: ['name', 'price', 'number_of_cards']
-            ->logOnlyDirty() // Only log changed attributes
+            ->logOnly(['*'])
+            ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('order') // Custom log name
+            ->useLogName('order')
             ->setDescriptionForEvent(fn(string $eventName) => "Order has been {$eventName}");
     }
 
@@ -63,6 +62,17 @@ class Order extends Model
         return $this->belongsTo(Service::class);
     }
 
+    // New relationships
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class);
+    }
+
+    public function rating()
+    {
+        return $this->hasOne(Rating::class);
+    }
+
     public static function generateOrderNumber()
     {
         do {
@@ -71,7 +81,6 @@ class Order extends Model
 
         return $number;
     }
-
 
     public function getPaymentMethodText()
     {
@@ -101,7 +110,7 @@ class Order extends Model
         };
     }
 
-        public function getStatusClass()
+    public function getStatusClass()
     {
         return match($this->status) {
             OrderStatus::Pending => 'warning',
@@ -113,7 +122,7 @@ class Order extends Model
             OrderStatus::Delivered => 'success',
             OrderStatus::UserCancelOrder => 'danger',
             OrderStatus::DriverCancelOrder => 'danger',
-            OrderStatus::CancelCronJob => 'secondary', // NEW
+            OrderStatus::CancelCronJob => 'secondary',
             default => 'secondary',
         };
     }
@@ -130,7 +139,7 @@ class Order extends Model
             OrderStatus::Delivered => __('messages.Completed'),
             OrderStatus::UserCancelOrder => __('messages.User_Cancelled'),
             OrderStatus::DriverCancelOrder => __('messages.Driver_Cancelled'),
-            OrderStatus::CancelCronJob => __('messages.Auto_Cancelled'), // NEW
+            OrderStatus::CancelCronJob => __('messages.Auto_Cancelled'),
             default => __('messages.Unknown'),
         };
     }
@@ -140,7 +149,7 @@ class Order extends Model
         return in_array($this->status, [
             OrderStatus::UserCancelOrder,
             OrderStatus::DriverCancelOrder,
-            OrderStatus::CancelCronJob, // NEW
+            OrderStatus::CancelCronJob,
         ]);
     }
 
@@ -190,5 +199,10 @@ class Order extends Model
         }
 
         return round(($this->discount_value / $this->total_price_before_discount) * 100, 1);
+    }
+
+    public function getTotalWaitingCharges()
+    {
+        return $this->waiting_charges + $this->in_trip_waiting_charges;
     }
 }

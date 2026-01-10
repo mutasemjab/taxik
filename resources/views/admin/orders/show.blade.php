@@ -22,7 +22,20 @@
             </div>
         </div>
 
-
+        <!-- Hybrid Payment Alert -->
+        @if ($order->is_hybrid_payment)
+            <div class="alert alert-info">
+                <h5><i class="fas fa-wallet"></i> {{ __('messages.Hybrid_Payment') }}</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>{{ __('messages.Wallet_Amount_Used') }}:</strong> JD {{ number_format($order->wallet_amount_used, 2) }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>{{ __('messages.Cash_Amount_Due') }}:</strong> JD {{ number_format($order->cash_amount_due, 2) }}
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <!-- Order Status Card -->
         <div class="card shadow mb-4">
@@ -44,7 +57,6 @@
             </div>
             <div class="card-body">
                 @php
-                    // Extract enum values at the top for reuse
                     $statusValue = is_object($order->status) ? $order->status->value : $order->status;
                     $paymentMethod = is_object($order->payment_method)
                         ? $order->payment_method->value
@@ -139,16 +151,6 @@
             </div>
         </div>
 
-        @if ($order->is_hybrid_payment)
-            <div class="alert alert-info">
-                <h5>دفع هجين (Hybrid Payment)</h5>
-                <p>
-                    <strong>من المحفظة:</strong> JD {{ number_format($order->wallet_amount_used, 2) }}<br>
-                    <strong>نقداً:</strong> JD {{ number_format($order->cash_amount_due, 2) }}
-                </p>
-            </div>
-        @endif
-
         <!-- Trip Tracking Card -->
         <div class="card shadow mb-4">
             <div class="card-header py-3">
@@ -223,7 +225,6 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <!-- Pre-Trip Waiting -->
                     <div class="col-md-6">
                         <h6 class="font-weight-bold text-primary mb-3">
                             <i class="fas fa-user-clock"></i> {{ __('messages.Pre_Trip_Waiting') }}
@@ -263,7 +264,6 @@
                         </div>
                     </div>
 
-                    <!-- In-Trip Waiting -->
                     <div class="col-md-6">
                         <h6 class="font-weight-bold text-warning mb-3">
                             <i class="fas fa-traffic-light"></i> {{ __('messages.In_Trip_Waiting') }}
@@ -305,6 +305,94 @@
                 </div>
             </div>
         </div>
+
+        <!-- Rating Card -->
+        @if($order->rating)
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="fas fa-star"></i> {{ __('messages.Rating') }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>{{ __('messages.Rating_Score') }}</h5>
+                        <div class="mb-3">
+                            @for($i = 1; $i <= 5; $i++)
+                                @if($i <= $order->rating->rating)
+                                <i class="fas fa-star text-warning fa-2x"></i>
+                                @else
+                                <i class="far fa-star text-muted fa-2x"></i>
+                                @endif
+                            @endfor
+                            <span class="ml-2 h4">{{ $order->rating->rating }}/5</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>{{ __('messages.Review') }}</h5>
+                        <p class="text-muted">
+                            {{ $order->rating->review ?? __('messages.No_Review') }}
+                        </p>
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i> {{ $order->rating->created_at->format('Y-m-d H:i:s') }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Complaints Card -->
+        @if($order->complaints->count() > 0)
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> {{ __('messages.Complaints') }} ({{ $order->complaints->count() }})
+                </h6>
+            </div>
+            <div class="card-body">
+                @foreach($order->complaints as $complaint)
+                <div class="card mb-3 border-left-danger">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5 class="font-weight-bold">{{ $complaint->subject }}</h5>
+                                <p class="text-muted mb-2">{{ $complaint->description }}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> {{ $complaint->created_at->format('Y-m-d H:i:s') }}
+                                </small>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                @php
+                                    $statusLabels = [
+                                        1 => ['label' => __('messages.Pending'), 'class' => 'warning'],
+                                        2 => ['label' => __('messages.In_Progress'), 'class' => 'info'],
+                                        3 => ['label' => __('messages.Resolved'), 'class' => 'success'],
+                                    ];
+                                    $statusInfo = $statusLabels[$complaint->status] ?? ['label' => __('messages.Unknown'), 'class' => 'secondary'];
+                                @endphp
+                                <span class="badge badge-{{ $statusInfo['class'] }} px-3 py-2">
+                                    {{ $statusInfo['label'] }}
+                                </span>
+                                <br><br>
+                                @if($complaint->user_id)
+                                    <small class="text-muted">
+                                        {{ __('messages.By_User') }}: {{ $complaint->user->name ?? 'N/A' }}
+                                    </small>
+                                @elseif($complaint->driver_id)
+                                    <small class="text-muted">
+                                        {{ __('messages.By_Driver') }}: {{ $complaint->driver->name ?? 'N/A' }}
+                                    </small>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
 
         <div class="row">
             <div class="col-lg-8">

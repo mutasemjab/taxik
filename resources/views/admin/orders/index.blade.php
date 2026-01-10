@@ -12,7 +12,6 @@
         </a>
     </div>
 
-
     <!-- Filter Card -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
@@ -75,6 +74,7 @@
                                 <option value="delivered" {{ request('status') == 'delivered' ? 'selected' : '' }}>{{ __('messages.Delivered') }}</option>
                                 <option value="user_cancel_order" {{ request('status') == 'user_cancel_order' ? 'selected' : '' }}>{{ __('messages.User_Cancelled') }}</option>
                                 <option value="driver_cancel_order" {{ request('status') == 'driver_cancel_order' ? 'selected' : '' }}>{{ __('messages.Driver_Cancelled') }}</option>
+                                <option value="cancel_cron_job" {{ request('status') == 'cancel_cron_job' ? 'selected' : '' }}>{{ __('messages.Auto_Cancelled') }}</option>
                             </select>
                         </div>
                     </div>
@@ -102,17 +102,28 @@
                         </div>
                     </div>
                     
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="form-group">
                             <label for="date_from">{{ __('messages.Date_From') }}</label>
                             <input type="date" class="form-control" id="date_from" name="date_from" value="{{ request('date_from') }}">
                         </div>
                     </div>
                     
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="form-group">
                             <label for="date_to">{{ __('messages.Date_To') }}</label>
                             <input type="date" class="form-control" id="date_to" name="date_to" value="{{ request('date_to') }}">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="is_hybrid_payment">{{ __('messages.Hybrid_Payment') }}</label>
+                            <select class="form-control" id="is_hybrid_payment" name="is_hybrid_payment">
+                                <option value="" {{ request('is_hybrid_payment') == '' ? 'selected' : '' }}>{{ __('messages.All') }}</option>
+                                <option value="1" {{ request('is_hybrid_payment') == '1' ? 'selected' : '' }}>{{ __('messages.Yes') }}</option>
+                                <option value="0" {{ request('is_hybrid_payment') == '0' ? 'selected' : '' }}>{{ __('messages.No') }}</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -138,7 +149,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 {{ __('messages.Total_Orders') }}</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $orders->count() }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statistics['total_orders'] }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-calendar fa-2x text-gray-300"></i>
@@ -155,7 +166,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 {{ __('messages.Completed_Orders') }}</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $orders->where('status', 'delivered')->count() }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statistics['completed_orders'] }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-check-circle fa-2x text-gray-300"></i>
@@ -172,7 +183,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                 {{ __('messages.Cancelled_Orders') }}</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $orders->whereIn('status', ['user_cancel_order', 'driver_cancel_order'])->count() }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $statistics['cancelled_orders'] }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-times-circle fa-2x text-gray-300"></i>
@@ -190,7 +201,7 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 {{ __('messages.Total_Revenue') }}</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                               JD {{ number_format($orders->where('status', 'delivered')->sum('total_price_after_discount'), 2) }}
+                               JD {{ number_format($statistics['total_revenue'], 2) }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -224,6 +235,8 @@
                             <th>{{ __('messages.Commission') }}</th>
                             <th>{{ __('messages.Status') }}</th>
                             <th>{{ __('messages.Payment') }}</th>
+                            <th>{{ __('messages.Rating') }}</th>
+                            <th>{{ __('messages.Complaints') }}</th>
                             <th>{{ __('messages.Actions') }}</th>
                         </tr>
                     </thead>
@@ -233,6 +246,9 @@
                             <td>{{ $order->id }}</td>
                             <td>
                                 <span class="font-weight-bold text-primary">{{ $order->number ?? 'N/A' }}</span>
+                                @if($order->is_hybrid_payment)
+                                <br><span class="badge badge-info badge-sm">Hybrid</span>
+                                @endif
                             </td>
                             <td>{{ $order->created_at->format('Y-m-d H:i') }}</td>
                             <td>
@@ -301,6 +317,15 @@
                                         JD {{ number_format($order->total_price_after_discount, 2) }}
                                     </div>
                                     @endif
+                                    
+                                    @if($order->is_hybrid_payment)
+                                    <div class="mt-1">
+                                        <small class="text-info">
+                                            <i class="fas fa-wallet"></i> JD {{ number_format($order->wallet_amount_used, 2) }}<br>
+                                            <i class="fas fa-money-bill"></i> JD {{ number_format($order->cash_amount_due, 2) }}
+                                        </small>
+                                    </div>
+                                    @endif
                                 </div>
                             </td>
                             <td>
@@ -336,6 +361,33 @@
                                         </span>
                                     </div>
                                 </div>
+                            </td>
+                            <td class="text-center">
+                                @if($order->rating)
+                                <div>
+                                    @for($i = 1; $i <= 5; $i++)
+                                        @if($i <= $order->rating->rating)
+                                        <i class="fas fa-star text-warning"></i>
+                                        @else
+                                        <i class="far fa-star text-muted"></i>
+                                        @endif
+                                    @endfor
+                                    <br>
+                                    <small class="text-muted">({{ $order->rating->rating }}/5)</small>
+                                </div>
+                                @else
+                                <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @if($order->complaints->count() > 0)
+                                <span class="badge badge-danger">
+                                    {{ $order->complaints->count() }}
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                @else
+                                <span class="text-muted">-</span>
+                                @endif
                             </td>
                             <td>
                                 <div class="btn-group-vertical">
@@ -376,7 +428,7 @@
     }
     
     .price-info {
-        min-width: 100px;
+        min-width: 120px;
     }
     
     .commission-info {
@@ -412,4 +464,14 @@
         }
     }
 </style>
+
+@section('script')
+<script>
+function deleteOrder(id) {
+    if (confirm('{{ __("messages.Are_You_Sure_Delete") }}')) {
+        document.getElementById('delete-form-' + id).submit();
+    }
+}
+</script>
+@endsection
 @endsection

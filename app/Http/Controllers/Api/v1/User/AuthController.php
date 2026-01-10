@@ -15,6 +15,7 @@ use App\Services\OTPService;
 use App\Traits\Responses;
 use Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 
@@ -202,12 +203,21 @@ class AuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+
             'country_code' => 'required',
             'phone' => 'required|string|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
             'email' => 'nullable|email|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
             'fcm_token' => 'nullable|string',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg',
         ]);
+
+        // ========== ADD REFERRAL CODE VALIDATION ==========
+        if ($userType === 'user') {
+            $validator->addRules([
+                'referral_code' => 'nullable|string|exists:users,referral_code',
+            ]);
+        }
+        // ========== END REFERRAL CODE VALIDATION ==========
 
         if ($userType === 'driver') {
             $validator->addRules([
@@ -324,7 +334,26 @@ class AuthController extends Controller
                     ]);
                     $welcomeBonusApplied = true;
                 }
+                // ========== HANDLE REFERRAL AND CHALLENGE ==========
+                if ($userType === 'user' && $request->has('referral_code')) {
+                    $referralCode = $request->referral_code;
+                    $referrer = \App\Models\User::where('referral_code', $referralCode)->first();
+
+                    if ($referrer) {
+                        // Link the new user to the referrer
+                        $user->user_id = $referrer->id;
+                        $user->save();
+
+                        // Update referrer's referral challenge progress
+                        $referrer->updateChallengeProgress('referral', 1);
+
+                        Log::info("User {$user->id} registered with referral code from user {$referrer->id}");
+                    }
+                }
+                // ========== END REFERRAL AND CHALLENGE ==========
             }
+
+
 
             DB::commit();
 

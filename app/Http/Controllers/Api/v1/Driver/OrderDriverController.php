@@ -579,6 +579,23 @@ class OrderDriverController extends Controller
                         'driver_new_balance' => $balanceTransferDetails['driver_new_balance']
                     ]);
                 }
+
+                // ========== UPDATE USER CHALLENGES ==========
+                try {
+                    // Update trips challenge
+                    $order->user->updateChallengeProgress('trips', 1);
+                    
+                    // Update spending challenge
+                    if ($order->total_price_after_discount > 0) {
+                        $order->user->updateChallengeProgress('spending', $order->total_price_after_discount);
+                    }
+                    
+                    Log::info("User {$order->user_id} challenges updated for order {$order->id}");
+                } catch (\Exception $e) {
+                    Log::error("Error updating user challenges: " . $e->getMessage());
+                    // Don't throw error, just log it
+                }
+                // ========== END UPDATE USER CHALLENGES ==========
             } else if ($newStatus !== OrderStatus::waitingPayment) {
                 // Update status for other cases
                 $order->status = $newStatus;

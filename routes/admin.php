@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\WalletTransactionController;
 use App\Http\Controllers\Admin\WithdrawalRequestController;
 use App\Http\Controllers\Admin\AppConfigController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\ChallengeController;
 use App\Http\Controllers\Admin\RepresentiveController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\CountryChargeController;
@@ -63,38 +64,38 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
                 ->name('order-status-export');
         });
 
-   // تقارير السائقين
-    Route::get('/financial-reports', [FinancialReportController::class, 'index'])
-        ->name('financial-reports.index')
-        ->middleware('permission:financial-reports-list');
-    
-    // تفاصيل سائق محدد
-    Route::get('/financial-reports/driver/{driver}', [FinancialReportController::class, 'driverDetails'])
-        ->name('financial-reports.driver-details')
-        ->middleware('permission:financial-reports-list');
-    
-    // تقرير نقاط البيع
-    Route::get('/financial-reports/pos', [FinancialReportController::class, 'posReport'])
-        ->name('financial-reports.pos-report')
-        ->middleware('permission:financial-reports-list');
-    
-    // التقرير الإجمالي
-    Route::get('/financial-reports/overall', [FinancialReportController::class, 'overallSummary'])
-        ->name('financial-reports.overall-summary')
-        ->middleware('permission:financial-reports-list');
-    
-    // تصدير التقارير
-    Route::get('/financial-reports/export', [FinancialReportController::class, 'exportDriversReport'])
-        ->name('financial-reports.export')
-        ->middleware('permission:financial-reports-export');
-    
-    Route::get('/financial-reports/pdf', [FinancialReportController::class, 'exportDriversReportPDF'])
-        ->name('financial-reports.pdf')
-        ->middleware('permission:financial-reports-export');
-    
-    Route::get('/financial-reports/pos/export', [FinancialReportController::class, 'exportPOSReport'])
-        ->name('financial-reports.pos-export')
-        ->middleware('permission:financial-reports-export');
+        // تقارير السائقين
+        Route::get('/financial-reports', [FinancialReportController::class, 'index'])
+            ->name('financial-reports.index')
+            ->middleware('permission:financial-reports-list');
+
+        // تفاصيل سائق محدد
+        Route::get('/financial-reports/driver/{driver}', [FinancialReportController::class, 'driverDetails'])
+            ->name('financial-reports.driver-details')
+            ->middleware('permission:financial-reports-list');
+
+        // تقرير نقاط البيع
+        Route::get('/financial-reports/pos', [FinancialReportController::class, 'posReport'])
+            ->name('financial-reports.pos-report')
+            ->middleware('permission:financial-reports-list');
+
+        // التقرير الإجمالي
+        Route::get('/financial-reports/overall', [FinancialReportController::class, 'overallSummary'])
+            ->name('financial-reports.overall-summary')
+            ->middleware('permission:financial-reports-list');
+
+        // تصدير التقارير
+        Route::get('/financial-reports/export', [FinancialReportController::class, 'exportDriversReport'])
+            ->name('financial-reports.export')
+            ->middleware('permission:financial-reports-export');
+
+        Route::get('/financial-reports/pdf', [FinancialReportController::class, 'exportDriversReportPDF'])
+            ->name('financial-reports.pdf')
+            ->middleware('permission:financial-reports-export');
+
+        Route::get('/financial-reports/pos/export', [FinancialReportController::class, 'exportPOSReport'])
+            ->name('financial-reports.pos-export')
+            ->middleware('permission:financial-reports-export');
 
         /*         start  update login admin                 */
         Route::get('/admin/edit/{id}', [LoginController::class, 'editlogin'])->name('admin.login.edit');
@@ -201,6 +202,16 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::post('drivers/{id}/ban', [DriverController::class, 'ban'])->name('drivers.ban');
         Route::post('drivers/{id}/unban', [DriverController::class, 'unban'])->name('drivers.unban');
         Route::get('drivers/{id}/ban-history', [DriverController::class, 'banHistory'])->name('drivers.ban.history');
+
+        // User ban routes
+        Route::get('users/{id}/ban', [UserController::class, 'banForm'])->name('users.ban.form');
+        Route::post('users/{id}/ban', [UserController::class, 'ban'])->name('users.ban');
+        Route::post('users/{id}/unban', [UserController::class, 'unban'])->name('users.unban');
+        Route::get('users/{id}/ban-history', [UserController::class, 'banHistory'])->name('users.ban.history');
+   
+        Route::resource('challenges', ChallengeController::class);
+Route::get('challenges/{id}/participants', [ChallengeController::class, 'participants'])->name('challenges.participants');
+   
     });
 });
 

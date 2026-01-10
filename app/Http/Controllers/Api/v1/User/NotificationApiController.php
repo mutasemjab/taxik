@@ -28,12 +28,17 @@ class NotificationApiController extends Controller
                 ->orWhere(function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 });
-        })->latest()->get();
+        })
+            ->where('created_at', '>=', $user->created_at) // Only notifications after user registration
+            ->latest()
+            ->get();
+
         return response()->json([
             'status' => true,
             'notifications' => $notifications,
         ]);
     }
+
     // Fetch notifications for a driver
     public function getDriverNotifications(Request $request)
     {
@@ -44,46 +49,15 @@ class NotificationApiController extends Controller
                 ->orWhere(function ($q) use ($driver) {
                     $q->where('driver_id', $driver->id);
                 });
-        })->latest()->get();
+        })
+            ->where('created_at', '>=', $driver->created_at) // Only notifications after driver registration
+            ->latest()
+            ->get();
+
         return response()->json([
             'status' => true,
             'notifications' => $notifications,
         ]);
-    }
-
-    public function sendToUser(Request $request)
-    {
-        $this->validate($request, [
-            'user_id' => 'required|integer',
-            'message' => 'required|string|max:500',
-        ]);
-
-        try {
-            $driver = $request->user(); // ✅ Get authenticated driver
-
-            $response = AdminFCMController::sendChatMessageToUser(
-                $request->message,
-                $request->user_id,
-                $driver->id  // ✅ Use authenticated driver's ID
-            );
-            if ($response) {
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Notification sent successfully to user'
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Failed to send notification to user'
-                ], 400);
-            }
-        } catch (\Exception $e) {
-            \Log::error('FCM Error: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'An error occurred: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     public function sendToDriver(Request $request)
@@ -91,14 +65,23 @@ class NotificationApiController extends Controller
         $this->validate($request, [
             'driver_id' => 'required|integer',
             'message' => 'required|string|max:500',
-            'sender_user_id' => 'required|integer'
         ]);
 
         try {
+            // ✅ احصل على المستخدم المصادق من user-api guard
+            $user = auth('user-api')->user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
             $response = AdminFCMController::sendChatMessageToDriver(
                 $request->message,
                 $request->driver_id,
-                $request->sender_user_id
+                $user->id  // ✅ استخدم user ID من المصادقة
             );
 
             if ($response) {
@@ -110,6 +93,50 @@ class NotificationApiController extends Controller
                 return response()->json([
                     'status' => false,
                     'message' => 'Failed to send notification to driver'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            \Log::error('FCM Error: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function sendToUser(Request $request)
+    {
+        $this->validate($request, [
+            'user_id' => 'required|integer',
+            'message' => 'required|string|max:500',
+        ]);
+
+        try {
+            // ✅ احصل على السائق المصادق من driver-api guard
+            $driver = auth('driver-api')->user();
+
+            if (!$driver) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Driver not authenticated'
+                ], 401);
+            }
+
+            $response = AdminFCMController::sendChatMessageToUser(
+                $request->message,
+                $request->user_id,
+                $driver->id
+            );
+
+            if ($response) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Notification sent successfully to user'
+                ], 200);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to send notification to user'
                 ], 400);
             }
         } catch (\Exception $e) {

@@ -151,6 +151,35 @@
                                         <option value="paid" {{ old('status_payment', $order->status_payment) == 'paid' ? 'selected' : '' }}>{{ __('messages.Paid') }}</option>
                                     </select>
                                 </div>
+
+                                <!-- Hybrid Payment Section -->
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="is_hybrid_payment" name="is_hybrid_payment" 
+                                               {{ old('is_hybrid_payment', $order->is_hybrid_payment) ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="is_hybrid_payment">
+                                            {{ __('messages.Hybrid_Payment') }}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="hybrid-payment-fields" style="display: {{ old('is_hybrid_payment', $order->is_hybrid_payment) ? 'block' : 'none' }};">
+                                    <div class="form-group">
+                                        <label for="wallet_amount_used">{{ __('messages.Wallet_Amount_Used') }}</label>
+                                        <input type="number" step="0.01" class="form-control" id="wallet_amount_used" 
+                                               name="wallet_amount_used" 
+                                               value="{{ old('wallet_amount_used', $order->wallet_amount_used) }}" 
+                                               min="0">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="cash_amount_due">{{ __('messages.Cash_Amount_Due') }}</label>
+                                        <input type="number" step="0.01" class="form-control" id="cash_amount_due" 
+                                               name="cash_amount_due" 
+                                               value="{{ old('cash_amount_due', $order->cash_amount_due) }}" 
+                                               min="0">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -410,6 +439,17 @@
             } else {
                 $('.cancel-reason-container').hide();
                 $('#reason_for_cancel').prop('required', false);
+            }
+        });
+
+        // Show/hide hybrid payment fields
+        $('#is_hybrid_payment').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#hybrid-payment-fields').slideDown();
+            } else {
+                $('#hybrid-payment-fields').slideUp();
+                $('#wallet_amount_used').val(0);
+                $('#cash_amount_due').val(0);
             }
         });
         

@@ -139,17 +139,20 @@
                                                 class="btn btn-primary btn-sm mr-1 mb-1" title="{{ __('messages.Edit') }}">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <button type="button" class="btn btn-success btn-sm mr-1 mb-1"
-                                                data-toggle="modal" data-target="#topUpModal{{ $driver->id }}"
-                                                title="{{ __('messages.Top_Up_Balance') }}">
-                                                <i class="fas fa-wallet"></i>
-                                            </button>
-                                            <a href="{{ route('drivers.transactions', $driver->id) }}"
-                                                class="btn btn-secondary btn-sm mr-1 mb-1"
-                                                title="{{ __('messages.Transactions') }}">
-                                                <i class="fas fa-money-bill"></i>
-                                            </a>
-
+                                            @can('wallet-edit')
+                                                <button type="button" class="btn btn-success btn-sm mr-1 mb-1"
+                                                    data-toggle="modal" data-target="#topUpModal{{ $driver->id }}"
+                                                    title="{{ __('messages.Top_Up_Balance') }}">
+                                                    <i class="fas fa-wallet"></i>
+                                                </button>
+                                            @endcan
+                                            @can('wallet-table')
+                                                <a href="{{ route('drivers.transactions', $driver->id) }}"
+                                                    class="btn btn-secondary btn-sm mr-1 mb-1"
+                                                    title="{{ __('messages.Transactions') }}">
+                                                    <i class="fas fa-money-bill"></i>
+                                                </a>
+                                            @endcan
                                             @if ($driver->activate == 2)
                                                 <!-- Unban Button -->
                                                 <button type="button" class="btn btn-warning btn-sm mr-1 mb-1"

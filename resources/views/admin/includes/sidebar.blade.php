@@ -134,7 +134,16 @@
                     </li>
                 @endcan
 
-
+                <!-- Challenges -->
+                @can('challenge-table')
+                    <li class="nav-item">
+                        <a href="{{ route('challenges.index') }}"
+                            class="nav-link {{ request()->routeIs('challenges.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-trophy"></i>
+                            <p>{{ __('messages.Challenges') }}</p>
+                        </a>
+                    </li>
+                @endcan
 
                 <!-- Notifications -->
                 @can('notification-table')
@@ -319,8 +328,6 @@
                                                 <p>{{ __('messages.POS_Financial_Report') }}</p>
                                             </a>
                                         </li>
-
-                                      
                                     </ul>
                                 </li>
                             @endcan

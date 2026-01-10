@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\UserBan;
 use App\Models\WalletTransaction;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -30,7 +32,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = User::with('activeBan');
 
         // Search functionality
         if ($request->has('search') && $request->search != '') {
@@ -63,6 +65,111 @@ class UserController extends Controller
         $users = $query->paginate(15)->appends($request->all());
 
         return view('admin.users.index', compact('users'));
+    }
+
+    public function banForm($id)
+    {
+        $user = User::findOrFail($id);
+        $banReasons = UserBan::BAN_REASONS;
+
+        return view('admin.users.ban', compact('user', 'banReasons'));
+    }
+
+    /**
+     * Ban a user
+     */
+    public function ban(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'ban_reason' => 'required|string',
+            'ban_description' => 'nullable|string',
+            'ban_type' => 'required|in:temporary,permanent',
+            'ban_duration' => 'required_if:ban_type,temporary|nullable|integer|min:1',
+            'ban_duration_unit' => 'required_if:ban_type,temporary|nullable|in:hours,days,weeks,months',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()
+                ->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        DB::beginTransaction();
+        try {
+            $banUntil = null;
+            $isPermanent = $request->ban_type === 'permanent';
+
+            if (!$isPermanent) {
+                $duration = $request->ban_duration;
+                $unit = $request->ban_duration_unit;
+
+                $banUntil = match ($unit) {
+                    'hours' => Carbon::now()->addHours($duration),
+                    'days' => Carbon::now()->addDays($duration),
+                    'weeks' => Carbon::now()->addWeeks($duration),
+                    'months' => Carbon::now()->addMonths($duration),
+                    default => Carbon::now()->addDays($duration),
+                };
+            }
+
+            // Ban the user
+            $user->banUser(
+                auth()->guard('admin')->user()->id,
+                $request->ban_reason,
+                $request->ban_description,
+                $banUntil,
+                $isPermanent
+            );
+
+            DB::commit();
+            return redirect()->route('users.index')
+                ->with('success', 'User banned successfully');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Something went wrong: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Unban a user
+     */
+    public function unban(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'unban_reason' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $user->unbanUser(
+                auth()->guard('admin')->user()->id,
+                $request->unban_reason
+            );
+
+            DB::commit();
+            return redirect()->route('users.index')
+                ->with('success', 'User unbanned successfully');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Something went wrong: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show ban history
+     */
+    public function banHistory($id)
+    {
+        $user = User::with('bans.admin', 'bans.unbannedByAdmin')->findOrFail($id);
+
+        return view('admin.users.ban-history', compact('user'));
     }
 
     /**

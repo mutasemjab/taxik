@@ -147,11 +147,18 @@ class PermissionSeeder extends Seeder
             'app-config-add',
             'app-config-edit',
             'app-config-delete',
+    
+            'challenge-table',
+            'challenge-add',
+            'challenge-edit',
+            'challenge-delete',
 
             // Reports
             'report-table',
             'report-view',
             'report-export',
+
+            
         ];
 
         $data = array_map(function ($permission) {

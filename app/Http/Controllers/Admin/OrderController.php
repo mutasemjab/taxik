@@ -27,7 +27,7 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Order::with(['user', 'driver', 'service', 'coupon'])
+        $query = Order::with(['user', 'driver', 'service', 'coupon', 'complaints', 'rating'])
             ->orderBy('created_at', 'desc');
 
         // Apply filters if they exist
@@ -63,15 +63,28 @@ class OrderController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        // Paginate results (15 per page, you can adjust this number)
+        // Filter by hybrid payment
+        if ($request->filled('is_hybrid_payment')) {
+            $query->where('is_hybrid_payment', $request->is_hybrid_payment);
+        }
+
+        // Calculate statistics BEFORE pagination using the same filtered query
+        $statistics = [
+            'total_orders' => $query->count(),
+            'completed_orders' => (clone $query)->where('status', 'completed')->count(),
+            'cancelled_orders' => (clone $query)->whereIn('status', ['user_cancel_order', 'driver_cancel_order', 'cancel_cron_job'])->count(),
+            'total_revenue' => (clone $query)->where('status', 'completed')->sum('commision_of_admin'),
+        ];
+
+        // Paginate results AFTER calculating statistics
         $orders = $query->paginate(15)->withQueryString();
 
         // Get users, drivers, and services for filter dropdowns
-        $users = \App\Models\User::select('id', 'name', 'phone', 'email')->get();
-        $drivers = \App\Models\Driver::select('id', 'name', 'phone', 'email')->get();
-        $services = \App\Models\Service::get();
+        $users = User::select('id', 'name', 'phone', 'email')->get();
+        $drivers = Driver::select('id', 'name', 'phone', 'email')->get();
+        $services = Service::get();
 
-        return view('admin.orders.index', compact('orders', 'users', 'drivers', 'services'));
+        return view('admin.orders.index', compact('orders', 'users', 'drivers', 'services', 'statistics'));
     }
 
     /**
@@ -79,7 +92,17 @@ class OrderController extends Controller
      */
     public function show($id)
     {
-        $order = Order::with(['user', 'driver', 'service', 'coupon'])->findOrFail($id);
+        $order = Order::with([
+            'user', 
+            'driver', 
+            'service', 
+            'coupon',
+            'complaints' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'rating'
+        ])->findOrFail($id);
+        
         return view('admin.orders.show', compact('order'));
     }
 
@@ -124,6 +147,11 @@ class OrderController extends Controller
             'net_price_for_driver' => 'required|numeric|min:0',
             'commision_of_admin' => 'required|numeric|min:0',
 
+            // Hybrid payment fields
+            'wallet_amount_used' => 'nullable|numeric|min:0',
+            'cash_amount_due' => 'nullable|numeric|min:0',
+            'is_hybrid_payment' => 'nullable|boolean',
+
             'trip_started_at' => 'nullable|date',
             'trip_completed_at' => 'nullable|date|after_or_equal:trip_started_at',
             'actual_trip_duration_minutes' => 'nullable|numeric|min:0',
@@ -162,6 +190,10 @@ class OrderController extends Controller
         }
 
         $data = $request->all();
+        
+        // Handle hybrid payment checkbox
+        $data['is_hybrid_payment'] = $request->has('is_hybrid_payment') ? 1 : 0;
+        
         $order->update($data);
 
         return redirect()
@@ -180,69 +212,6 @@ class OrderController extends Controller
         return redirect()
             ->route('orders.index')
             ->with('success', __('messages.Order_Deleted_Successfully'));
-    }
-
-    /**
-     * Filter orders by various criteria.
-     */
-    public function filter(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'nullable|exists:users,id',
-            'driver_id' => 'nullable|exists:drivers,id',
-            'service_id' => 'nullable|exists:services,id',
-            'status' => 'nullable|string',
-            'payment_method' => 'nullable|string',
-            'status_payment' => 'nullable|string',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()
-                ->route('orders.index')
-                ->withErrors($validator);
-        }
-
-        $query = Order::with(['user', 'driver', 'service', 'coupon']);
-
-        if ($request->user_id) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        if ($request->driver_id) {
-            $query->where('driver_id', $request->driver_id);
-        }
-
-        if ($request->service_id) {
-            $query->where('service_id', $request->service_id);
-        }
-
-        if ($request->status && $request->status != 'all') {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->payment_method && $request->payment_method != 'all') {
-            $query->where('payment_method', $request->payment_method);
-        }
-
-        if ($request->status_payment && $request->status_payment != 'all') {
-            $query->where('status_payment', $request->status_payment);
-        }
-
-        if ($request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        $orders = $query->orderBy('created_at', 'desc')->get();
-        $users = User::all();
-        $drivers = Driver::all();
-        $services = Service::all();
-
-        return view('admin.orders.index', compact('orders', 'users', 'drivers', 'services'));
     }
 
     /**

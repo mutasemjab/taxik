@@ -274,14 +274,14 @@ class DriverLocationService
         try {
             $nextPageToken = null;
             $pageSize = 300; // Maximum allowed by Firebase
-            
+
             do {
                 // Build URL with pagination
                 $url = "{$this->baseUrl}/drivers?pageSize={$pageSize}";
                 if ($nextPageToken) {
                     $url .= "&pageToken=" . urlencode($nextPageToken);
                 }
-                
+
                 $response = Http::timeout(10)->get($url);
 
                 if (!$response->successful()) {
@@ -321,14 +321,14 @@ class DriverLocationService
                         }
                     }
                 }
-                
+
                 // Check if there are more pages
                 $nextPageToken = $firestoreData['nextPageToken'] ?? null;
-                
+
             } while ($nextPageToken); // Continue if there's a next page
-            
+
             \Log::info("Fetched " . count($driversWithLocations) . " drivers with valid locations from Firestore");
-            
+
         } catch (\Exception $e) {
             \Log::error('Error fetching from Firestore: ' . $e->getMessage());
         }
@@ -568,6 +568,9 @@ class DriverLocationService
             if ($response->successful()) {
                 \Log::info("Complete order data for order {$orderId} written to Firebase with " . count($driverIDs) . " available drivers within {$searchRadius}km for service {$serviceId}");
 
+                // Send notifications to all drivers after successfully writing to Firebase
+                $this->sendNotificationsToDrivers($driverIDs, $orderId, $drivers, $order);
+
                 return [
                     'success' => true,
                     'message' => 'Complete order data successfully written to Firebase',
@@ -587,6 +590,37 @@ class DriverLocationService
                 'success' => false,
                 'message' => 'Failed to write complete order data to Firebase: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Send FCM notifications to all drivers about new order
+     */
+    private function sendNotificationsToDrivers(array $driverIDs, $orderId, array $driversWithDistance, $order)
+    {
+        try {
+            \Log::info("Sending notifications to " . count($driverIDs) . " drivers for order {$orderId}");
+
+            foreach ($driversWithDistance as $driver) {
+                // Find distance for this specific driver
+                $distance = $driver['distance'] ?? 0;
+
+                // Send notification using EnhancedFCMService
+                \App\Services\EnhancedFCMService::sendNewOrderToDriver(
+                    $driver['id'],
+                    $orderId,
+                    $distance,
+                    ['lat' => $driver['lat'], 'lng' => $driver['lng']]
+                );
+
+                // Small delay to prevent rate limiting
+                usleep(50000); // 50ms delay between notifications
+            }
+
+            \Log::info("Successfully sent notifications to drivers for order {$orderId}");
+        } catch (\Exception $e) {
+            \Log::error("Error sending notifications to drivers for order {$orderId}: " . $e->getMessage());
+            // Don't throw exception - notification failure shouldn't stop the order process
         }
     }
 }

@@ -1774,4 +1774,6 @@ return [
 'Auto_Cancelled' => 'ألغي اوتوماتيكيا',
     'Complaints' => 'المشاكل',
     'Hybrid_Payment' => 'دفع مختلط',
+    'Negative_Balance_Warning' => 'تم إنشاء العملية بنجاح. تحذير: رصيد :entity (:name) أصبح سالب: :balance',
+'Balance_Will_Be_Negative' => 'تحذير: الرصيد سيصبح سالب بعد هذه العملية',
 ];

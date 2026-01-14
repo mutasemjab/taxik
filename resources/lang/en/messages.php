@@ -1738,6 +1738,8 @@ return [
     'Auto_Cancelled' => 'Auto Cancelled',
     'Complaints' => 'Complaints',
     'Hybrid_Payment' => 'Hybrid Payment',
+    'Negative_Balance_Warning' => 'Transaction created successfully. Warning: :entity (:name) balance is now negative: :balance',
+'Balance_Will_Be_Negative' => 'Warning: Balance will be negative after this transaction',
     '' => '',
     '' => '',
     '' => '',

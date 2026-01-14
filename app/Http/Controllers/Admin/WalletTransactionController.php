@@ -73,26 +73,30 @@ class WalletTransactionController extends Controller
             'amount' => $request->amount,
             'type_of_transaction' => $request->type_of_transaction,
             'note' => $request->note,
-            'admin_id' => Auth::id(), // Current logged in admin
+            'admin_id' => Auth::id(),
         ];
+
+        $warningMessage = null;
 
         // Set the appropriate entity (user or driver)
         if ($request->entity_type == 'user') {
             $user = User::findOrFail($request->entity_id);
             $transactionData['user_id'] = $user->id;
             $transactionData['driver_id'] = null;
-            
+
             // Update user balance
             if ($request->type_of_transaction == 1) {
                 // Add to balance
                 $user->balance += $request->amount;
             } else {
-                // Withdraw from balance
+                // Withdraw from balance - Allow negative balance but show warning
                 if ($user->balance < $request->amount) {
-                    return redirect()
-                        ->route('wallet_transactions.create')
-                        ->with('error', __('messages.Insufficient_Balance'))
-                        ->withInput();
+                    $newBalance = $user->balance - $request->amount;
+                    $warningMessage = __('messages.Negative_Balance_Warning', [
+                        'entity' => __('messages.User'),
+                        'name' => $user->name,
+                        'balance' => number_format($newBalance, 2)
+                    ]);
                 }
                 $user->balance -= $request->amount;
             }
@@ -101,18 +105,20 @@ class WalletTransactionController extends Controller
             $driver = Driver::findOrFail($request->entity_id);
             $transactionData['driver_id'] = $driver->id;
             $transactionData['user_id'] = null;
-            
+
             // Update driver balance
             if ($request->type_of_transaction == 1) {
                 // Add to balance
                 $driver->balance += $request->amount;
             } else {
-                // Withdraw from balance
+                // Withdraw from balance - Allow negative balance but show warning
                 if ($driver->balance < $request->amount) {
-                    return redirect()
-                        ->route('wallet_transactions.create')
-                        ->with('error', __('messages.Insufficient_Balance'))
-                        ->withInput();
+                    $newBalance = $driver->balance - $request->amount;
+                    $warningMessage = __('messages.Negative_Balance_Warning', [
+                        'entity' => __('messages.Driver'),
+                        'name' => $driver->name,
+                        'balance' => number_format($newBalance, 2)
+                    ]);
                 }
                 $driver->balance -= $request->amount;
             }
@@ -122,11 +128,16 @@ class WalletTransactionController extends Controller
         // Create the transaction
         WalletTransaction::create($transactionData);
 
+        if ($warningMessage) {
+            return redirect()
+                ->route('wallet_transactions.index')
+                ->with('warning', $warningMessage);
+        }
+
         return redirect()
             ->route('wallet_transactions.index')
             ->with('success', __('messages.Transaction_Created_Successfully'));
     }
-
     /**
      * Display the specified resource.
      *
@@ -189,7 +200,7 @@ class WalletTransactionController extends Controller
 
         // Get the filtered transactions
         $transactions = $query->orderBy('created_at', 'desc')->get();
-        
+
         // Get users and drivers for the filter dropdowns
         $users = User::all();
         $drivers = Driver::all();
@@ -210,7 +221,7 @@ class WalletTransactionController extends Controller
             ->where('user_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         return view('admin.wallet_transactions.user_transactions', compact('transactions', 'user'));
     }
 
@@ -227,7 +238,7 @@ class WalletTransactionController extends Controller
             ->where('driver_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         return view('admin.wallet_transactions.driver_transactions', compact('transactions', 'driver'));
     }
 }

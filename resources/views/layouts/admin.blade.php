@@ -18,6 +18,11 @@
     <!-- Theme style -->
     <link rel="stylesheet" href="{{ asset('assets/admin/dist/css/adminlte.min.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap4-theme@1.5.4/dist/select2-bootstrap4.min.css" rel="stylesheet" />
+
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="{{ asset('assets/admin/fonts/SansPro/SansPro.min.css') }}">
     @if (App::getLocale() == 'ar')
@@ -47,7 +52,57 @@
     <script src="{{ asset('assets/admin/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <!-- AdminLTE App -->
     <script src="{{ asset('assets/admin/dist/js/adminlte.min.js') }}"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script src="{{ asset('assets/admin/js/general.js') }}"></script>
+
+    <!-- Universal Select2 Initialization -->
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2 for all selects with class 'select2'
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: function() {
+                    return $(this).data('placeholder') || '{{ __("messages.Select_Option") }}';
+                },
+                allowClear: true,
+                @if (App::getLocale() == 'ar')
+                language: {
+                    noResults: function() {
+                        return "لا توجد نتائج";
+                    },
+                    searching: function() {
+                        return "جاري البحث...";
+                    }
+                },
+                dir: 'rtl'
+                @else
+                language: {
+                    noResults: function() {
+                        return "No results found";
+                    },
+                    searching: function() {
+                        return "Searching...";
+                    }
+                }
+                @endif
+            });
+
+            // Re-initialize Select2 when new content is dynamically added
+            $(document).on('DOMNodeInserted', function(e) {
+                if ($(e.target).hasClass('select2') && !$(e.target).hasClass('select2-hidden-accessible')) {
+                    $(e.target).select2({
+                        theme: 'bootstrap4',
+                        width: '100%',
+                        allowClear: true
+                    });
+                }
+            });
+        });
+    </script>
 
     @yield('script')
     @stack('scripts')

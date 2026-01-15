@@ -36,7 +36,8 @@
                             <div class="form-group">
                                 <label for="entity_type">{{ __('messages.Entity_Type') }} <span
                                         class="text-danger">*</span></label>
-                                <select class="form-control" id="entity_type" name="entity_type" required>
+                                <select class="form-control select2" id="entity_type" name="entity_type" required
+                                    data-placeholder="{{ __('messages.Select_Entity_Type') }}">
                                     <option value="">{{ __('messages.Select_Entity_Type') }}</option>
                                     <option value="user" {{ old('entity_type') == 'user' ? 'selected' : '' }}>
                                         {{ __('messages.User') }}</option>
@@ -50,7 +51,8 @@
                                 style="display: {{ old('entity_type') == 'user' ? 'block' : 'none' }};">
                                 <label for="user_entity_id">{{ __('messages.Select_User') }} <span
                                         class="text-danger">*</span></label>
-                                <select class="form-control" id="user_entity_id" name="entity_id_user">
+                                <select class="form-control select2" id="user_entity_id" name="entity_id_user"
+                                    data-placeholder="{{ __('messages.Select_User') }}">
                                     <option value="">{{ __('messages.Select_User') }}</option>
                                     @foreach ($users as $user)
                                         <option value="{{ $user->id }}"
@@ -68,7 +70,8 @@
                                 style="display: {{ old('entity_type') == 'driver' ? 'block' : 'none' }};">
                                 <label for="driver_entity_id">{{ __('messages.Select_Driver') }} <span
                                         class="text-danger">*</span></label>
-                                <select class="form-control" id="driver_entity_id" name="entity_id_driver">
+                                <select class="form-control select2" id="driver_entity_id" name="entity_id_driver"
+                                    data-placeholder="{{ __('messages.Select_Driver') }}">
                                     <option value="">{{ __('messages.Select_Driver') }}</option>
                                     @foreach ($drivers as $driver)
                                         <option value="{{ $driver->id }}"
@@ -135,85 +138,84 @@
 @endsection
 
 @section('script')
-   <script>
-    $(document).ready(function() {
-        // Handle entity type selection
-        $('#entity_type').on('change', function() {
-            $('.entity-select').hide();
-            $('.current-balance').hide();
-            $('#entity_id').val('');
+<script>
+$(document).ready(function() {
+    // Handle entity type selection
+    $('#entity_type').on('change', function() {
+        $('.entity-select').hide();
+        $('.current-balance').hide();
+        $('#entity_id').val('');
 
-            if ($(this).val() == 'user') {
-                $('.user-select').show();
-                $('#driver_entity_id').val('');
-                updateEntityId('user');
-            } else if ($(this).val() == 'driver') {
-                $('.driver-select').show();
-                $('#user_entity_id').val('');
-                updateEntityId('driver');
-            }
-        });
-
-        // Trigger initial state
-        $('#entity_type').trigger('change');
-
-        // Handle user selection
-        $('#user_entity_id').on('change', function() {
+        if ($(this).val() == 'user') {
+            $('.user-select').show();
+            $('#driver_entity_id').val('').trigger('change'); // Trigger change for Select2
             updateEntityId('user');
-            if ($(this).val()) {
-                var balance = $(this).find('option:selected').data('balance');
-                $('#balance-amount').text(balance);
-                $('.current-balance').show();
-                checkBalance();
-            } else {
-                $('.current-balance').hide();
-            }
-        });
-
-        // Handle driver selection
-        $('#driver_entity_id').on('change', function() {
+        } else if ($(this).val() == 'driver') {
+            $('.driver-select').show();
+            $('#user_entity_id').val('').trigger('change'); // Trigger change for Select2
             updateEntityId('driver');
-            if ($(this).val()) {
-                var balance = $(this).find('option:selected').data('balance');
-                $('#balance-amount').text(balance);
-                $('.current-balance').show();
-                checkBalance();
-            } else {
-                $('.current-balance').hide();
-            }
-        });
-
-        // Update hidden entity_id field
-        function updateEntityId(type) {
-            if (type == 'user') {
-                $('#entity_id').val($('#user_entity_id').val());
-            } else if (type == 'driver') {
-                $('#entity_id').val($('#driver_entity_id').val());
-            }
-        }
-
-        // Handle transaction type and amount changes
-        $('#type_of_transaction, #amount').on('change keyup', function() {
-            checkBalance();
-        });
-
-        // Check if balance will be negative for withdrawal - SHOW WARNING ONLY
-        function checkBalance() {
-            var transactionType = $('#type_of_transaction').val();
-            var amount = parseFloat($('#amount').val()) || 0;
-            var balance = parseFloat($('#balance-amount').text()) || 0;
-
-            if (transactionType == '2' && amount > balance) {
-                var newBalance = balance - amount;
-                $('#balance-warning').html(
-                    '<i class="fas fa-exclamation-triangle"></i> ' +
-                    '{{ __("messages.Balance_Will_Be_Negative") }}: <strong>' + newBalance.toFixed(2) + '</strong>'
-                ).show();
-                // Don't disable the submit button - just show warning
-            } else {
-                $('#balance-warning').hide();
-            }
         }
     });
+
+    // Trigger initial state
+    $('#entity_type').trigger('change');
+
+    // Handle user selection
+    $('#user_entity_id').on('select2:select select2:clear', function() {
+        updateEntityId('user');
+        if ($(this).val()) {
+            var balance = $(this).find('option:selected').data('balance');
+            $('#balance-amount').text(balance);
+            $('.current-balance').show();
+            checkBalance();
+        } else {
+            $('.current-balance').hide();
+        }
+    });
+
+    // Handle driver selection
+    $('#driver_entity_id').on('select2:select select2:clear', function() {
+        updateEntityId('driver');
+        if ($(this).val()) {
+            var balance = $(this).find('option:selected').data('balance');
+            $('#balance-amount').text(balance);
+            $('.current-balance').show();
+            checkBalance();
+        } else {
+            $('.current-balance').hide();
+        }
+    });
+
+    // Update hidden entity_id field
+    function updateEntityId(type) {
+        if (type == 'user') {
+            $('#entity_id').val($('#user_entity_id').val());
+        } else if (type == 'driver') {
+            $('#entity_id').val($('#driver_entity_id').val());
+        }
+    }
+
+    // Handle transaction type and amount changes
+    $('#type_of_transaction, #amount').on('change keyup', function() {
+        checkBalance();
+    });
+
+    // Check if balance will be negative for withdrawal
+    function checkBalance() {
+        var transactionType = $('#type_of_transaction').val();
+        var amount = parseFloat($('#amount').val()) || 0;
+        var balance = parseFloat($('#balance-amount').text()) || 0;
+
+        if (transactionType == '2' && amount > balance) {
+            var newBalance = balance - amount;
+            $('#balance-warning').html(
+                '<i class="fas fa-exclamation-triangle"></i> ' +
+                '{{ __("messages.Balance_Will_Be_Negative") }}: <strong>' + newBalance.toFixed(2) + '</strong>'
+            ).show();
+        } else {
+            $('#balance-warning').hide();
+        }
+    }
+});
 </script>
 @endsection

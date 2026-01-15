@@ -1776,4 +1776,8 @@ return [
     'Hybrid_Payment' => 'دفع مختلط',
     'Negative_Balance_Warning' => 'تم إنشاء العملية بنجاح. تحذير: رصيد :entity (:name) أصبح سالب: :balance',
 'Balance_Will_Be_Negative' => 'تحذير: الرصيد سيصبح سالب بعد هذه العملية',
+'No_Note' => 'لا توجد ملاحظة',
+'View_Driver_Profile' => 'عرض ملف السائق',
+'card_usage_note' => ' استخدام البطاقة',
+
 ];

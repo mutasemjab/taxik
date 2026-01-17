@@ -131,10 +131,12 @@
                                                 class="btn btn-primary btn-sm mr-1 mb-1">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @can('wallet-add')
                                             <button type="button" class="btn btn-success btn-sm mr-1 mb-1"
                                                 data-toggle="modal" data-target="#topUpModal{{ $user->id }}">
                                                 <i class="fas fa-wallet"></i>
                                             </button>
+                                            @endcan
 
                                             @if ($user->activate == 2)
                                                 <!-- Unban Button -->

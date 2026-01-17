@@ -55,12 +55,12 @@
                         <!-- Additional Information -->
                         <div class="form-group">
                             <label for="balance">{{ __('messages.Balance') }}</label>
-                            <input type="number" step="0.01" class="form-control" id="balance" name="balance" value="{{ old('balance', $user->balance) }}">
+                            <input type="number" step="0.01" class="form-control" id="balance" name="balance" value="{{ old('balance', $user->balance) }}" readonly>
                         </div>
                         
                         <div class="form-group">
                             <label for="referral_code">{{ __('messages.Referral_Code') }}</label>
-                            <input type="text" class="form-control" id="referral_code" name="referral_code" value="{{ old('referral_code', $user->referral_code) }}">
+                            <input type="text" class="form-control" id="referral_code" name="referral_code" value="{{ old('referral_code', $user->referral_code) }}" readonly>
                         </div>
                         
                         <div class="form-group">

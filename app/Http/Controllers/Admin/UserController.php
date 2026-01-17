@@ -196,7 +196,6 @@ class UserController extends Controller
             'email' => 'nullable|email|unique:users',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'fcm_token' => 'nullable|string',
-            'balance' => 'nullable|numeric',
             'activate' => 'nullable|in:1,2',
             'user_id' => 'nullable|exists:users,id',
         ]);

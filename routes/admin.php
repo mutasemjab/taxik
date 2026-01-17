@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\DriverAlertAdminController;
 use App\Http\Controllers\Admin\DriverMapController;
 use App\Http\Controllers\Reports\FinancialReportController;
 use App\Http\Controllers\Admin\RatingController;
+use App\Http\Controllers\Admin\SpamOrderController;
 use App\Http\Controllers\Reports\OrderStatusReportController;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
 use Spatie\Permission\Models\Permission;
@@ -48,7 +49,7 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
 
 
 
-    Route::group(['prefix' => 'admin', 'middleware' => 'auth:admin'], function () {
+    Route::group(['prefix' => 'admiinnnwmk', 'middleware' => 'auth:admin'], function () {
         Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::get('logout', [LoginController::class, 'logout'])->name('admin.logout');
 
@@ -184,6 +185,12 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::get('users/{id}/orders', [OrderController::class, 'userOrders'])->name('orders.userOrders');
         Route::get('drivers/{id}/orders', [OrderController::class, 'driverOrders'])->name('orders.driverOrders');
 
+        Route::get('/spam-orders', [SpamOrderController::class, 'index'])->name('spam-orders.index');
+        Route::get('/spam-orders/{id}', [SpamOrderController::class, 'show'])->name('spam-orders.show');
+        Route::delete('/spam-orders/{id}', [SpamOrderController::class, 'destroy'])->name('spam-orders.destroy');
+        Route::post('/spam-orders/bulk-delete', [SpamOrderController::class, 'bulkDelete'])->name('spam-orders.bulk-delete');
+        Route::get('/spam-orders-analytics', [SpamOrderController::class, 'analytics'])->name('spam-orders.analytics');
+
         Route::get('/withdrawals', [WithdrawalRequestController::class, 'index'])->name('withdrawals.index');
         Route::get('/history/{id}', [WithdrawalRequestController::class, 'history'])->name('admin.withdrawals.history');
         Route::post('/approve/{id}', [WithdrawalRequestController::class, 'approve'])->name('admin.withdrawals.approve');
@@ -208,16 +215,15 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::post('users/{id}/ban', [UserController::class, 'ban'])->name('users.ban');
         Route::post('users/{id}/unban', [UserController::class, 'unban'])->name('users.unban');
         Route::get('users/{id}/ban-history', [UserController::class, 'banHistory'])->name('users.ban.history');
-   
+
         Route::resource('challenges', ChallengeController::class);
-Route::get('challenges/{id}/participants', [ChallengeController::class, 'participants'])->name('challenges.participants');
-   
+        Route::get('challenges/{id}/participants', [ChallengeController::class, 'participants'])->name('challenges.participants');
     });
 });
 
 
 
-Route::group(['namespace' => 'Admin', 'prefix' => 'admin', 'middleware' => 'guest:admin'], function () {
+Route::group(['namespace' => 'Admin', 'prefix' => 'admiinnnwmk', 'middleware' => 'guest:admin'], function () {
     Route::get('login', [LoginController::class, 'show_login_view'])->name('admin.showlogin');
     Route::post('login', [LoginController::class, 'login'])->name('admin.login');
 });

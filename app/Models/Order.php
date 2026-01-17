@@ -31,7 +31,7 @@ class Order extends Model
         'is_hybrid_payment' => 'boolean',
     ];
 
-     // Activity Log Configuration
+    // Activity Log Configuration
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -40,6 +40,20 @@ class Order extends Model
             ->dontSubmitEmptyLogs()
             ->useLogName('order')
             ->setDescriptionForEvent(fn(string $eventName) => "Order has been {$eventName}");
+    }
+
+        /**
+     * Boot method - auto-generate tracking token
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($order) {
+            if (empty($order->tracking_token)) {
+                $order->tracking_token = self::generateTrackingToken();
+            }
+        });
     }
 
     public function coupon()
@@ -112,7 +126,7 @@ class Order extends Model
 
     public function getStatusClass()
     {
-        return match($this->status) {
+        return match ($this->status) {
             OrderStatus::Pending => 'warning',
             OrderStatus::DriverAccepted => 'info',
             OrderStatus::DriverGoToUser => 'primary',
@@ -129,7 +143,7 @@ class Order extends Model
 
     public function getStatusText()
     {
-        return match($this->status) {
+        return match ($this->status) {
             OrderStatus::Pending => __('messages.Pending'),
             OrderStatus::DriverAccepted => __('messages.Accepted'),
             OrderStatus::DriverGoToUser => __('messages.On_Way'),
@@ -181,7 +195,7 @@ class Order extends Model
 
         $angle = 2 * asin(sqrt(
             pow(sin($latDelta / 2), 2) +
-            cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)
+                cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)
         ));
 
         return round($angle * $earthRadius, 2);
@@ -205,4 +219,58 @@ class Order extends Model
     {
         return $this->waiting_charges + $this->in_trip_waiting_charges;
     }
+
+    public static function generateTrackingToken(): string
+    {
+        do {
+            $token = bin2hex(random_bytes(32)); // 64 character hex string
+        } while (self::where('tracking_token', $token)->exists());
+
+        return $token;
+    }
+
+    /**
+     * Get tracking URL
+     */
+    public function getTrackingUrl(): string
+    {
+        return url("/track-order/{$this->tracking_token}");
+    }
+
+    /**
+     * Check if order can be tracked
+     */
+    public function canBeTracked(): bool
+    {
+        // Can be tracked if NOT in these statuses
+        return !in_array($this->status, [
+            OrderStatus::Pending,
+            OrderStatus::Delivered,
+            OrderStatus::UserCancelOrder,
+            OrderStatus::DriverCancelOrder,
+            OrderStatus::CancelCronJob,
+        ]);
+    }
+
+    /**
+     * Get tracking status text
+     */
+    public function getTrackingStatusText(): string
+    {
+        if (!$this->canBeTracked()) {
+            return 'Tracking not available';
+        }
+
+        $statuses = [
+            'accepted' => 'Driver Accepted - Preparing',
+            'on_the_way' => 'Driver On The Way',
+            'arrived' => 'Driver Arrived',
+            'started' => 'Trip Started',
+            'waiting_payment' => 'Waiting for Payment',
+        ];
+
+        return $statuses[$this->status->value] ?? 'In Progress';
+    }
+
+
 }

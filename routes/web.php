@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TrackingController;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebsiteController;
@@ -26,5 +27,11 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
      Route::get('/',[WebsiteController::class,'index'])->name('website');
 
      Route::get('/privacy-policy',[WebsiteController::class,'privacyPolicy'])->name('privacy-policy');
+
+     Route::get('/track-order/{token}', [TrackingController::class, 'show'])->name('track.order');
+
+     // API Route for real-time tracking data
+     Route::get('/api/track-order/{token}', [TrackingController::class, 'getData'])->name('track.order.data');
+
 
 });

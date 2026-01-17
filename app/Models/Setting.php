@@ -11,7 +11,7 @@ class Setting extends Model
 {
     use HasFactory,LogsActivity;
 
-    protected $gurded=[];
+    protected $guarded=['id'];
 
     public function getActivitylogOptions(): LogOptions
     {

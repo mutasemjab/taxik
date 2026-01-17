@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
+use App\Enums\StatusPayment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -55,7 +58,7 @@ class OrderSpam extends Model
      */
     public function getStatusText()
     {
-        return OrderStatus::from($this->status)->getStatusText();
+        return OrderStatus::from($this->status);
     }
 
     /**
@@ -63,7 +66,7 @@ class OrderSpam extends Model
      */
     public function getPaymentMethodText()
     {
-        return PaymentMethod::from($this->payment_method)->getPaymentMethodText();
+        return PaymentMethod::from($this->payment_method);
     }
 
     /**
@@ -71,7 +74,18 @@ class OrderSpam extends Model
      */
     public function getPaymentStatusText()
     {
-        return StatusPayment::from($this->status_payment)->getPaymentStatusText();
+        return StatusPayment::from($this->status_payment);
+    }
+
+     public function getCancellationTypeText()
+    {
+        $types = [
+            'user_cancel_order' => __('messages.Cancelled_by_User'),
+            'driver_cancel_order' => __('messages.Cancelled_by_Driver'),
+            'cancel_cron_job' => __('messages.Auto_Cancelled_No_Driver'),
+        ];
+
+        return $types[$this->status] ?? __('messages.Unknown');
     }
 
     /**
@@ -80,7 +94,7 @@ class OrderSpam extends Model
     public function getDistance()
     {
         if (!$this->drop_lat || !$this->drop_lng) {
-            return null;
+            return 0;
         }
 
         $earthRadius = 6371; // Earth's radius in kilometers
@@ -96,6 +110,80 @@ class OrderSpam extends Model
         $distance = $earthRadius * $c;
         
         return round($distance, 2);
+    }
+
+    /**
+     * Get discount percentage
+     */
+    public function getDiscountPercentage()
+    {
+        if ($this->total_price_before_discount > 0) {
+            $discount = $this->total_price_before_discount - $this->total_price_after_discount;
+            return round(($discount / $this->total_price_before_discount) * 100, 2);
+        }
+        
+        return 0;
+    }
+
+    /**
+     * Get drivers who were notified about this order
+     */
+    public function driversNotified()
+    {
+        return $this->hasMany(OrderDriverNotified::class, 'order_id');
+    }
+
+    /**
+     * Get total notified drivers count
+     */
+    public function getTotalNotifiedDrivers()
+    {
+        return $this->driversNotified()->count();
+    }
+
+    /**
+     * Check if order had a driver assigned before cancellation
+     */
+    public function hadDriverAssigned()
+    {
+        return !is_null($this->driver_id);
+    }
+
+    /**
+     * Get time from creation to cancellation in minutes
+     */
+    public function getTimeToCancellationMinutes()
+    {
+        if ($this->cancelled_at && $this->created_at) {
+            return $this->created_at->diffInMinutes($this->cancelled_at);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Format time to cancellation
+     */
+    public function getFormattedTimeToCancellation()
+    {
+        $minutes = $this->getTimeToCancellationMinutes();
+        
+        if (!$minutes) {
+            return null;
+        }
+
+        if ($minutes < 60) {
+            return $minutes . ' ' . __('messages.Minutes');
+        }
+
+        $hours = floor($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+
+        if ($remainingMinutes > 0) {
+            return $hours . ' ' . __('messages.Hours') . ' ' . $remainingMinutes . ' ' . __('messages.Minutes');
+        }
+
+        return $hours . ' ' . __('messages.Hours');
     }
     
 }

@@ -5,12 +5,14 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Enums\OrderStatus;
+use App\Models\OrderSpam;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 class CleanupFinishedOrders extends Command
 {
+    
     /**
      * The name and signature of the console command.
      */
@@ -19,7 +21,7 @@ class CleanupFinishedOrders extends Command
     /**
      * The console command description.
      */
-    protected $description = 'Remove all finished orders (completed/cancelled) from Firestore that are older than specified hours';
+    protected $description = 'Remove all finished orders (completed/cancelled) and spam orders from Firestore that are older than specified hours';
 
     protected $projectId;
     protected $baseUrl;
@@ -45,7 +47,9 @@ class CleanupFinishedOrders extends Command
         // Calculate the threshold time
         $thresholdTime = Carbon::now()->subHours($hoursThreshold);
 
-        // Find all finished orders (completed and all types of cancelled)
+        // ===================================
+        // STEP 1: Find finished orders
+        // ===================================
         $finishedOrders = Order::whereIn('status', [
                 OrderStatus::Delivered,
                 OrderStatus::UserCancelOrder,
@@ -55,31 +59,56 @@ class CleanupFinishedOrders extends Command
             ->where('updated_at', '<=', $thresholdTime)
             ->get();
 
-        if ($finishedOrders->isEmpty()) {
-            $this->info('No finished orders found to cleanup from Firestore.');
-            Log::info('CleanupFinishedOrders: No finished orders found to cleanup.');
+        // ===================================
+        // STEP 2: Find spam orders
+        // ===================================
+        $spamOrders = OrderSpam::where('cancelled_at', '<=', $thresholdTime)
+            ->get();
+
+        $totalOrders = $finishedOrders->count() + $spamOrders->count();
+
+        if ($totalOrders === 0) {
+            $this->info('No finished or spam orders found to cleanup from Firestore.');
+            Log::info('CleanupFinishedOrders: No orders found to cleanup.');
             return Command::SUCCESS;
         }
 
-        $this->info("Found {$finishedOrders->count()} finished order(s) to remove from Firestore.");
+        $this->info("Found {$finishedOrders->count()} finished order(s) from orders table");
+        $this->info("Found {$spamOrders->count()} spam order(s) from order_spam table");
+        $this->info("Total: {$totalOrders} orders to remove from Firestore");
 
-        // Group by status for reporting
-        $byStatus = $finishedOrders->groupBy(function ($order) {
-            return $order->status->value;
-        });
-        $this->info("\nBreakdown by status:");
-        foreach ($byStatus as $status => $orders) {
-            $this->info("  - {$status}: {$orders->count()} orders");
+        // Group finished orders by status for reporting
+        if ($finishedOrders->isNotEmpty()) {
+            $byStatus = $finishedOrders->groupBy(function ($order) {
+                return $order->status->value;
+            });
+            $this->info("\nFinished Orders Breakdown by status:");
+            foreach ($byStatus as $status => $orders) {
+                $this->info("  - {$status}: {$orders->count()} orders");
+            }
         }
+
+        // Group spam orders by status for reporting
+        if ($spamOrders->isNotEmpty()) {
+            $spamByStatus = $spamOrders->groupBy('status');
+            $this->info("\nSpam Orders Breakdown by status:");
+            foreach ($spamByStatus as $status => $orders) {
+                $this->info("  - {$status}: {$orders->count()} orders");
+            }
+        }
+
         $this->newLine();
 
         $successCount = 0;
         $failCount = 0;
         $notFoundCount = 0;
 
-        $progressBar = $this->output->createProgressBar($finishedOrders->count());
+        $progressBar = $this->output->createProgressBar($totalOrders);
         $progressBar->start();
 
+        // ===================================
+        // STEP 3: Process finished orders
+        // ===================================
         foreach ($finishedOrders as $order) {
             try {
                 $removed = $this->removeOrderFromFirestore($order->id);
@@ -106,22 +135,60 @@ class CleanupFinishedOrders extends Command
             }
         }
 
+        // ===================================
+        // STEP 4: Process spam orders
+        // ===================================
+        foreach ($spamOrders as $spamOrder) {
+            try {
+                $removed = $this->removeOrderFromFirestore($spamOrder->id);
+
+                if ($removed === 'not_found') {
+                    $notFoundCount++;
+                } elseif ($removed) {
+                    $successCount++;
+                } else {
+                    $failCount++;
+                }
+
+                $progressBar->advance();
+
+            } catch (\Exception $e) {
+                $failCount++;
+                Log::error("Failed to remove spam order #{$spamOrder->id} from Firestore", [
+                    'order_id' => $spamOrder->id,
+                    'status' => $spamOrder->status,
+                    'error' => $e->getMessage()
+                ]);
+                
+                $progressBar->advance();
+            }
+        }
+
         $progressBar->finish();
         $this->newLine(2);
 
+        // ===================================
+        // STEP 5: Summary
+        // ===================================
         $this->info("=== Cleanup Summary ===");
-        $this->info("Total orders processed: {$finishedOrders->count()}");
-        $this->info("Successfully removed: {$successCount}");
+        $this->info("Total orders processed: {$totalOrders}");
+        $this->info("  - Finished orders: {$finishedOrders->count()}");
+        $this->info("  - Spam orders: {$spamOrders->count()}");
+        $this->newLine();
+        $this->info("Successfully removed from Firestore: {$successCount}");
         $this->info("Not found (already removed): {$notFoundCount}");
         $this->info("Failed: {$failCount}");
 
         Log::info('CleanupFinishedOrders cron job completed', [
-            'total' => $finishedOrders->count(),
+            'total' => $totalOrders,
+            'finished_orders' => $finishedOrders->count(),
+            'spam_orders' => $spamOrders->count(),
             'success' => $successCount,
             'not_found' => $notFoundCount,
             'failed' => $failCount,
             'hours_threshold' => $hoursThreshold,
-            'by_status' => $byStatus->map->count()->toArray()
+            'finished_by_status' => isset($byStatus) ? $byStatus->map->count()->toArray() : [],
+            'spam_by_status' => isset($spamByStatus) ? $spamByStatus->map->count()->toArray() : [],
         ]);
 
         return Command::SUCCESS;
@@ -148,7 +215,7 @@ class CleanupFinishedOrders extends Command
             );
 
             if ($deleteResponse->successful()) {
-                Log::info("Finished order #{$orderId} removed from Firestore successfully");
+                Log::info("Order #{$orderId} removed from Firestore successfully");
                 return true;
             } else {
                 Log::error("Failed to delete order #{$orderId} from Firestore", [
@@ -159,7 +226,7 @@ class CleanupFinishedOrders extends Command
             }
             
         } catch (\Exception $e) {
-            Log::error("Error removing finished order #{$orderId} from Firestore: " . $e->getMessage());
+            Log::error("Error removing order #{$orderId} from Firestore: " . $e->getMessage());
             return false;
         }
     }

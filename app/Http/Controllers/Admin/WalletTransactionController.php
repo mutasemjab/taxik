@@ -27,11 +27,67 @@ class WalletTransactionController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
-    {
-        $transactions = WalletTransaction::with(['user', 'driver', 'admin'])->orderBy('created_at', 'desc')->get();
-        return view('admin.wallet_transactions.index', compact('transactions'));
+   public function index(Request $request)
+{
+    // Get users and drivers for filter dropdowns
+    $users = User::select('id', 'name', 'phone')->get();
+    $drivers = Driver::select('id', 'name', 'phone')->get();
+    
+    // Start query
+    $query = WalletTransaction::with(['user', 'driver', 'admin']);
+    
+    // Apply filters
+    if ($request->filled('entity_type') && $request->entity_type != 'all') {
+        if ($request->entity_type == 'user') {
+            $query->whereNotNull('user_id');
+            
+            // Filter by specific user
+            if ($request->filled('entity_id')) {
+                $query->where('user_id', $request->entity_id);
+            }
+        } elseif ($request->entity_type == 'driver') {
+            $query->whereNotNull('driver_id');
+            
+            // Filter by specific driver
+            if ($request->filled('entity_id')) {
+                $query->where('driver_id', $request->entity_id);
+            }
+        }
     }
+    
+    // Filter by transaction type
+    if ($request->filled('transaction_type') && $request->transaction_type != 'all') {
+        $query->where('type_of_transaction', $request->transaction_type);
+    }
+    
+    // Filter by date range
+    if ($request->filled('date_from')) {
+        $query->whereDate('created_at', '>=', $request->date_from);
+    }
+    
+    if ($request->filled('date_to')) {
+        $query->whereDate('created_at', '<=', $request->date_to);
+    }
+    
+    // Search functionality (driver or user by name/phone)
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->whereHas('user', function($userQuery) use ($search) {
+                $userQuery->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
+            })
+            ->orWhereHas('driver', function($driverQuery) use ($search) {
+                $driverQuery->where('name', 'like', "%{$search}%")
+                           ->orWhere('phone', 'like', "%{$search}%");
+            });
+        });
+    }
+    
+    $transactions = $query->orderBy('created_at', 'desc')->get();
+    
+    return view('admin.wallet_transactions.index', compact('transactions', 'users', 'drivers'));
+}
 
     /**
      * Show the form for creating a new transaction.

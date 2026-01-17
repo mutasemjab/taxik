@@ -16,7 +16,7 @@ class User extends Authenticatable
 {
    use HasApiTokens, HasFactory, Notifiable ,LogsActivity;
 
-   protected $guarded = [];
+   protected $guarded = ['id'];
 
    protected $hidden = [
       'password',

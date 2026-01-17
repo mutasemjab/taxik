@@ -395,6 +395,15 @@ class OTPService
             // Check rate limiting first
             $rateLimitCheck = $this->canRequestOTP($mobile);
             if (!$rateLimitCheck['can_request']) {
+                // ========== LOG RATE LIMIT FAILURE ==========
+                \Log::channel('otp_failed')->warning('OTP request rate limit exceeded', [
+                    'mobile' => $mobile,
+                    'remaining_seconds' => $rateLimitCheck['remaining_seconds'],
+                    'message' => $rateLimitCheck['message'],
+                    'timestamp' => now()->toDateTimeString(),
+                ]);
+                // ========== END LOG RATE LIMIT FAILURE ==========
+                
                 return [
                     'success' => false,
                     'message' => $rateLimitCheck['message'],
@@ -425,27 +434,43 @@ class OTPService
                 // Remove OTP from cache if SMS failed
                 Cache::forget('otp_' . $mobile);
 
-                // Log detailed error for debugging
-                Log::error('SMS Gateway Failed - Phone may not receive OTP:', [
+                // ========== LOG SMS SENDING FAILURE ==========
+                \Log::channel('otp_failed')->error('SMS Gateway Failed - OTP not sent', [
                     'mobile' => $mobile,
+                    'formatted_mobile' => ltrim($mobile, '+'),
                     'error' => $smsResult['error'] ?? 'Unknown error',
                     'response' => $smsResult['response'] ?? 'No response',
+                    'http_code' => $smsResult['http_code'] ?? null,
+                    'sms_config' => [
+                        'sender_id' => $this->smsConfig['sender_id'],
+                        'account_name' => $this->smsConfig['account_name'],
+                        'base_url' => $this->smsConfig['base_url'],
+                    ],
                     'possible_reasons' => [
                         'Invalid phone number format',
                         'SMS gateway credentials issue',
                         'Network/carrier blocking',
                         'Insufficient gateway balance',
-                        'Phone number not registered with carrier'
-                    ]
+                        'Phone number not registered with carrier',
+                        'Carrier/Country restrictions',
+                    ],
+                    'timestamp' => now()->toDateTimeString(),
                 ]);
+                // ========== END LOG SMS SENDING FAILURE ==========
 
                 return $smsResult;
             }
         } catch (\Exception $e) {
-            Log::error('Send OTP failed:', [
+            // ========== LOG EXCEPTION FAILURE ==========
+            \Log::channel('otp_failed')->error('Send OTP Exception', [
                 'mobile' => $mobile,
-                'error' => $e->getMessage()
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+                'timestamp' => now()->toDateTimeString(),
             ]);
+            // ========== END LOG EXCEPTION FAILURE ==========
 
             return [
                 'success' => false,
@@ -454,6 +479,7 @@ class OTPService
             ];
         }
     }
+
 
     /**
      * Handle test case for development
@@ -469,6 +495,14 @@ class OTPService
         return isset($testCases[$mobile]) && $testCases[$mobile] === $otp;
     }
 
+    /**
+     * Verify OTP with test case support
+     *
+     * @param string $mobile
+     * @param string $otp
+     * @return array
+     */
+   
     /**
      * Verify OTP with test case support
      *
@@ -499,6 +533,15 @@ class OTPService
 
         // Check if OTP exists but is wrong
         if ($this->otpExists($mobile)) {
+            // ========== LOG INVALID OTP FAILURE ==========
+            \Log::channel('otp_failed')->warning('Invalid OTP entered', [
+                'mobile' => $mobile,
+                'entered_otp' => $otp,
+                'error_code' => 'INVALID_OTP',
+                'timestamp' => now()->toDateTimeString(),
+            ]);
+            // ========== END LOG INVALID OTP FAILURE ==========
+            
             return [
                 'success' => false,
                 'message' => $this->getMessage('invalid_otp'),
@@ -507,6 +550,15 @@ class OTPService
         }
 
         // OTP expired or not found
+        // ========== LOG EXPIRED OTP FAILURE ==========
+        \Log::channel('otp_failed')->warning('OTP expired or not found', [
+            'mobile' => $mobile,
+            'entered_otp' => $otp,
+            'error_code' => 'OTP_EXPIRED',
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+        // ========== END LOG EXPIRED OTP FAILURE ==========
+        
         return [
             'success' => false,
             'message' => $this->getMessage('otp_expired'),

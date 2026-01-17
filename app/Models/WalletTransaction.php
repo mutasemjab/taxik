@@ -11,7 +11,7 @@ class WalletTransaction extends Model
 {
     use HasFactory,LogsActivity;
 
-     protected $guarded = [];
+     protected $guarded = ['id'];
 
       protected $casts = [
         'amount' => 'decimal:2',

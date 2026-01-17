@@ -570,6 +570,7 @@ class OrderController extends Controller
         $order->payment_status_text = $order->getPaymentStatusText();
         $order->distance = $order->getDistance();
         $order->discount_percentage = $order->getDiscountPercentage();
+        $order->tracking_url = $order->getTrackingUrl();
 
         $hasRated = \App\Models\Rating::where('user_id', $user->id)
             ->where('order_id', $order->id)

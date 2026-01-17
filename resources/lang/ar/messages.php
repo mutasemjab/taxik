@@ -1698,86 +1698,211 @@ return [
     'Banned_Permanently' => 'محظور بشكل دائم',
     'Banned_Until' => 'محظور حتى',
     // Challenge Translations
-'Challenges' => 'التحديات',
-'Add_New_Challenge' => 'إضافة تحدي جديد',
-'Challenge_List' => 'قائمة التحديات',
-'Challenge_Information' => 'معلومات التحدي',
-'Challenge_Details' => 'تفاصيل التحدي',
-'Edit_Challenge' => 'تعديل التحدي',
-'Create_Challenge' => 'إنشاء التحدي',
-'Update_Challenge' => 'تحديث التحدي',
-'Delete_Challenge' => 'حذف التحدي',
-'Challenge_Type' => 'نوع التحدي',
-'Challenge_Icon' => 'أيقونة التحدي',
-'Current_Icon' => 'الأيقونة الحالية',
+    'Challenges' => 'التحديات',
+    'Add_New_Challenge' => 'إضافة تحدي جديد',
+    'Challenge_List' => 'قائمة التحديات',
+    'Challenge_Information' => 'معلومات التحدي',
+    'Challenge_Details' => 'تفاصيل التحدي',
+    'Edit_Challenge' => 'تعديل التحدي',
+    'Create_Challenge' => 'إنشاء التحدي',
+    'Update_Challenge' => 'تحديث التحدي',
+    'Delete_Challenge' => 'حذف التحدي',
+    'Challenge_Type' => 'نوع التحدي',
+    'Challenge_Icon' => 'أيقونة التحدي',
+    'Current_Icon' => 'الأيقونة الحالية',
 
-// Challenge Types
-'challenge_type_referral' => 'دعوة أصدقاء',
-'challenge_type_trips' => 'إكمال رحلات',
-'challenge_type_spending' => 'إجمالي الإنفاق',
+    // Challenge Types
+    'challenge_type_referral' => 'دعوة أصدقاء',
+    'challenge_type_trips' => 'إكمال رحلات',
+    'challenge_type_spending' => 'إجمالي الإنفاق',
 
-// Challenge Fields
-'Title_English' => 'العنوان (إنجليزي)',
-'Title_Arabic' => 'العنوان (عربي)',
-'Description_English' => 'الوصف (إنجليزي)',
-'Description_Arabic' => 'الوصف (عربي)',
-'Target_Count' => 'العدد المطلوب',
-'Reward_Amount' => 'قيمة المكافأة',
-'Max_Completions_Per_User' => 'الحد الأقصى للإكمال لكل مستخدم',
-'Start_Date' => 'تاريخ البداية',
-'End_Date' => 'تاريخ النهاية',
-'Select_Type' => 'اختر النوع',
+    // Challenge Fields
+    'Title_English' => 'العنوان (إنجليزي)',
+    'Title_Arabic' => 'العنوان (عربي)',
+    'Description_English' => 'الوصف (إنجليزي)',
+    'Description_Arabic' => 'الوصف (عربي)',
+    'Target_Count' => 'العدد المطلوب',
+    'Reward_Amount' => 'قيمة المكافأة',
+    'Max_Completions_Per_User' => 'الحد الأقصى للإكمال لكل مستخدم',
+    'Start_Date' => 'تاريخ البداية',
+    'End_Date' => 'تاريخ النهاية',
+    'Select_Type' => 'اختر النوع',
 
-// Challenge Statistics
-'Total_Participants' => 'إجمالي المشاركين',
-'Total_Completions' => 'إجمالي الإكمالات',
-'Total_Rewards_Given' => 'إجمالي المكافآت المعطاة',
-'In_Progress' => 'قيد التقدم',
-'Times_Completed' => 'مرات الإكمال',
-'Last_Completed' => 'آخر إكمال',
-'Started_At' => 'بدأ في',
+    // Challenge Statistics
+    'Total_Participants' => 'إجمالي المشاركين',
+    'Total_Completions' => 'إجمالي الإكمالات',
+    'Total_Rewards_Given' => 'إجمالي المكافآت المعطاة',
+    'In_Progress' => 'قيد التقدم',
+    'Times_Completed' => 'مرات الإكمال',
+    'Last_Completed' => 'آخر إكمال',
+    'Started_At' => 'بدأ في',
 
-// Challenge Participants
-'Challenge_Participants' => 'مشاركو التحدي',
-'Participant_List' => 'قائمة المشاركين',
-'Progress' => 'التقدم',
-'Completed' => 'مكتمل',
-'Not_Started' => 'لم يبدأ',
-'Max_Reached' => 'تم الوصول للحد الأقصى',
-'No_Participants_Yet' => 'لا يوجد مشاركون في هذا التحدي بعد.',
+    // Challenge Participants
+    'Challenge_Participants' => 'مشاركو التحدي',
+    'Participant_List' => 'قائمة المشاركين',
+    'Progress' => 'التقدم',
+    'Completed' => 'مكتمل',
+    'Not_Started' => 'لم يبدأ',
+    'Max_Reached' => 'تم الوصول للحد الأقصى',
+    'No_Participants_Yet' => 'لا يوجد مشاركون في هذا التحدي بعد.',
 
-// Challenge Status
-'No_Time_Limit' => 'بدون حد زمني',
-'No_Limit' => 'بدون حد',
-'Duration' => 'المدة',
-'Target' => 'الهدف',
-'Reward' => 'المكافأة',
+    // Challenge Status
+    'No_Time_Limit' => 'بدون حد زمني',
+    'No_Limit' => 'بدون حد',
+    'Duration' => 'المدة',
+    'Target' => 'الهدف',
+    'Reward' => 'المكافأة',
 
-// Units
-'persons' => 'أشخاص',
-'trips' => 'رحلات',
-'currency' => 'دينار',
+    // Units
+    'persons' => 'أشخاص',
+    'trips' => 'رحلات',
+    'currency' => 'دينار',
 
-// Help Text
-'target_count_help' => 'عدد الإحالات/الرحلات/المبلغ المطلوب لإكمال التحدي',
-'start_date_help' => 'اتركه فارغاً لعدم وجود قيد على تاريخ البداية',
-'end_date_help' => 'اتركه فارغاً لعدم وجود قيد على تاريخ النهاية',
-'max_completions_help' => 'كم مرة يمكن للمستخدم إكمال هذا التحدي',
-'icon_help' => 'قم برفع أيقونة لهذا التحدي (اختياري)',
-'icon_update_help' => 'قم برفع أيقونة جديدة لاستبدال الحالية (اختياري)',
+    // Help Text
+    'target_count_help' => 'عدد الإحالات/الرحلات/المبلغ المطلوب لإكمال التحدي',
+    'start_date_help' => 'اتركه فارغاً لعدم وجود قيد على تاريخ البداية',
+    'end_date_help' => 'اتركه فارغاً لعدم وجود قيد على تاريخ النهاية',
+    'max_completions_help' => 'كم مرة يمكن للمستخدم إكمال هذا التحدي',
+    'icon_help' => 'قم برفع أيقونة لهذا التحدي (اختياري)',
+    'icon_update_help' => 'قم برفع أيقونة جديدة لاستبدال الحالية (اختياري)',
 
-// Messages
-'Are_You_Sure' => 'هل أنت متأكد من حذف هذا التحدي؟',
-'Quick_Actions' => 'إجراءات سريعة',
-'View_Participants' => 'عرض المشاركين',
-'Search_By_Title' => 'البحث بالعنوان',
-'Auto_Cancelled' => 'ألغي اوتوماتيكيا',
+    // Messages
+    'Are_You_Sure' => 'هل أنت متأكد من حذف هذا التحدي؟',
+    'Quick_Actions' => 'إجراءات سريعة',
+    'View_Participants' => 'عرض المشاركين',
+    'Search_By_Title' => 'البحث بالعنوان',
+    'Auto_Cancelled' => 'ألغي اوتوماتيكيا',
     'Complaints' => 'المشاكل',
     'Hybrid_Payment' => 'دفع مختلط',
     'Negative_Balance_Warning' => 'تم إنشاء العملية بنجاح. تحذير: رصيد :entity (:name) أصبح سالب: :balance',
-'Balance_Will_Be_Negative' => 'تحذير: الرصيد سيصبح سالب بعد هذه العملية',
-'No_Note' => 'لا توجد ملاحظة',
-'View_Driver_Profile' => 'عرض ملف السائق',
-'card_usage_note' => ' استخدام البطاقة',
+    'Balance_Will_Be_Negative' => 'تحذير: الرصيد سيصبح سالب بعد هذه العملية',
+    'No_Note' => 'لا توجد ملاحظة',
+    'View_Driver_Profile' => 'عرض ملف السائق',
+    'card_usage_note' => ' استخدام البطاقة',
+    'Spam_Orders' => 'الطلبات الملغاة',
+    'Spam_Order_Details' => 'تفاصيل الطلب الملغى',
+    'Total_Spam_Orders' => 'إجمالي الطلبات الملغاة',
+    'User_Cancelled' => 'ألغى من قبل المستخدم',
+    'Driver_Cancelled' => 'ألغى من قبل السائق',
+    'Auto_Cancelled' => 'إلغاء تلقائي',
+    'Cancellation_Information' => 'معلومات الإلغاء',
+    'Cancellation_Reason' => 'سبب الإلغاء',
+    'Time_Until_Cancel' => 'الوقت حتى الإلغاء',
+    'Driver_Rejections' => 'رفض السائقين',
+    'These_drivers_rejected_order' => 'هؤلاء السائقون رفضوا هذا الطلب',
+    'No_Driver_Rejections_Recorded' => 'لا يوجد رفض من السائقين مسجل لهذا الطلب',
+    'User_Cancellation_History' => 'سجل إلغاءات المستخدم',
+    'This_user_cancelled' => 'هذا المستخدم ألغى',
+    'orders' => 'طلبات',
+    'Spam_Order_Deleted_Successfully' => 'تم حذف الطلب الملغى بنجاح',
+    'No_Spam_Orders_Found' => 'لم يتم العثور على طلبات ملغاة',
+    'Analytics' => 'التحليلات',
+    'Delete_Permanently' => 'حذف نهائياً',
+    'Spam_Orders_List' => 'قائمة الطلبات الملغاة',
+    'Cancelled_At' => 'ألغي في',
+    // Page titles and navigation
+    'Spam_Order_Details' => 'تفاصيل الطلب الملغى',
+    'Back_to_List' => 'العودة إلى القائمة',
+    'Delete_Permanently' => 'حذف نهائياً',
+    'Confirm_Delete' => 'هل أنت متأكد من حذف هذا العنصر؟',
+
+    // Cancellation Information
+    'Cancellation_Information' => 'معلومات الإلغاء',
+    'Cancelled_At' => 'تم الإلغاء في',
+    'Time_Until_Cancel' => 'الوقت حتى الإلغاء',
+    'Cancellation_Reason' => 'سبب الإلغاء',
+    'No_Reason_Provided' => 'لم يتم تقديم سبب',
+
+    // Order Information
+    'Order_Number' => 'رقم الطلب',
+    'Service' => 'الخدمة',
+    'Not_Available' => 'غير متوفر',
+    'Payment_Method' => 'طريقة الدفع',
+    'Payment_Status' => 'حالة الدفع',
+    'Cash' => 'نقدي',
+    'Visa' => 'فيزا',
+    'Wallet' => 'محفظة',
+    'Pending' => 'قيد الانتظار',
+    'Paid' => 'مدفوع',
+
+    // Location Information
+    'Location_Information' => 'معلومات الموقع',
+    'Pickup_Location' => 'موقع الاستلام',
+    'Dropoff_Location' => 'موقع التسليم',
+    'Coordinates' => 'الإحداثيات',
+    'Not_Set' => 'غير محدد',
+    'Distance' => 'المسافة',
+
+    // Pricing Details
+    'Pricing_Details' => 'تفاصيل الأسعار',
+    'Original_Price' => 'السعر الأصلي',
+    'Final_Price' => 'السعر النهائي',
+    'Admin_Commission' => 'عمولة الإدارة',
+
+    // Driver Statistics
+    'Driver_Statistics' => 'إحصائيات السائقين',
+    'Total_Notified' => 'إجمالي المُبلّغين',
+    'Rejected' => 'رفض',
+    'No_Response' => 'لا يوجد رد',
+    'Assigned' => 'تم التعيين',
+    'How_It_Works' => 'كيف يعمل',
+    'Drivers_sent_notification' => 'السائقون الذين تم إرسال إشعار لهم بهذا الطلب',
+    'Drivers_removed_from_firebase' => 'السائقون الذين أزالوا أنفسهم من فايربيس (رفضوا)',
+    'Drivers_still_in_firebase' => 'السائقون الذين ما زالوا في فايربيس (لم يستجيبوا)',
+    'Driver_accepted_order' => 'السائق الذي قبل الطلب',
+
+    // All Drivers Notified
+    'All_Drivers_Notified' => 'جميع السائقين المُبلّغين',
+    'All_drivers_notified_about_order' => 'جميع السائقين الذين تم إبلاغهم بهذا الطلب',
+    'Driver' => 'السائق',
+    'Phone' => 'الهاتف',
+    'Search_Radius' => 'نطاق البحث',
+    'Notified_At' => 'تم الإبلاغ في',
+    'Response' => 'الاستجابة',
+    'Unknown' => 'غير معروف',
+
+    // Drivers Who Rejected
+    'Drivers_Who_Rejected' => 'السائقون الذين رفضوا',
+    'These_drivers_rejected_by_removing_firebase' => 'هؤلاء السائقون رفضوا الطلب عن طريق إزالة أنفسهم من فايربيس',
+
+    // Drivers No Response
+    'Drivers_No_Response' => 'السائقون بدون رد',
+    'These_drivers_still_in_firebase' => 'هؤلاء السائقون ما زالوا في فايربيس ولم يستجيبوا للطلب',
+
+    // No Drivers Warning
+    'No_Drivers_Were_Notified' => 'لم يتم إبلاغ أي سائقين بهذا الطلب',
+
+    // User Information
+    'User_Information' => 'معلومات المستخدم',
+    'Email' => 'البريد الإلكتروني',
+    'View_Profile' => 'عرض الملف الشخصي',
+    'User_Not_Available' => 'المستخدم غير متوفر',
+
+    // Driver Information
+    'Driver_Information' => 'معلومات السائق',
+    'Driver_Not_Available' => 'السائق غير متوفر',
+
+    // User Cancellation History
+    'User_Cancellation_History' => 'سجل إلغاءات المستخدم',
+    'This_user_cancelled' => 'هذا المستخدم ألغى',
+    'orders' => 'طلبات',
+
+    // Order Status
+    'Cancelled_by_User' => 'ألغى من قبل المستخدم',
+    'Cancelled_by_Driver' => 'ألغى من قبل السائق',
+    'Auto_Cancelled_No_Driver' => 'إلغاء تلقائي (لم يتم العثور على سائق)',
+    'User_Cancelled' => 'ألغى من قبل المستخدم',
+    'Driver_Cancelled' => 'ألغى من قبل السائق',
+    'Auto_Cancelled' => 'إلغاء تلقائي',
+    'Accepted' => 'مقبول',
+    'On_The_Way' => 'في الطريق',
+    'Started' => 'بدأ',
+    'Waiting_Payment' => 'في انتظار الدفع',
+    'Completed' => 'مكتمل',
+    'Arrived' => 'وصل',
+
+    // Time
+    'Minutes' => 'دقيقة',
+    'Hours' => 'ساعة',
 
 ];

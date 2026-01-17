@@ -132,6 +132,12 @@
                             <p>{{ __('messages.orders') }}</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('spam-orders.index') }}">
+                            <i class="fas fa-fw fa-trash-alt"></i>
+                            <span>{{ __('messages.Spam_Orders') }}</span>
+                        </a>
+                    </li>
                 @endcan
 
                 <!-- Challenges -->

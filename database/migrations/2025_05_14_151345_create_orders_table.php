@@ -25,6 +25,9 @@ return new class extends Migration
             $table->unsignedBigInteger('coupon_id')->nullable();
             $table->foreign('coupon_id')->references('id')->on('coupons')->onDelete('cascade');
 
+            $table->string('tracking_token', 64)->unique()->nullable();
+
+
             $table->decimal('wallet_amount_used', 10, 2)->default(0);
             $table->decimal('cash_amount_due', 10, 2)->default(0);
             $table->boolean('is_hybrid_payment')->default(false);

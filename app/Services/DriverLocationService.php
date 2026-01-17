@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\ServicePayment;
 use App\Models\Service;
 use App\Http\Controllers\FCMController;
+use App\Models\OrderDriverNotified;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -484,6 +485,17 @@ class DriverLocationService
             $driverIDs = array_map(function ($driver) {
                 return $driver['id'];
             }, $drivers);
+
+            // ========================================
+            // SAVE NOTIFIED DRIVERS TO DATABASE
+            // ========================================
+            try {
+                $notifiedCount = OrderDriverNotified::recordNotifiedDrivers($orderId, $drivers, $searchRadius);
+                \Log::info("Saved {$notifiedCount} notified drivers to database for order {$orderId}");
+            } catch (\Exception $e) {
+                \Log::error("Failed to save notified drivers to database for order {$orderId}: " . $e->getMessage());
+                // Don't fail the entire process if database save fails
+            }
 
             // Prepare complete order data with user information - SAME STRUCTURE AS BEFORE
             $orderData = [

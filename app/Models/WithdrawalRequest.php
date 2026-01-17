@@ -12,7 +12,7 @@ class WithdrawalRequest extends Model
     use HasFactory,LogsActivity;
 
     
-     protected $guarded = [];
+     protected $guarded = ['id'];
     
      
       public function getActivitylogOptions(): LogOptions

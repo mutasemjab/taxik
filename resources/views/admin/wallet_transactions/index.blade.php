@@ -12,31 +12,13 @@
         </a>
     </div>
 
-    @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ session('success') }}
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    @endif
-
-    @if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{ session('error') }}
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    @endif
-
-    <!-- Filter Card -->
+        <!-- Filter Card -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">{{ __('messages.Filter_Transactions') }}</h6>
         </div>
         <div class="card-body">
-            <form action="{{ route('wallet_transactions.filter') }}" method="GET">
+           <form action="{{ route('wallet_transactions.index') }}" method="GET">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -48,7 +30,16 @@
                             </select>
                         </div>
                     </div>
-                    
+
+                    <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="search">{{ __('messages.Search') }}</label>
+                        <input type="text" class="form-control" id="search" name="search" 
+                            value="{{ request('search') }}" 
+                            placeholder="{{ __('messages.Search') }}">
+                    </div>
+                </div>
+                                    
                     <div class="col-md-3 entity-select user-select" style="display: {{ request('entity_type') == 'user' ? 'block' : 'none' }};">
                         <div class="form-group">
                             <label for="user_id">{{ __('messages.Select_User') }}</label>
@@ -81,7 +72,7 @@
                         <div class="form-group">
                             <label for="transaction_type">{{ __('messages.Transaction_Type') }}</label>
                             <select class="form-control" id="transaction_type" name="transaction_type">
-                                <option value="all" {{ request('transaction_type') == 'all' ? 'selected' : '' }}>{{ __('messages.All_Types') }}</option>
+                                <option value="all" {{ request('transaction_type') == 'all' ? 'selected' : '' }}>{{ __('messages.All') }}</option>
                                 <option value="1" {{ request('transaction_type') == '1' ? 'selected' : '' }}>{{ __('messages.Deposit') }}</option>
                                 <option value="2" {{ request('transaction_type') == '2' ? 'selected' : '' }}>{{ __('messages.Withdrawal') }}</option>
                             </select>

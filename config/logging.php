@@ -85,7 +85,7 @@ return [
             'handler_with' => [
                 'host' => env('PAPERTRAIL_URL'),
                 'port' => env('PAPERTRAIL_PORT'),
-                'connectionString' => 'tls://'.env('PAPERTRAIL_URL').':'.env('PAPERTRAIL_PORT'),
+                'connectionString' => 'tls://' . env('PAPERTRAIL_URL') . ':' . env('PAPERTRAIL_PORT'),
             ],
         ],
 
@@ -117,6 +117,24 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        'register_failed' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/register_failed.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 14,
+            'permission' => 0664,
+        ],
+
+        // OTP failures log
+        'otp_failed' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/otp_failed.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 14,
+            'permission' => 0664,
+        ],
+
     ],
 
 ];

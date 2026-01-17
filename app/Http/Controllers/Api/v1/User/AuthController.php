@@ -203,7 +203,6 @@ class AuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-
             'country_code' => 'required',
             'phone' => 'required|string|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
             'email' => 'nullable|email|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
@@ -241,6 +240,21 @@ class AuthController extends Controller
         if ($validator->fails()) {
             // Get first validation error message for the message field
             $errorMessage = $validator->errors()->first();
+
+            // ========== LOG VALIDATION FAILURE ==========
+            \Log::channel('register_failed')->error('Registration validation failed', [
+                'user_type' => $userType,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'name' => $request->name,
+                'errors' => $validator->errors()->toArray(),
+                'first_error' => $errorMessage,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'timestamp' => now()->toDateTimeString(),
+            ]);
+            // ========== END LOG VALIDATION FAILURE ==========
+
             // Keep all validation errors in the data field
             return $this->error_response($errorMessage, $validator->errors());
         }
@@ -353,8 +367,6 @@ class AuthController extends Controller
                 // ========== END REFERRAL AND CHALLENGE ==========
             }
 
-
-
             DB::commit();
 
             $accessToken = $user->createToken('authToken')->accessToken;
@@ -379,6 +391,24 @@ class AuthController extends Controller
             return $this->success_response('Registration successful', $responseData);
         } catch (\Exception $e) {
             DB::rollBack();
+
+            // ========== LOG REGISTRATION FAILURE ==========
+            \Log::channel('register_failed')->error('Registration process failed', [
+                'user_type' => $userType,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'name' => $request->name,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['photo', 'photo_of_car', 'driving_license_front', 'driving_license_back', 'car_license_front', 'car_license_back', 'no_criminal_record']),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'timestamp' => now()->toDateTimeString(),
+            ]);
+            // ========== END LOG REGISTRATION FAILURE ==========
+
             return $this->error_response('Registration failed', $e->getMessage());
         }
     }

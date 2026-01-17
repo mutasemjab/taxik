@@ -11,7 +11,7 @@ class Service extends Model
 {
     use HasFactory,LogsActivity;
 
-     protected $guarded=[];
+    protected $guarded = ['id'];
     protected $appends = ['name','photo_url'];
 
   

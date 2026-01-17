@@ -1341,6 +1341,9 @@ return [
     'No_data' => 'No data found',
     'minimum_money_in_wallet_driver_to_get_order' =>
     'Minimum driver wallet balance to receive orders',
+   
+    'can_driver_withdrawal' =>
+    'Can driver withdrawal from his wallet (1=>Yes, 2=>No)',
 
     'times_that_driver_cancel_orders_in_one_day' =>
     'Number of order cancellations allowed per day',

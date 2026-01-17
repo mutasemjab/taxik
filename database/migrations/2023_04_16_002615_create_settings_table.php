@@ -27,6 +27,7 @@ return new class extends Migration
             ['key' => "new_driver_register_add_balance", 'value' => 0], // fixed
             ['key' => "find_drivers_in_radius", 'value' => 5], // km
             ['key' => "maximum_radius_to_find_drivers", 'value' => 20], // km
+            ['key' => "can_driver_withdrawal", 'value' => 1], // 1 yes , 2 no
         ]);
 
     }

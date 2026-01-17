@@ -1377,6 +1377,9 @@ return [
     'minimum_money_in_wallet_driver_to_get_order' =>
     'الحد الأدنى لرصيد محفظة السائق لاستقبال الطلبات',
 
+    'can_driver_withdrawal' =>
+'هل يمكن للسائق سحب الرصيد من محفظته؟ (1 => نعم، 2 => لا)',
+
     'times_that_driver_cancel_orders_in_one_day' =>
     'عدد مرات إلغاء الطلبات المسموح بها يومياً للسائق',
 

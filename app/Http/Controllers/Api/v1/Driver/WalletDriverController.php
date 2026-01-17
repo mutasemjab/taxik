@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CardNumber;
 use App\Models\CardUsage;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\WalletTransaction;
 use App\Traits\Responses;
 use Illuminate\Http\Request;
@@ -35,7 +36,9 @@ class WalletDriverController extends Controller
         }
         
         $query = WalletTransaction::where('driver_id', $driver->id);
-        
+        $canDriverWithdrawal = Setting::where('key', 'can_driver_withdrawal')->value('value');
+        $canDriverWithdrawalFlag = $canDriverWithdrawal == 1;
+
         // Filter by transaction type if provided
         if ($request->has('type')) {
             $query->where('type_of_transaction', $request->type);
@@ -57,6 +60,7 @@ class WalletDriverController extends Controller
         
         $responseData = [
             'balance' => $driver->balance,
+            'can_driver_withdrawal' => $canDriverWithdrawalFlag,
             'transactions' => $transactions,
             'meta' => [
                 'current_page' => $transactions->currentPage(),

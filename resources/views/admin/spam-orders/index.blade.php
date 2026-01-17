@@ -105,7 +105,7 @@
                         <div class="form-group">
                             <label for="search">{{ __('messages.Order_Number') }}</label>
                             <input type="text" class="form-control" id="search" name="search" 
-                                   value="{{ request('search') }}" placeholder="{{ __('messages.Search_Order') }}">
+                                   value="{{ request('search') }}" placeholder="{{ __('messages.Search') }}">
                         </div>
                     </div>
 
@@ -129,7 +129,7 @@
 
                     <div class="col-md-2">
                         <div class="form-group">
-                            <label for="from_date">{{ __('messages.From_Date') }}</label>
+                            <label for="from_date">{{ __('messages.Date_From') }}</label>
                             <input type="date" class="form-control" id="from_date" name="from_date" 
                                    value="{{ request('from_date') }}">
                         </div>
@@ -137,7 +137,7 @@
 
                     <div class="col-md-2">
                         <div class="form-group">
-                            <label for="to_date">{{ __('messages.To_Date') }}</label>
+                            <label for="to_date">{{ __('messages.Date_To') }}</label>
                             <input type="date" class="form-control" id="to_date" name="to_date" 
                                    value="{{ request('to_date') }}">
                         </div>

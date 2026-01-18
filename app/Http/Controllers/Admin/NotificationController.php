@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendBulkNotification;
 use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Http\Request;
@@ -17,9 +18,8 @@ class NotificationController extends Controller
 
     public function create()
     {
-        $users=User::get();
-       return view('admin.notifications.create',compact('users'));
-
+        $users = User::get();
+        return view('admin.notifications.create', compact('users'));
     }
 
     public function send(Request $request)
@@ -28,26 +28,27 @@ class NotificationController extends Controller
         $this->validate($request, [
             'title' => 'required',
             'body' => 'required',
-            'type' => 'required|in:0,1,2', // Ensure valid type
+            'type' => 'required|in:0,1,2',
         ]);
-    
-        // Send notification via Firebase Cloud Messaging (FCM)
-        $response = FCMController::sendMessageToAll($request->title, $request->body);
-    
-        // Save the notification in the database
+
+        // Save the notification in the database first
         $noti = new Notification([
             'title' => $request->title,
             'body' => $request->body,
             'type' => $request->type,
+            'sent' => false, // Add this field to track status
         ]);
-    
-        $noti->save();
-    
-        if ($response) {
-            return redirect()->back()->with('message', 'Notification sent successfully');
-        } else {
-            return redirect()->back()->with('error', 'Notification was not sent');
-        }
-    }
 
+        $noti->save();
+
+        // Dispatch the job to queue
+        SendBulkNotification::dispatch(
+            $request->title,
+            $request->body,
+            $request->type,
+            $noti->id
+        );
+
+        return redirect()->back()->with('message', 'Notification queued and will be sent shortly');
+    }
 }

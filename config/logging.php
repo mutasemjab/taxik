@@ -134,6 +134,14 @@ return [
             'days' => 14,
             'permission' => 0664,
         ],
+        
+        'home_driver' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/home_driver.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 14,
+            'permission' => 0664,
+        ],
 
     ],
 

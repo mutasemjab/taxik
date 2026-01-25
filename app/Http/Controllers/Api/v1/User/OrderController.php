@@ -819,6 +819,7 @@ class OrderController extends Controller
     private function moveOrderToSpamTable($order, $reasonForCancel)
     {
         $spamOrder = OrderSpam::create([
+            'original_order_id' => $order->id, 
             'number' => $order->number,
             'status' => OrderStatus::UserCancelOrder->value,
             'payment_method' => $order->payment_method->value,

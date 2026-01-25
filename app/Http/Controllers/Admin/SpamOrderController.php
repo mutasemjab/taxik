@@ -68,40 +68,36 @@ class SpamOrderController extends Controller
         $spamOrder = OrderSpam::with(['user', 'driver', 'service'])
             ->findOrFail($id);
 
-        // Get drivers who were notified from database
+        // ✅ Use original_order_id to get notified drivers
+        $originalOrderId = $spamOrder->original_order_id ?? $id;
+
+        // Get drivers who were notified from database using ORIGINAL order ID
         $driversNotified = OrderDriverNotified::with('driver')
-            ->where('order_id', $id)
+            ->where('order_id', $originalOrderId)  // Use original order ID
             ->orderBy('distance_km', 'asc')
             ->get();
 
         // Get current driver IDs in Firebase to determine who rejected
-        $currentDriverIdsInFirebase = $this->getDriverIdsFromFirebase($id);
+        $currentDriverIdsInFirebase = $this->getDriverIdsFromFirebase($originalOrderId);  // Also use original ID for Firebase
 
-        // Calculate driver responses
+        // Rest of your code remains the same...
         $notifiedDriverIds = $driversNotified->pluck('driver_id')->toArray();
         $assignedDriverId = $spamOrder->driver_id;
-        
-        // Drivers who rejected = were notified but not in Firebase anymore (and not assigned)
+
         $rejectedDriverIds = array_diff($notifiedDriverIds, $currentDriverIdsInFirebase, [$assignedDriverId]);
-        
-        // Drivers who didn't respond = still in Firebase (didn't accept or reject)
         $noResponseDriverIds = array_intersect($notifiedDriverIds, $currentDriverIdsInFirebase);
 
-        // Get driver details for each category
         $driversRejected = $driversNotified->whereIn('driver_id', $rejectedDriverIds);
         $driversNoResponse = $driversNotified->whereIn('driver_id', $noResponseDriverIds);
 
-        // Get similar cancelled orders from the same user
         $userCancellationHistory = OrderSpam::where('user_id', $spamOrder->user_id)
             ->where('id', '!=', $id)
             ->orderBy('cancelled_at', 'desc')
             ->take(5)
             ->get();
 
-        // Calculate time metrics
         $timeMetrics = $this->calculateTimeMetrics($spamOrder);
 
-        // Get statistics
         $stats = [
             'total_notified' => $driversNotified->count(),
             'total_rejected' => count($rejectedDriverIds),
@@ -139,10 +135,10 @@ class SpamOrderController extends Controller
             }
 
             $orderData = $response->json();
-            
+
             // Extract driver_ids array
             $driverIdsField = $orderData['fields']['driver_ids'] ?? null;
-            
+
             if (!$driverIdsField || !isset($driverIdsField['arrayValue']['values'])) {
                 return [];
             }
@@ -156,7 +152,6 @@ class SpamOrderController extends Controller
             }
 
             return $driverIds;
-
         } catch (\Exception $e) {
             \Log::error("Error getting driver IDs from Firebase for order {$orderId}: " . $e->getMessage());
             return [];
@@ -198,9 +193,9 @@ class SpamOrderController extends Controller
 
         // Cancellation trends by day
         $dailyTrends = OrderSpam::select(
-                DB::raw('DATE(cancelled_at) as date'),
-                DB::raw('count(*) as count')
-            )
+            DB::raw('DATE(cancelled_at) as date'),
+            DB::raw('count(*) as count')
+        )
             ->whereDate('cancelled_at', '>=', now()->subDays($period))
             ->groupBy('date')
             ->orderBy('date', 'asc')

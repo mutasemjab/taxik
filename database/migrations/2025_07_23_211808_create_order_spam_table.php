@@ -38,8 +38,10 @@ return new class extends Migration
             $table->integer('actual_trip_duration_minutes')->nullable();
             $table->string('reason_for_cancel')->nullable();
             $table->timestamp('cancelled_at')->nullable();
+            $table->unsignedBigInteger('original_order_id')->nullable();
             $table->timestamps();
             
+            $table->index('original_order_id');
             $table->index(['user_id', 'status']);
             $table->index(['service_id']);
             $table->index(['driver_id']);

@@ -452,7 +452,7 @@ class DriverLocationService
         });
 
         // Step 3: Use OSRM only for top N closest drivers (e.g., 50 drivers)
-        $maxDriversForOSRM = 50; // يمكنك تعديل هذا الرقم
+        $maxDriversForOSRM = 20; // يمكنك تعديل هذا الرقم
         $topDrivers = array_slice($candidateDrivers, 0, $maxDriversForOSRM);
 
         foreach ($topDrivers as $driver) {

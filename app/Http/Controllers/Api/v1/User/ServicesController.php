@@ -13,7 +13,7 @@ class ServicesController extends Controller
 { 
     use Responses;
     
-   public function index(Request $request)
+    public function index(Request $request)
     {
         // Validate coordinates from the request
         $request->validate([
@@ -32,12 +32,12 @@ class ServicesController extends Controller
 
         // Only calculate distance if both end_lat and end_lng are present
         if (!is_null($endLat) && !is_null($endLng)) {
-            $distance = $this->calculateDistanceWithGoogle($startLat, $startLng, $endLat, $endLng); // in KM
+            $distance = $this->calculateDistanceWithOSRM($startLat, $startLng, $endLat, $endLng); // in KM
         }
 
         $services = Service::where('activate', 1)
             ->whereHas('driverServices', function ($query) {
-                $query->where('status', 1); // Only active driver services
+                $query->where('status', 1);
             })
             ->with(['servicePayments', 'driverServices' => function ($query) {
                 $query->where('status', 1);
@@ -47,7 +47,6 @@ class ServicesController extends Controller
         $isEvening = $this->isEveningTime();
 
         $data = $services->map(function ($service) use ($distance, $isEvening) {
-            // Select pricing based on time of day
             $startPrice = $isEvening ? $service->start_price_evening : $service->start_price_morning;
             $pricePerKm = $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning;
             
@@ -66,8 +65,7 @@ class ServicesController extends Controller
 
     /**
      * Determine if current time is morning or evening
-     * Morning: before 18:00 (6 PM)
-     * Evening: 18:00 (6 PM) and after
+     * Evening: 22:00 (10 PM) to 06:00 (6 AM)
      */
     private function isEveningTime($dateTime = null)
     {
@@ -77,50 +75,49 @@ class ServicesController extends Controller
     }
 
     /**
-     * Calculate distance using Google Maps Distance Matrix API
+     * Calculate distance using OSRM (Open Source Routing Machine)
      * Returns distance in kilometers
      */
-    private function calculateDistanceWithGoogle($originLat, $originLng, $destinationLat, $destinationLng)
+    private function calculateDistanceWithOSRM($originLat, $originLng, $destinationLat, $destinationLng)
     {
         try {
-            $apiKey = config('services.google.maps_api_key', 'AIzaSyCq8VmcHUs1cFqluiVU0nhdfJfpIQoTKc4');
-            
-            $origin = "{$originLat},{$originLng}";
-            $destination = "{$destinationLat},{$destinationLng}";
-            
-            $url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                . "?origins=" . urlencode($origin)
-                . "&destinations=" . urlencode($destination)
-                . "&mode=driving"
-                . "&key={$apiKey}";
+            // OSRM format: longitude,latitude (note: reversed from Google!)
+            $url = "https://router.project-osrm.org/route/v1/driving/"
+                . "{$originLng},{$originLat};"
+                . "{$destinationLng},{$destinationLat}"
+                . "?overview=false&alternatives=false&steps=false";
 
+            // Use Guzzle or file_get_contents
             $response = file_get_contents($url);
             $data = json_decode($response, true);
 
-            // Check if the API request was successful
-            if ($data['status'] === 'OK' && isset($data['rows'][0]['elements'][0]['distance'])) {
+            // Check if the request was successful
+            if ($data['code'] === 'Ok' && isset($data['routes'][0]['distance'])) {
                 // Distance is returned in meters, convert to kilometers
-                $distanceInMeters = $data['rows'][0]['elements'][0]['distance']['value'];
+                $distanceInMeters = $data['routes'][0]['distance'];
                 return $distanceInMeters / 1000; // Convert to KM
             } else {
-                // Fallback to Haversine formula if API fails
-                \Log::warning('Google Distance Matrix API failed', [
-                    'status' => $data['status'] ?? 'unknown',
-                    'error_message' => $data['error_message'] ?? 'No error message'
+                // Fallback to Haversine formula if OSRM fails
+                \Log::warning('OSRM API failed', [
+                    'code' => $data['code'] ?? 'unknown',
+                    'message' => $data['message'] ?? 'No message'
                 ]);
                 return $this->calculateDistanceFallback($originLat, $originLng, $destinationLat, $destinationLng);
             }
         } catch (\Exception $e) {
             // Fallback to Haversine formula on exception
-            \Log::error('Exception in Google Distance calculation', [
+            \Log::error('Exception in OSRM distance calculation', [
                 'message' => $e->getMessage()
             ]);
             return $this->calculateDistanceFallback($originLat, $originLng, $destinationLat, $destinationLng);
         }
     }
 
-
-       private function calculateDistanceFallback($lat1, $lng1, $lat2, $lng2)
+    /**
+     * Fallback distance calculation using Haversine formula
+     * Returns distance in kilometers (straight line distance)
+     */
+    private function calculateDistanceFallback($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // Radius in kilometers
 
@@ -137,5 +134,4 @@ class ServicesController extends Controller
 
         return $earthRadius * $angle;
     }
-
 }

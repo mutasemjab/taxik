@@ -301,21 +301,51 @@ class OrderController extends Controller
                 $couponId = $coupon->id;
             }
 
-            // Check wallet balance for wallet payment method
+            // ========== تحقق من رصيد المحفظة حسب نظام التوزيع ==========
             if ($paymentMethodValue === PaymentMethod::Wallet->value) {
                 $user = auth()->user();
 
-                if ($user->balance < $finalPrice) {
-                    return response()->json([
-                        'status' => false,
-                        'type' => 'insufficient_balance',
-                        'message' => 'لا يوجد معك رصيد كافي في المحفظة',
-                        'data' => [
-                            'required_amount' => $finalPrice,
-                            'current_balance' => $user->balance,
-                            'shortage' => $finalPrice - $user->balance
-                        ]
-                    ], 200);
+                // التحقق من تفعيل نظام التوزيع
+                $distributionEnabled = DB::table('settings')
+                    ->where('key', 'enable_wallet_distribution_system')
+                    ->value('value') == 1;
+
+                // تحديد المبلغ المطلوب للتحقق
+                if ($distributionEnabled && $user->wallet_orders_remaining > 0 && $user->wallet_amount_per_order > 0) {
+                    // نظام التوزيع مفعل - نتحقق من المبلغ المخصص لكل رحلة
+                    $requiredAmount = min($user->wallet_amount_per_order, $finalPrice);
+
+                    if ($user->balance < $requiredAmount) {
+                        return response()->json([
+                            'status' => false,
+                            'type' => 'insufficient_balance',
+                            'message' => 'لا يوجد معك رصيد كافي في المحفظة',
+                            'data' => [
+                                'distribution_system_active' => true,
+                                'amount_per_order' => $user->wallet_amount_per_order,
+                                'orders_remaining' => $user->wallet_orders_remaining,
+                                'required_amount' => $requiredAmount,
+                                'current_balance' => $user->balance,
+                                'shortage' => $requiredAmount - $user->balance,
+                                'note' => 'نظام توزيع المحفظة مفعّل - يتم خصم ' . $user->wallet_amount_per_order . ' JD لكل رحلة'
+                            ]
+                        ], 200);
+                    }
+                } else {
+                    // نظام التوزيع معطل - نتحقق من كامل المبلغ
+                    if ($user->balance < $finalPrice) {
+                        return response()->json([
+                            'status' => false,
+                            'type' => 'insufficient_balance',
+                            'message' => 'لا يوجد معك رصيد كافي في المحفظة',
+                            'data' => [
+                                'distribution_system_active' => false,
+                                'required_amount' => $finalPrice,
+                                'current_balance' => $user->balance,
+                                'shortage' => $finalPrice - $user->balance
+                            ]
+                        ], 200);
+                    }
                 }
             }
 
@@ -481,7 +511,6 @@ class OrderController extends Controller
             // If OSRM fails, fallback to Haversine
             \Log::warning("OSRM failed for order distance calculation, using fallback");
             return $this->calculateDistanceFallback($lat1, $lng1, $lat2, $lng2);
-
         } catch (\Exception $e) {
             // On exception, fallback to Haversine
             \Log::warning("OSRM exception in order: " . $e->getMessage() . ", using fallback");

@@ -195,6 +195,16 @@
                                     </a>
                                 </li>
                             @endcan
+                       
+                            @can('distribution-table')
+                                <li class="nav-item">
+                                    <a href="{{ route('wallet-distributions.index') }}"
+                                        class="nav-link {{ request()->routeIs('wallet-distributions.index') ? 'active' : '' }}">
+                                        <i class="fas fa-money-bill-wave nav-icon"></i>
+                                        <p>{{ __('messages.wallet_distributions') }}</p>
+                                    </a>
+                                </li>
+                            @endcan
 
                             @can('withdrawal-table')
                                 <li class="nav-item">

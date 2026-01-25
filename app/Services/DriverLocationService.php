@@ -421,7 +421,8 @@ class DriverLocationService
         $driversWithDistance = [];
 
         foreach ($drivers as $driver) {
-            $distance = $this->calculateDistance(
+            // Use OSRM to calculate actual road distance
+            $distance = $this->calculateDistanceOSRM(
                 $userLat,
                 $userLng,
                 $driver['lat'],
@@ -444,10 +445,47 @@ class DriverLocationService
     }
 
     /**
-     * Calculate distance between two coordinates using Haversine formula
+     * Calculate distance using OSRM (actual road distance)
+     * Returns distance in kilometers
+     * Falls back to Haversine formula if OSRM fails
+     */
+    private function calculateDistanceOSRM($lat1, $lng1, $lat2, $lng2)
+    {
+        try {
+            // OSRM format: longitude,latitude (reversed!)
+            $url = "https://router.project-osrm.org/route/v1/driving/"
+                . "{$lng1},{$lat1};"
+                . "{$lng2},{$lat2}"
+                . "?overview=false&alternatives=false&steps=false";
+
+            $response = Http::timeout(5)->get($url);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if ($data['code'] === 'Ok' && isset($data['routes'][0]['distance'])) {
+                    // Distance is in meters, convert to kilometers
+                    $distanceInMeters = $data['routes'][0]['distance'];
+                    return $distanceInMeters / 1000;
+                }
+            }
+
+            // If OSRM fails, fallback to Haversine
+            \Log::warning("OSRM failed for coordinates ({$lat1}, {$lng1}) to ({$lat2}, {$lng2}), using fallback");
+            return $this->calculateDistanceFallback($lat1, $lng1, $lat2, $lng2);
+
+        } catch (\Exception $e) {
+            // On exception, fallback to Haversine
+            \Log::warning("OSRM exception: " . $e->getMessage() . ", using fallback");
+            return $this->calculateDistanceFallback($lat1, $lng1, $lat2, $lng2);
+        }
+    }
+
+    /**
+     * Fallback: Calculate distance using Haversine formula (straight line)
      * Returns distance in kilometers
      */
-    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
+    private function calculateDistanceFallback($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // Earth's radius in kilometers
 

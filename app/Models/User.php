@@ -14,19 +14,19 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
-   use HasApiTokens, HasFactory, Notifiable ,LogsActivity;
+    use HasApiTokens, HasFactory, Notifiable, LogsActivity;
 
-   protected $guarded = ['id'];
+    protected $guarded = ['id'];
 
-   protected $hidden = [
-      'password',
-      'remember_token',
-   ];
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
-   // Append the photo_url attribute to JSON responses
+    // Append the photo_url attribute to JSON responses
     protected $appends = ['photo_url'];
-    
-     public function getActivitylogOptions(): LogOptions
+
+    public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['*']) // Log all attributes, or specify: ['name', 'price', 'number_of_cards']
@@ -36,11 +36,11 @@ class User extends Authenticatable
             ->setDescriptionForEvent(fn(string $eventName) => "User has been {$eventName}");
     }
 
-       public function walletTransactions()
+    public function walletTransactions()
     {
         return $this->hasMany(WalletTransaction::class);
     }
-    
+
     // Add a custom accessor for the photo URL
     public function getPhotoUrlAttribute()
     {
@@ -49,10 +49,10 @@ class User extends Authenticatable
             $baseUrl = rtrim(config('app.url'), '/');
             return $baseUrl . '/assets/admin/uploads/' . $this->photo;
         }
-        
+
         return null;
     }
-    
+
     public function addBalance($amount, $note = null, $adminId = null, $userId = null)
     {
         $this->increment('balance', $amount);
@@ -66,7 +66,7 @@ class User extends Authenticatable
         ]);
     }
 
-     public function bans()
+    public function bans()
     {
         return $this->hasMany(UserBan::class);
     }
@@ -82,7 +82,7 @@ class User extends Authenticatable
     public function isBanned()
     {
         $activeBan = $this->activeBan;
-        
+
         if (!$activeBan) {
             return false;
         }
@@ -143,7 +143,7 @@ class User extends Authenticatable
 
         return true;
     }
-    
+
     /**
      * Relationships
      */
@@ -178,7 +178,7 @@ class User extends Authenticatable
 
         foreach ($challenges as $challenge) {
             $progress = $this->getChallengeProgress($challenge->id);
-            
+
             // Skip if user has completed max times
             if ($progress->times_completed >= $challenge->max_completions_per_user) {
                 continue;
@@ -186,5 +186,75 @@ class User extends Authenticatable
 
             $progress->incrementProgress($amount);
         }
+    }
+
+    public function setWalletDistribution($totalAmount, $numberOfOrders)
+    {
+        if ($totalAmount <= 0 || $numberOfOrders <= 0) {
+            return false;
+        }
+
+        // حساب المبلغ لكل رحلة
+        $amountPerOrder = $totalAmount / $numberOfOrders;
+
+        // تقريب إلى رقمين عشريين
+        $amountPerOrder = round($amountPerOrder, 2);
+
+        $this->wallet_amount_per_order = $amountPerOrder;
+        $this->wallet_orders_remaining = $numberOfOrders;
+        $this->save();
+
+        \Log::info("Wallet distribution set for user {$this->id}: {$amountPerOrder} JD per order for {$numberOfOrders} orders");
+
+        return true;
+    }
+    /**
+     * الحصول على المبلغ المتاح من المحفظة للرحلة الحالية
+     */
+    public function getAvailableWalletAmountForOrder()
+    {
+        // التحقق من تفعيل نظام التوزيع من الإعدادات
+        $distributionEnabled = \DB::table('settings')
+            ->where('key', 'enable_wallet_distribution_system')
+            ->value('value') == 1;
+
+        // إذا النظام مفعل وهناك رحلات متبقية ومبلغ محدد
+        if ($distributionEnabled && $this->wallet_orders_remaining > 0 && $this->wallet_amount_per_order > 0) {
+            // لا نتجاوز الرصيد المتاح
+            return min($this->wallet_amount_per_order, $this->balance);
+        }
+
+        // إذا النظام معطل أو انتهى التوزيع، نستخدم كامل الرصيد
+        return $this->balance;
+    }
+    /**
+     * تقليل عداد الرحلات المتبقية بعد استخدام المحفظة
+     */
+    public function decrementWalletOrdersRemaining()
+    {
+        if ($this->wallet_orders_remaining > 0) {
+            $this->wallet_orders_remaining--;
+
+            // إذا وصلنا للصفر، نعيد تعيين القيم
+            if ($this->wallet_orders_remaining == 0) {
+                $this->wallet_amount_per_order = 0;
+            }
+
+            $this->save();
+
+            \Log::info("Wallet orders remaining decremented for user {$this->id}. Remaining: {$this->wallet_orders_remaining}");
+        }
+    }
+
+    /**
+     * إلغاء نظام التوزيع والرجوع للوضع الطبيعي
+     */
+    public function cancelWalletDistribution()
+    {
+        $this->wallet_amount_per_order = 0;
+        $this->wallet_orders_remaining = 0;
+        $this->save();
+
+        \Log::info("Wallet distribution cancelled for user {$this->id}");
     }
 }

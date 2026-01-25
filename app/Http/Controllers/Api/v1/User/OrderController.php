@@ -23,7 +23,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\StatusPayment;
 use Illuminate\Validation\Rule;
 use App\Services\OrderPaymentService;
-
+use Illuminate\Support\Facades\Http;
 
 class OrderController extends Controller
 {
@@ -193,7 +193,8 @@ class OrderController extends Controller
 
                 // Only calculate distance if both end_lat and end_lng are present
                 if (!is_null($request->end_lat) && !is_null($request->end_lng)) {
-                    $distance = $this->calculateDistance(
+                    // استخدام OSRM بدلاً من Haversine
+                    $distance = $this->calculateDistanceOSRM(
                         $request->start_lat,
                         $request->start_lng,
                         $request->end_lat,
@@ -438,7 +439,7 @@ class OrderController extends Controller
         return $hour >= 22 || $hour < 6;
     }
 
-    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
+    private function calculateDistanceFallback($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // Radius in kilometers
 
@@ -456,6 +457,37 @@ class OrderController extends Controller
         return $earthRadius * $angle;
     }
 
+    private function calculateDistanceOSRM($lat1, $lng1, $lat2, $lng2)
+    {
+        try {
+            // OSRM format: longitude,latitude (reversed!)
+            $url = "https://router.project-osrm.org/route/v1/driving/"
+                . "{$lng1},{$lat1};"
+                . "{$lng2},{$lat2}"
+                . "?overview=false&alternatives=false&steps=false";
+
+            $response = Http::timeout(5)->get($url);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if ($data['code'] === 'Ok' && isset($data['routes'][0]['distance'])) {
+                    // Distance is in meters, convert to kilometers
+                    $distanceInMeters = $data['routes'][0]['distance'];
+                    return $distanceInMeters / 1000;
+                }
+            }
+
+            // If OSRM fails, fallback to Haversine
+            \Log::warning("OSRM failed for order distance calculation, using fallback");
+            return $this->calculateDistanceFallback($lat1, $lng1, $lat2, $lng2);
+
+        } catch (\Exception $e) {
+            // On exception, fallback to Haversine
+            \Log::warning("OSRM exception in order: " . $e->getMessage() . ", using fallback");
+            return $this->calculateDistanceFallback($lat1, $lng1, $lat2, $lng2);
+        }
+    }
     /**
      * Display a listing of the user's orders
      *
@@ -797,7 +829,7 @@ class OrderController extends Controller
         }
 
         // Calculate distance using existing method
-        $distance = $this->calculateDistance($lat1, $lng1, $lat2, $lng2);
+        $distance = $this->calculateDistanceFallback($lat1, $lng1, $lat2, $lng2);
 
         // Average speed in km/h (you can adjust this based on your city/service type)
         $averageSpeed = 30; // 30 km/h for city driving
@@ -833,6 +865,4 @@ class OrderController extends Controller
             return "{$remainingMinutes} minute" . ($remainingMinutes > 1 ? 's' : '');
         }
     }
-
-  
 }

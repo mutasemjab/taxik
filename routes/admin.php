@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\DriverMapController;
 use App\Http\Controllers\Reports\FinancialReportController;
 use App\Http\Controllers\Admin\RatingController;
 use App\Http\Controllers\Admin\SpamOrderController;
+use App\Http\Controllers\Admin\WalletDistributionController;
 use App\Http\Controllers\Reports\OrderStatusReportController;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
 use Spatie\Permission\Models\Permission;
@@ -128,6 +129,16 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::get('activity-logs/{modelClass}/{modelId}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
 
 
+        Route::prefix('wallet-distributions')->name('wallet-distributions.')->group(function () {
+            Route::get('/', [WalletDistributionController::class, 'index'])->name('index');
+            Route::get('/create', [WalletDistributionController::class, 'create'])->name('create');
+            Route::post('/', [WalletDistributionController::class, 'store'])->name('store');
+            Route::get('/{id}/edit', [WalletDistributionController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [WalletDistributionController::class, 'update'])->name('update');
+            Route::delete('/{id}', [WalletDistributionController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/toggle-activate', [WalletDistributionController::class, 'toggleActivate'])->name('toggle-activate');
+            Route::post('/toggle-system', [WalletDistributionController::class, 'toggleSystem'])->name('toggle-system');
+        });
 
         // Notification
         Route::get('/notifications/create', [NotificationController::class, 'create'])->name('notifications.create');

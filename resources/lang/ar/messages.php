@@ -1907,5 +1907,67 @@ return [
     // Time
     'Minutes' => 'دقيقة',
     'Hours' => 'ساعة',
+      'wallet_distributions' => 'توزيع المحفظة',
+    'add_distribution' => 'إضافة توزيع جديد',
+    'edit_distribution' => 'تعديل التوزيع',
+    'total_amount' => 'المبلغ الإجمالي',
+    'number_of_orders' => 'عدد الرحلات',
+    'amount_per_order' => 'المبلغ لكل رحلة',
+    'per_order' => 'لكل رحلة',
+    'orders' => 'رحلات',
+    'status' => 'الحالة',
+    'active' => 'مفعّل',
+    'inactive' => 'معطّل',
+    'activate' => 'تفعيل',
+    'deactivate' => 'تعطيل',
+    'activate_distribution' => 'تفعيل التوزيع',
+    'activate_distribution_help' => 'عند التفعيل، سيتم تطبيق هذا التوزيع على جميع المستخدمين',
+    'created_at' => 'تاريخ الإنشاء',
+    'actions' => 'الإجراءات',
+    'edit' => 'تعديل',
+    'delete' => 'حذف',
+    'confirm_delete' => 'هل أنت متأكد من الحذف؟',
+    'save' => 'حفظ',
+    'update' => 'تحديث',
+    'back' => 'رجوع',
+    
+    // System Status
+    'system_status' => 'حالة النظام',
+    'system_enabled' => 'النظام مفعّل',
+    'system_disabled' => 'النظام معطّل',
+    'enable_system' => 'تفعيل النظام',
+    'disable_system' => 'تعطيل النظام',
+    
+    // Messages
+    'distribution_created_successfully' => 'تم إنشاء التوزيع بنجاح',
+    'distribution_updated_successfully' => 'تم تحديث التوزيع بنجاح',
+    'distribution_deleted_successfully' => 'تم حذف التوزيع بنجاح',
+    'distribution_activated_successfully' => 'تم تفعيل التوزيع بنجاح على جميع المستخدمين',
+    'distribution_deactivated_successfully' => 'تم تعطيل التوزيع بنجاح',
+    'distribution_system_enabled' => 'تم تفعيل نظام توزيع المحفظة',
+    'distribution_system_disabled' => 'تم تعطيل نظام توزيع المحفظة',
+    'no_distributions_found' => 'لا توجد توزيعات',
+    
+    // Validation
+    'total_amount_required' => 'المبلغ الإجمالي مطلوب',
+    'total_amount_numeric' => 'المبلغ الإجمالي يجب أن يكون رقماً',
+    'total_amount_min' => 'المبلغ الإجمالي يجب أن يكون أكبر من صفر',
+    'number_of_orders_required' => 'عدد الرحلات مطلوب',
+    'number_of_orders_integer' => 'عدد الرحلات يجب أن يكون رقماً صحيحاً',
+    'number_of_orders_min' => 'عدد الرحلات يجب أن يكون على الأقل 1',
+    
+    // Help Text
+    'enter_total_amount' => 'أدخل المبلغ الإجمالي',
+    'total_amount_help' => 'المبلغ الذي سيتم توزيعه على عدد من الرحلات (مثال: 2 دينار)',
+    'enter_number_of_orders' => 'أدخل عدد الرحلات',
+    'number_of_orders_help' => 'عدد الرحلات التي سيتم توزيع المبلغ عليها (مثال: 4 رحلات)',
+    'amount_per_order_help' => 'سيتم حساب هذا المبلغ تلقائياً (المبلغ الإجمالي ÷ عدد الرحلات)',
+    
+    // How it works
+    'how_it_works' => 'كيف يعمل النظام؟',
+    'distribution_explanation_1' => 'قم بإنشاء توزيع جديد بتحديد المبلغ الإجمالي وعدد الرحلات',
+    'distribution_explanation_2' => 'عند تفعيل التوزيع، سيتم تطبيقه تلقائياً على جميع المستخدمين',
+    'distribution_explanation_3' => 'في كل رحلة، سيتم خصم المبلغ المحدد فقط من محفظة المستخدم',
+    'distribution_explanation_4' => 'يمكن تفعيل توزيع واحد فقط في نفس الوقت',
 
 ];

@@ -28,6 +28,10 @@ return new class extends Migration
             ['key' => "find_drivers_in_radius", 'value' => 5], // km
             ['key' => "maximum_radius_to_find_drivers", 'value' => 20], // km
             ['key' => "can_driver_withdrawal", 'value' => 1], // 1 yes , 2 no
+            [
+                'key' => 'enable_wallet_distribution_system', 
+                'value' => 1 // 1 yes , 0 no
+            ],
         ]);
 
     }

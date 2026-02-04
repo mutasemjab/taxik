@@ -210,6 +210,10 @@
                                     <input type="checkbox" name="payment_methods[]" value="wallet" {{ in_array('wallet', $paymentMethods) ? 'checked' : '' }}>
                                     <span></span>{{ __('Wallet') }}
                                 </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="payment_methods[]" value="app_credit" {{ in_array('app_credit', $paymentMethods) ? 'checked' : '' }}>
+                                    <span></span>{{ __('App_credit') }}
+                                </label>
                             </div>
                             @error('payment_methods')
                                 <div class="invalid-feedback">{{ $message }}</div>

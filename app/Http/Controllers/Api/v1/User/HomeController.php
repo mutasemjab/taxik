@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Banner;
 use App\Models\Challenge;
 use App\Models\UserChallengeProgress;
+use App\Models\WalletDistribution;
+use App\Models\Setting;
 use App\Traits\Responses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +43,9 @@ class HomeController extends Controller
             // Get user statistics
             $userStats = $this->getUserStatistics($user);
 
+            // Get app credit distribution info
+            $appCreditInfo = $this->getAppCreditDistributionInfo($lang);
+
             $responseData = [
                 'user' => [
                     'id' => $user->id,
@@ -49,6 +54,7 @@ class HomeController extends Controller
                     'email' => $user->email,
                     'photo' => $user->photo ? asset('assets/admin/uploads/' . $user->photo) : null,
                     'balance' => $user->balance,
+                    'app_credit' => $user->app_credit ?? 0,
                     'referral_code' => $user->referral_code,
                     'activate' => $user->activate,
                 ],
@@ -56,6 +62,7 @@ class HomeController extends Controller
                 'banners' => $banners,
                 'challenges' => $challenges,
                 'statistics' => $userStats,
+                'app_credit_info' => $appCreditInfo,
             ];
 
             return $this->success_response('Home data retrieved successfully', $responseData);
@@ -247,6 +254,70 @@ class HomeController extends Controller
                     return $progress->challenge->reward_amount * $progress->times_completed;
                 }),
             'referral_count' => \App\Models\User::where('user_id', $user->id)->count(),
+        ];
+    }
+
+    /**
+     * Get app credit distribution information
+     */
+    private function getAppCreditDistributionInfo($lang = 'en')
+    {
+        // Check if app credit system is enabled
+        $isEnabled = Setting::where('key', 'enable_app_credit_distribution_system')->value('value');
+
+        if (!$isEnabled || $isEnabled == 0) {
+            return [
+                'enabled' => false,
+                'message' => $lang === 'ar' 
+                    ? 'نظام الرصيد الترويجي غير مفعل حالياً' 
+                    : 'App credit distribution system is currently disabled',
+            ];
+        }
+
+        // Get active wallet distribution
+        $distribution = WalletDistribution::where('activate', 1)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$distribution) {
+            return [
+                'enabled' => true,
+                'has_active_distribution' => false,
+                'message' => $lang === 'ar' 
+                    ? 'لا توجد خطة رصيد ترويجي نشطة حالياً' 
+                    : 'No active app credit distribution plan available',
+            ];
+        }
+
+        return [
+            'enabled' => true,
+            'has_active_distribution' => true,
+            'title' => $lang === 'ar' 
+                ? 'رصيد ترويجي مجاني' 
+                : 'Free App Credit',
+            'description' => $lang === 'ar' 
+                ? "احصل على {$distribution->total_amount} دينار رصيد ترويجي مجاني! استخدم {$distribution->amount_per_order} دينار لكل رحلة لأول {$distribution->number_of_orders} رحلات" 
+                : "Get {$distribution->total_amount} JD free app credit! Use {$distribution->amount_per_order} JD per trip for your first {$distribution->number_of_orders} trips",
+            'total_amount' => number_format($distribution->total_amount, 2),
+            'number_of_orders' => $distribution->number_of_orders,
+            'amount_per_order' => number_format($distribution->amount_per_order, 2),
+            'how_it_works' => [
+                'step_1' => $lang === 'ar' 
+                    ? "احصل على {$distribution->total_amount} دينار رصيد ترويجي عند التسجيل" 
+                    : "Get {$distribution->total_amount} JD app credit upon registration",
+                'step_2' => $lang === 'ar' 
+                    ? "استخدم {$distribution->amount_per_order} دينار من رصيدك الترويجي لكل رحلة" 
+                    : "Use {$distribution->amount_per_order} JD from your app credit per trip",
+                'step_3' => $lang === 'ar' 
+                    ? "استمتع بخصم على أول {$distribution->number_of_orders} رحلات" 
+                    : "Enjoy discount on your first {$distribution->number_of_orders} trips",
+                'step_4' => $lang === 'ar' 
+                    ? 'يتم خصم الرصيد الترويجي تلقائياً من كل رحلة' 
+                    : 'App credit is automatically deducted from each trip',
+            ],
+            'note' => $lang === 'ar' 
+                ? 'الرصيد الترويجي لا يمكن سحبه أو تحويله، ويستخدم فقط لتغطية تكلفة الرحلات' 
+                : 'App credit cannot be withdrawn or transferred, it can only be used to cover trip costs',
         ];
     }
 

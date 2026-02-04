@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Passport\HasApiTokens;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -21,6 +22,15 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $casts = [
+        'balance' => 'decimal:2',
+        'app_credit' => 'decimal:2',
+        'app_credit_amount_per_order' => 'decimal:2',
+        'app_credit_orders_remaining' => 'integer',
+        'wallet_amount_per_order' => 'decimal:2',
+        'wallet_orders_remaining' => 'integer',
     ];
 
     // Append the photo_url attribute to JSON responses
@@ -188,73 +198,127 @@ class User extends Authenticatable
         }
     }
 
-    public function setWalletDistribution($totalAmount, $numberOfOrders)
-    {
-        if ($totalAmount <= 0 || $numberOfOrders <= 0) {
-            return false;
-        }
-
-        // حساب المبلغ لكل رحلة
-        $amountPerOrder = $totalAmount / $numberOfOrders;
-
-        // تقريب إلى رقمين عشريين
-        $amountPerOrder = round($amountPerOrder, 2);
-
-        $this->wallet_amount_per_order = $amountPerOrder;
-        $this->wallet_orders_remaining = $numberOfOrders;
-        $this->save();
-
-        \Log::info("Wallet distribution set for user {$this->id}: {$amountPerOrder} JD per order for {$numberOfOrders} orders");
-
-        return true;
-    }
+    // ========== رصيد التطبيق (App Credit) Methods ==========
+    
     /**
-     * الحصول على المبلغ المتاح من المحفظة للرحلة الحالية
+     * الحصول على المبلغ المتاح من رصيد التطبيق للرحلة الحالية
      */
-    public function getAvailableWalletAmountForOrder()
+    public function getAvailableAppCreditForOrder()
     {
-        // التحقق من تفعيل نظام التوزيع من الإعدادات
-        $distributionEnabled = \DB::table('settings')
-            ->where('key', 'enable_wallet_distribution_system')
+        // التحقق من تفعيل نظام التوزيع
+        $distributionEnabled = DB::table('settings')
+            ->where('key', 'enable_app_credit_distribution_system')
             ->value('value') == 1;
-
-        // إذا النظام مفعل وهناك رحلات متبقية ومبلغ محدد
-        if ($distributionEnabled && $this->wallet_orders_remaining > 0 && $this->wallet_amount_per_order > 0) {
-            // لا نتجاوز الرصيد المتاح
-            return min($this->wallet_amount_per_order, $this->balance);
+        
+        // إذا لم يكن النظام مفعل، لا يوجد رصيد متاح
+        if (!$distributionEnabled) {
+            return 0;
         }
+        
+        // إذا لم يكن هناك رحلات متبقية، لا يوجد رصيد متاح
+        if ($this->app_credit_orders_remaining <= 0) {
+            return 0;
+        }
+        
+        // إذا لم يكن هناك مبلغ محدد لكل رحلة، لا يوجد رصيد متاح
+        if ($this->app_credit_amount_per_order <= 0) {
+            return 0;
+        }
+        
+        // التحقق من أن الرصيد الفعلي كافي
+        $requiredAmount = min($this->app_credit_amount_per_order, $this->app_credit);
+        
+        return $requiredAmount;
+    }
+    
+    /**
+     * تقليل عداد الرحلات المتبقية في رصيد التطبيق
+     */
+    public function decrementAppCreditOrdersRemaining()
+    {
+        if ($this->app_credit_orders_remaining > 0) {
+            $this->decrement('app_credit_orders_remaining');
+            \Log::info("User {$this->id}: App credit orders remaining decremented to {$this->app_credit_orders_remaining}");
+        }
+    }
+    
+    /**
+     * تطبيق توزيع رصيد التطبيق على المستخدم
+     */
+    public function applyAppCreditDistribution($totalAmount, $numberOfOrders, $adminId = null)
+    {
+        $amountPerOrder = $numberOfOrders > 0 ? $totalAmount / $numberOfOrders : 0;
+        
+        $this->app_credit = $totalAmount;
+        $this->app_credit_amount_per_order = $amountPerOrder;
+        $this->app_credit_orders_remaining = $numberOfOrders;
+        $this->save();
+        
+        // تسجيل الحركة
+        DB::table('app_credit_transactions')->insert([
+            'user_id' => $this->id,
+            'admin_id' => $adminId,
+            'amount' => $totalAmount,
+            'type_of_transaction' => 1, // إضافة
+            'note' => "إضافة رصيد تطبيق: {$totalAmount} JD موزع على {$numberOfOrders} رحلة ({$amountPerOrder} JD لكل رحلة)",
+            'orders_remaining_before' => 0,
+            'orders_remaining_after' => $numberOfOrders,
+            'amount_per_order' => $amountPerOrder,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        \Log::info("User {$this->id}: App credit distribution applied - {$totalAmount} JD for {$numberOfOrders} orders");
+    }
+    
+    /**
+     * إزالة توزيع رصيد التطبيق من المستخدم
+     */
+    public function removeAppCreditDistribution()
+    {
+        $oldCredit = $this->app_credit;
+        
+        $this->app_credit = 0;
+        $this->app_credit_amount_per_order = 0;
+        $this->app_credit_orders_remaining = 0;
+        $this->save();
+        
+        if ($oldCredit > 0) {
+            // تسجيل الحركة
+            DB::table('app_credit_transactions')->insert([
+                'user_id' => $this->id,
+                'amount' => $oldCredit,
+                'type_of_transaction' => 2, // سحب
+                'note' => "إزالة توزيع رصيد التطبيق",
+                'orders_remaining_before' => $this->app_credit_orders_remaining,
+                'orders_remaining_after' => 0,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+        
+        \Log::info("User {$this->id}: App credit distribution removed");
+    }
 
-        // إذا النظام معطل أو انتهى التوزيع، نستخدم كامل الرصيد
+    // ========== المحفظة الحقيقية (Real Wallet) Methods - بدون تأثر بالتوزيع ==========
+    
+    /**
+     * الحصول على رصيد المحفظة الحقيقية (بدون تأثير التوزيع)
+     */
+    public function getRealWalletBalance()
+    {
         return $this->balance;
     }
-    /**
-     * تقليل عداد الرحلات المتبقية بعد استخدام المحفظة
-     */
-    public function decrementWalletOrdersRemaining()
+    
+    // ========== Relations ==========
+    
+    public function orders()
     {
-        if ($this->wallet_orders_remaining > 0) {
-            $this->wallet_orders_remaining--;
-
-            // إذا وصلنا للصفر، نعيد تعيين القيم
-            if ($this->wallet_orders_remaining == 0) {
-                $this->wallet_amount_per_order = 0;
-            }
-
-            $this->save();
-
-            \Log::info("Wallet orders remaining decremented for user {$this->id}. Remaining: {$this->wallet_orders_remaining}");
-        }
+        return $this->hasMany(Order::class);
     }
-
-    /**
-     * إلغاء نظام التوزيع والرجوع للوضع الطبيعي
-     */
-    public function cancelWalletDistribution()
+    
+    public function appCreditTransactions()
     {
-        $this->wallet_amount_per_order = 0;
-        $this->wallet_orders_remaining = 0;
-        $this->save();
-
-        \Log::info("Wallet distribution cancelled for user {$this->id}");
+        return $this->hasMany(AppCreditTransaction::class);
     }
 }

@@ -47,8 +47,21 @@ class OrderController extends Controller
             $radius = $request->radius;
 
             $order = Order::find($orderId);
-            if (!$order || $order->status != OrderStatus::Pending) {
-                return response()->json(['success' => false]);
+
+            // ✅ Strict validation before proceeding
+            if (!$order) {
+                \Log::warning("updateOrderRadius: Order {$orderId} not found");
+                return response()->json(['success' => false, 'reason' => 'order_not_found']);
+            }
+
+            if ($order->status != OrderStatus::Pending) {
+                \Log::info("updateOrderRadius: Order {$orderId} no longer pending (status: {$order->status->value})");
+                return response()->json(['success' => false, 'reason' => 'order_not_pending']);
+            }
+
+            if ($order->driver_id) {
+                \Log::info("updateOrderRadius: Order {$orderId} already has driver {$order->driver_id}");
+                return response()->json(['success' => false, 'reason' => 'driver_already_assigned']);
             }
 
             // This runs in web context - has gRPC!
@@ -59,15 +72,19 @@ class OrderController extends Controller
                 $request->user_lng,
                 $orderId,
                 $request->service_id,
-                $radius * 1000,
+                $radius * 1000, // Convert km to meters
                 OrderStatus::Pending->value
             );
 
-            \Log::info("Updated Firebase for order {$orderId} at {$radius}km via HTTP");
+            \Log::info("Updated Firebase for order {$orderId} at {$radius}km via HTTP. Result: " . ($result['success'] ? 'success' : 'failed'));
 
-            return response()->json(['success' => true, 'result' => $result]);
+            return response()->json([
+                'success' => $result['success'],
+                'result' => $result,
+                'drivers_found' => $result['drivers_found'] ?? 0
+            ]);
         } catch (\Exception $e) {
-            \Log::error("Error in updateOrderRadius: " . $e->getMessage());
+            \Log::error("Error in updateOrderRadius for order {$orderId}: " . $e->getMessage());
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
@@ -191,9 +208,7 @@ class OrderController extends Controller
             if (!$calculatedPrice) {
                 $distance = 0;
 
-                // Only calculate distance if both end_lat and end_lng are present
                 if (!is_null($request->end_lat) && !is_null($request->end_lng)) {
-                    // استخدام OSRM بدلاً من Haversine
                     $distance = $this->calculateDistanceOSRM(
                         $request->start_lat,
                         $request->start_lng,
@@ -202,10 +217,7 @@ class OrderController extends Controller
                     );
                 }
 
-                // Determine if it's evening time
                 $isEvening = $this->isEveningTime();
-
-                // Select pricing based on time of day
                 $startPrice = $isEvening ? $service->start_price_evening : $service->start_price_morning;
                 $pricePerKm = $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning;
 
@@ -231,7 +243,6 @@ class OrderController extends Controller
                     ], 200);
                 }
 
-                // Check if coupon is valid (date range)
                 if (!$coupon->isValid()) {
                     return response()->json([
                         'status' => false,
@@ -240,14 +251,11 @@ class OrderController extends Controller
                     ], 200);
                 }
 
-                // Check how many times THIS USER has used this coupon
                 $userUsageCount = DB::table('user_coupons')
                     ->where('user_id', auth()->id())
                     ->where('coupon_id', $coupon->id)
                     ->count();
 
-                // Check usage limit per user (using number_of_used)
-                // If number_of_used is null, unlimited usage per user
                 if (!is_null($coupon->number_of_used) && $userUsageCount >= $coupon->number_of_used) {
                     return response()->json([
                         'status' => false,
@@ -256,7 +264,6 @@ class OrderController extends Controller
                     ], 200);
                 }
 
-                // Check minimum amount
                 if ($calculatedPrice < $coupon->minimum_amount) {
                     return response()->json([
                         'status' => false,
@@ -265,8 +272,7 @@ class OrderController extends Controller
                     ], 200);
                 }
 
-                // Check coupon type restrictions
-                if ($coupon->coupon_type == 2) { // First ride only
+                if ($coupon->coupon_type == 2) {
                     $previousOrdersCount = Order::where('user_id', auth()->id())
                         ->whereIn('status', ['completed'])
                         ->count();
@@ -278,7 +284,7 @@ class OrderController extends Controller
                             'message' => 'This coupon is only valid for first ride'
                         ], 200);
                     }
-                } elseif ($coupon->coupon_type == 3) { // Specific service only
+                } elseif ($coupon->coupon_type == 3) {
                     if ($coupon->service_id != $request->service_id) {
                         return response()->json([
                             'status' => false,
@@ -288,64 +294,71 @@ class OrderController extends Controller
                     }
                 }
 
-                // Calculate discount
-                if ($coupon->discount_type == 1) { // Fixed amount
+                if ($coupon->discount_type == 1) {
                     $discountValue = $coupon->discount;
-                } else { // Percentage
+                } else {
                     $discountValue = ($calculatedPrice * $coupon->discount) / 100;
                 }
 
-                // Ensure discount doesn't exceed total price
                 $discountValue = min($discountValue, $calculatedPrice);
                 $finalPrice = $calculatedPrice - $discountValue;
                 $couponId = $coupon->id;
             }
 
-            // ========== تحقق من رصيد المحفظة حسب نظام التوزيع ==========
-            if ($paymentMethodValue === PaymentMethod::Wallet->value) {
-                $user = auth()->user();
+            // ========== ✅ BALANCE CHECK FOR APP CREDIT - Only check for amount_per_order ==========
+            $user = auth()->user();
 
-                // التحقق من تفعيل نظام التوزيع
-                $distributionEnabled = DB::table('settings')
-                    ->where('key', 'enable_wallet_distribution_system')
+            if ($paymentMethodValue === PaymentMethod::AppCredit->value) {
+                // ✅ التحقق من توفر المبلغ المحدد لكل رحلة فقط (0.5 JD مثلاً)
+                $appCreditEnabled = DB::table('settings')
+                    ->where('key', 'enable_app_credit_distribution_system')
                     ->value('value') == 1;
 
-                // تحديد المبلغ المطلوب للتحقق
-                if ($distributionEnabled && $user->wallet_orders_remaining > 0 && $user->wallet_amount_per_order > 0) {
-                    // نظام التوزيع مفعل - نتحقق من المبلغ المخصص لكل رحلة
-                    $requiredAmount = min($user->wallet_amount_per_order, $finalPrice);
+                if (!$appCreditEnabled) {
+                    return response()->json([
+                        'status' => false,
+                        'type' => 'app_credit_disabled',
+                        'message' => 'نظام رصيد التطبيق غير مفعل حالياً',
+                    ], 200);
+                }
 
-                    if ($user->balance < $requiredAmount) {
-                        return response()->json([
-                            'status' => false,
-                            'type' => 'insufficient_balance',
-                            'message' => 'لا يوجد معك رصيد كافي في المحفظة',
-                            'data' => [
-                                'distribution_system_active' => true,
-                                'amount_per_order' => $user->wallet_amount_per_order,
-                                'orders_remaining' => $user->wallet_orders_remaining,
-                                'required_amount' => $requiredAmount,
-                                'current_balance' => $user->balance,
-                                'shortage' => $requiredAmount - $user->balance,
-                                'note' => 'نظام توزيع المحفظة مفعّل - يتم خصم ' . $user->wallet_amount_per_order . ' JD لكل رحلة'
-                            ]
-                        ], 200);
-                    }
-                } else {
-                    // نظام التوزيع معطل - نتحقق من كامل المبلغ
-                    if ($user->balance < $finalPrice) {
-                        return response()->json([
-                            'status' => false,
-                            'type' => 'insufficient_balance',
-                            'message' => 'لا يوجد معك رصيد كافي في المحفظة',
-                            'data' => [
-                                'distribution_system_active' => false,
-                                'required_amount' => $finalPrice,
-                                'current_balance' => $user->balance,
-                                'shortage' => $finalPrice - $user->balance
-                            ]
-                        ], 200);
-                    }
+                $availableAppCreditPerOrder = $user->getAvailableAppCreditForOrder();
+
+                // ✅ فقط نتحقق من وجود رصيد للرحلة (0.5 JD)، مش من السعر الكلي
+                if ($availableAppCreditPerOrder <= 0) {
+                    return response()->json([
+                        'status' => false,
+                        'type' => 'no_app_credit_available',
+                        'message' => 'لا يوجد رصيد تطبيق متاح لهذه الرحلة',
+                        'data' => [
+                            'app_credit_available_per_order' => $availableAppCreditPerOrder,
+                            'app_credit_orders_remaining' => $user->app_credit_orders_remaining,
+                            'app_credit_amount_per_order' => $user->app_credit_amount_per_order,
+                            'total_order_price' => $finalPrice,
+                            'will_pay_from_app_credit' => 0,
+                            'will_pay_cash' => $finalPrice,
+                        ]
+                    ], 200);
+                }
+
+                // ✅ حساب كم سيدفع من رصيد التطبيق وكم نقدي
+                $amountFromAppCredit = min($availableAppCreditPerOrder, $finalPrice);
+                $cashAmount = max(0, $finalPrice - $amountFromAppCredit);
+            } elseif ($paymentMethodValue === PaymentMethod::Wallet->value) {
+                // ✅ التحقق من المحفظة الحقيقية فقط
+                $realWalletBalance = $user->balance;
+
+                if ($realWalletBalance < $finalPrice) {
+                    return response()->json([
+                        'status' => false,
+                        'type' => 'insufficient_wallet_balance',
+                        'message' => 'رصيد المحفظة غير كافٍ',
+                        'data' => [
+                            'wallet_balance' => $realWalletBalance,
+                            'required_amount' => $finalPrice,
+                            'shortage' => $finalPrice - $realWalletBalance,
+                        ]
+                    ], 200);
                 }
             }
 
@@ -380,7 +393,7 @@ class OrderController extends Controller
                     ),
                 ]);
 
-                // Record coupon usage if a coupon was applied
+                // Record coupon usage if applied
                 if ($couponId) {
                     DB::table('user_coupons')->insert([
                         'coupon_id' => $couponId,
@@ -392,48 +405,66 @@ class OrderController extends Controller
 
                 DB::commit();
 
-                // Get initial search radius from settings
-                $initialRadius = DB::table('settings')
-                    ->where('key', 'find_drivers_in_radius')
-                    ->value('value') ?? 5;
-
-                // Start progressive driver search in first zone (e.g., 5km)
+                // Start driver search
                 $result = $this->driverLocationService->findAndStoreOrderInFirebase(
                     $request->start_lat,
                     $request->start_lng,
                     $order->id,
                     $request->service_id,
-                    null, // Let the service use settings values
-                    OrderStatus::Pending->value
+                    null,
+                    OrderStatus::Pending->value,
+                    false
                 );
 
-                // If drivers found in first zone, schedule job for next zone after 30 seconds
-                if ($result['success'] && isset($result['next_radius']) && $result['next_radius'] !== null) {
-                    \App\Jobs\SearchDriversInNextZone::dispatch(
-                        $order->id,
-                        $result['search_radius'],
-                        $request->service_id,
-                        $request->start_lat,
-                        $request->start_lng
-                    );
+                $searchEnded = ($result['next_radius'] === null);
+
+                if ($searchEnded) {
+                    $this->driverLocationService->updateEndSearchFlag($order->id, true);
+                }
+
+                if (isset($result['next_radius']) && $result['next_radius'] !== null) {
+                    \Log::info("Driver search will continue - next zone: {$result['next_radius']}km for order {$order->id}");
+                } elseif (isset($result['search_complete']) && $result['search_complete'] === true) {
+                    \Log::info("Driver search completed - all zones searched for order {$order->id}");
+                }
+
+                // ✅ إضافة معلومات الدفع بالنسبة لرصيد التطبيق
+                $paymentBreakdown = null;
+                if ($paymentMethodValue === PaymentMethod::AppCredit->value) {
+                    $paymentBreakdown = [
+                        'payment_method' => 'app_credit',
+                        'total_order_price' => $finalPrice,
+                        'app_credit_available_per_order' => $availableAppCreditPerOrder,
+                        'amount_from_app_credit' => $amountFromAppCredit,
+                        'amount_cash_required' => $cashAmount,
+                        'orders_remaining' => $user->app_credit_orders_remaining,
+                        'message_ar' => $cashAmount > 0
+                            ? "سيتم خصم {$amountFromAppCredit} JD من رصيد التطبيق والباقي {$cashAmount} JD نقداً"
+                            : "سيتم خصم {$amountFromAppCredit} JD من رصيد التطبيق",
+                        'message_en' => $cashAmount > 0
+                            ? "JD {$amountFromAppCredit} will be deducted from app credit and JD {$cashAmount} cash"
+                            : "JD {$amountFromAppCredit} will be deducted from app credit"
+                    ];
                 }
 
                 return response()->json([
                     'status' => true,
                     'message' => $result['success']
-                        ? 'Order created successfully. Searching for drivers in ' . ($result['search_radius'] ?? $initialRadius) . 'km radius.'
+                        ? 'Order created successfully. Searching for drivers in ' . ($result['search_radius'] ?? 5) . 'km radius.'
                         : $result['message'],
                     'data' => [
                         'order' => $order->load(['service', 'coupon']),
                         'service' => $service,
                         'coupon_applied' => $couponId ? true : false,
                         'discount_applied' => $discountValue,
+                        'payment_breakdown' => $paymentBreakdown, // ✅ معلومات الدفع
                         'driver_search' => [
                             'drivers_found' => $result['drivers_found'] ?? 0,
-                            'current_search_radius' => $result['search_radius'] ?? $initialRadius,
+                            'current_search_radius' => $result['search_radius'] ?? 5,
                             'next_search_radius' => $result['next_radius'] ?? null,
                             'will_expand_search' => ($result['next_radius'] ?? null) !== null,
                             'wait_time_seconds' => 30,
+                            'end_search' => $searchEnded,
                             'status' => $result['success'] ? 'searching' : 'no_drivers_available'
                         ],
                         'user_location' => [
@@ -607,9 +638,16 @@ class OrderController extends Controller
      * @param int $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+
+    public function show(Request $request, $id)
     {
         $user = Auth::user();
+
+        // Detect language from request header (default: ar)
+        $lang = strtolower($request->header('lang', 'ar'));
+        if (!in_array($lang, ['ar', 'en'])) {
+            $lang = 'ar';
+        }
 
         $order = Order::where('id', $id)
             ->where('user_id', $user->id)
@@ -626,12 +664,12 @@ class OrderController extends Controller
         }
 
         // Add helper attributes
-        $order->status_text = $order->getStatusText();
-        $order->payment_method_text = $order->getPaymentMethodText();
-        $order->payment_status_text = $order->getPaymentStatusText();
-        $order->distance = $order->getDistance();
-        $order->discount_percentage = $order->getDiscountPercentage();
-        $order->tracking_url = $order->getTrackingUrl();
+        $order->status_text          = $order->getStatusText();
+        $order->payment_method_text  = $order->getPaymentMethodText();
+        $order->payment_status_text  = $order->getPaymentStatusText();
+        $order->distance             = $order->getDistance();
+        $order->discount_percentage  = $order->getDiscountPercentage();
+        $order->tracking_url         = $order->getTrackingUrl();
 
         $hasRated = \App\Models\Rating::where('user_id', $user->id)
             ->where('order_id', $order->id)
@@ -649,48 +687,83 @@ class OrderController extends Controller
             );
         }
 
-        // ========== HYBRID PAYMENT CALCULATION ==========
-        $paymentBreakdown = null;
-        if (
-            $order->status == OrderStatus::waitingPayment &&
-            $order->payment_method == PaymentMethod::Wallet
-        ) {
+        // ========== PAYMENT BREAKDOWN ==========
+        $totalAmount    = $order->total_price_after_discount;
+        $paymentBreakdown = [];
 
-            $finalPrice = $order->total_price_after_discount;
-            $userBalance = $user->balance;
+        switch ($order->payment_method) {
 
-            if ($userBalance < $finalPrice) {
-                // User doesn't have enough in wallet - hybrid payment required
-                $walletAmount = $userBalance;
-                $cashAmount = $finalPrice - $walletAmount;
+            // ─── CASH ────────────────────────────────────────────────
+            case PaymentMethod::Cash:
+                $paymentBreakdown = [
+                    'payment_type'            => 'cash',
+                    'total_amount'            => $totalAmount,
+                    'amount_from_wallet'      => 0,
+                    'amount_from_app_credit'  => 0,
+                    'amount_cash_to_collect'  => $totalAmount,
+                    'message' => $lang === 'ar'
+                        ? "المبلغ الكامل {$totalAmount} JD سيتم دفعه نقداً"
+                        : "The full amount of JD {$totalAmount} will be paid in cash",
+                ];
+                break;
+
+            // ─── WALLET ──────────────────────────────────────────────
+            case PaymentMethod::Wallet:
+                $userBalance  = (float) $user->balance;
+                $walletAmount = min($userBalance, $totalAmount);
+                $cashAmount   = round($totalAmount - $walletAmount, 2);
+
+                if ($cashAmount > 0) {
+                    $message = $lang === 'ar'
+                        ? "سيتم خصم {$walletAmount} JD من محفظتك والمبلغ المتبقي {$cashAmount} JD سيتم دفعه نقداً"
+                        : "JD {$walletAmount} will be deducted from your wallet and the remaining JD {$cashAmount} will be paid in cash";
+                } else {
+                    $message = $lang === 'ar'
+                        ? "سيتم خصم المبلغ الكامل {$walletAmount} JD من محفظتك"
+                        : "The full amount of JD {$walletAmount} will be deducted from your wallet";
+                }
 
                 $paymentBreakdown = [
-                    'payment_type' => 'hybrid',
-                    'total_amount' => $finalPrice,
-                    'user_wallet_balance' => $userBalance,
-                    'amount_from_wallet' => $walletAmount,
-                    'amount_cash_required' => $cashAmount,
-                    'message' => 'سيتم خصم ' . number_format($walletAmount, 2) . ' JD من محفظتك والمبلغ المتبقي ' . number_format($cashAmount, 2) . ' JD سيتم دفعه نقداً',
-                    'message_en' => 'JD ' . number_format($walletAmount, 2) . ' will be deducted from your wallet and the remaining JD ' . number_format($cashAmount, 2) . ' will be paid in cash'
+                    'payment_type'            => $cashAmount > 0 ? 'hybrid_wallet_cash' : 'full_wallet',
+                    'total_amount'            => $totalAmount,
+                    'amount_from_wallet'      => $walletAmount,
+                    'amount_from_app_credit'  => 0,
+                    'amount_cash_to_collect'  => $cashAmount,
+                    'message'                 => $message,
                 ];
-            } else {
-                // User has enough in wallet
+                break;
+
+            // ─── APP CREDIT ──────────────────────────────────────────
+            case PaymentMethod::AppCredit:
+                $distribution   = \App\Models\WalletDistribution::where('activate', 1)->first();
+                $creditPerOrder = $distribution ? (float) $distribution->amount_per_order : 0;
+
+                $creditUsed = min($creditPerOrder, $totalAmount);
+                $cashAmount = round($totalAmount - $creditUsed, 2);
+
+                if ($cashAmount > 0) {
+                    $message = $lang === 'ar'
+                        ? "سيتم خصم {$creditUsed} JD من رصيد التطبيق والمبلغ المتبقي {$cashAmount} JD سيتم دفعه نقداً"
+                        : "JD {$creditUsed} will be deducted from your app credit and the remaining JD {$cashAmount} will be paid in cash";
+                } else {
+                    $message = $lang === 'ar'
+                        ? "سيتم خصم المبلغ الكامل {$creditUsed} JD من رصيد التطبيق"
+                        : "The full amount of JD {$creditUsed} will be deducted from your app credit";
+                }
+
                 $paymentBreakdown = [
-                    'payment_type' => 'full_wallet',
-                    'total_amount' => $finalPrice,
-                    'user_wallet_balance' => $userBalance,
-                    'amount_from_wallet' => $finalPrice,
-                    'amount_cash_required' => 0,
-                    'message' => 'سيتم خصم المبلغ كاملاً ' . number_format($finalPrice, 2) . ' JD من محفظتك',
-                    'message_en' => 'Full amount of JD ' . number_format($finalPrice, 2) . ' will be deducted from your wallet'
+                    'payment_type'            => $cashAmount > 0 ? 'hybrid_app_credit_cash' : 'full_app_credit',
+                    'total_amount'            => $totalAmount,
+                    'amount_from_wallet'      => 0,
+                    'amount_from_app_credit'  => $creditUsed,
+                    'amount_cash_to_collect'  => $cashAmount,
+                    'message'                 => $message,
                 ];
-            }
+                break;
         }
 
         $responseData = $order->toArray();
-        if ($paymentBreakdown) {
-            $responseData['payment_breakdown'] = $paymentBreakdown;
-        }
+        $responseData['payment_breakdown'] = $paymentBreakdown;
 
         return $this->success_response('Order details retrieved successfully', $responseData);
     }
@@ -725,7 +798,6 @@ class OrderController extends Controller
             $isPendingOrder = $order->status === OrderStatus::Pending;
             $isDriverAccepted = $order->status === OrderStatus::DriverAccepted;
 
-            // Check if cancellation fee should be applied
             $cancellationFeeApplied = false;
             $cancellationFeeAmount = 0;
 
@@ -738,9 +810,17 @@ class OrderController extends Controller
                 }
             }
 
+            // ✅ Update status FIRST (stops all jobs)
+            $order->status = OrderStatus::UserCancelOrder;
+            $order->reason_for_cancel = $request->reason_for_cancel;
+            $order->save();
+
             if ($isPendingOrder) {
-                // Move pending order to spam_orders table
+                // ✅ Move to spam table (creates backup)
                 $spamOrder = $this->moveOrderToSpamTable($order, $request->reason_for_cancel);
+
+                // ✅ CRITICAL: Keep notification records, delete the order
+                // Since we removed cascade, notification records will remain
                 $order->delete();
 
                 $responseData = [
@@ -754,10 +834,7 @@ class OrderController extends Controller
                     'cancellation_fee_amount' => 0
                 ];
             } else {
-                // For non-pending orders, just update status
-                $order->status = OrderStatus::UserCancelOrder;
-                $order->reason_for_cancel = $request->reason_for_cancel;
-                $order->save();
+                // For non-pending orders, just update status (don't delete)
 
                 // Notify driver about cancellation
                 if ($order->driver_id) {
@@ -790,6 +867,25 @@ class OrderController extends Controller
         }
     }
 
+    // ✅ NEW: Helper method to remove order from Firebase
+    private function removeOrderFromFirebase($orderId)
+    {
+        try {
+            $projectId = config('firebase.project_id');
+            $baseUrl = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents";
+
+            $response = Http::timeout(5)->delete("{$baseUrl}/ride_requests/{$orderId}");
+
+            if ($response->successful()) {
+                \Log::info("Order {$orderId} removed from Firebase");
+            } else {
+                \Log::warning("Failed to remove order {$orderId} from Firebase: " . $response->body());
+            }
+        } catch (\Exception $e) {
+            \Log::error("Error removing order {$orderId} from Firebase: " . $e->getMessage());
+        }
+    }
+
     /**
      * Deduct cancellation fee from user's balance
      */
@@ -819,7 +915,7 @@ class OrderController extends Controller
     private function moveOrderToSpamTable($order, $reasonForCancel)
     {
         $spamOrder = OrderSpam::create([
-            'original_order_id' => $order->id, 
+            'original_order_id' => $order->id,
             'number' => $order->number,
             'status' => OrderStatus::UserCancelOrder->value,
             'payment_method' => $order->payment_method->value,

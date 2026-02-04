@@ -12,73 +12,132 @@ use Illuminate\Support\Facades\DB;
 
 class WalletController extends Controller
 {
-        use Responses;
-    
-        public function getTransactions(Request $request)
-        {
-            $user = Auth::user();
-            
-            $validator = Validator::make($request->all(), [
-                'type' => 'sometimes|in:1,2', // 1 for add, 2 for withdrawal
-                'per_page' => 'sometimes|integer|min:5|max:100',
-                'sort_by' => 'sometimes|in:date,amount',
-                'sort_direction' => 'sometimes|in:asc,desc'
-            ]);
-            
-            if ($validator->fails()) {
-                return $this->error_response('Validation error', $validator->errors());
-            }
-            
-            $query = WalletTransaction::where('user_id', $user->id);
-            
-            // Filter by transaction type if provided
-            if ($request->has('type')) {
-                $query->where('type_of_transaction', $request->type);
-            }
-            
-            // Apply sorting
-            $sortBy = $request->sort_by ?? 'created_at';
-            $sortDirection = $request->sort_direction ?? 'desc';
-            
-            if ($sortBy === 'date') {
-                $sortBy = 'created_at';
-            }
-            
-            $query->orderBy($sortBy, $sortDirection);
-            
-            // Pagination
-            $perPage = $request->per_page ?? 15;
-            $transactions = $query->paginate($perPage);
-            
-            $responseData = [
-                'balance' => $user->balance,
-                'transactions' => $transactions,
-                'meta' => [
-                    'current_page' => $transactions->currentPage(),
-                    'last_page' => $transactions->lastPage(),
-                    'per_page' => $transactions->perPage(),
-                    'total' => $transactions->total()
-                ]
-            ];
-            
-            return $this->success_response('User wallet transactions retrieved successfully', $responseData);
+    use Responses;
+
+    /**
+     * Get Wallet Transactions
+     */
+    public function getWalletTransactions(Request $request)
+    {
+        $user = Auth::user();
+
+        $validator = Validator::make($request->all(), [
+            'type' => 'sometimes|in:1,2', // 1 for add, 2 for withdrawal
+            'per_page' => 'sometimes|integer|min:5|max:100',
+            'sort_by' => 'sometimes|in:date,amount',
+            'sort_direction' => 'sometimes|in:asc,desc'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error_response('Validation error', $validator->errors());
         }
-        
-        
-        public function addBalance(Request $request)
+
+        // Get wallet transactions
+        $walletQuery = WalletTransaction::where('user_id', $user->id);
+
+        // Filter by transaction type if provided
+        if ($request->has('type')) {
+            $walletQuery->where('type_of_transaction', $request->type);
+        }
+
+        // Apply sorting
+        $sortBy = $request->sort_by ?? 'created_at';
+        $sortDirection = $request->sort_direction ?? 'desc';
+
+        if ($sortBy === 'date') {
+            $sortBy = 'created_at';
+        }
+
+        $walletQuery->orderBy($sortBy, $sortDirection);
+
+        // Pagination
+        $perPage = $request->per_page ?? 15;
+        $walletTransactions = $walletQuery->paginate($perPage);
+
+        $responseData = [
+            'balance' => $user->balance,
+            'app_credit_total' => $user->app_credit,
+            'transactions' => $walletTransactions->items(),
+            'meta' => [
+                'current_page' => $walletTransactions->currentPage(),
+                'last_page' => $walletTransactions->lastPage(),
+                'per_page' => $walletTransactions->perPage(),
+                'total' => $walletTransactions->total()
+            ]
+        ];
+
+        return $this->success_response('Wallet transactions retrieved successfully', $responseData);
+    }
+
+    /**
+     * Get App Credit Transactions
+     */
+    public function getAppCreditTransactions(Request $request)
+    {
+        $user = Auth::user();
+
+        $validator = Validator::make($request->all(), [
+            'type' => 'sometimes|in:1,2', // 1 for add, 2 for withdrawal
+            'per_page' => 'sometimes|integer|min:5|max:100',
+            'sort_by' => 'sometimes|in:date,amount',
+            'sort_direction' => 'sometimes|in:asc,desc'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error_response('Validation error', $validator->errors());
+        }
+
+        // Get app credit transactions
+        $appCreditQuery = \App\Models\AppCreditTransaction::where('user_id', $user->id);
+
+        // Filter by transaction type if provided
+        if ($request->has('type')) {
+            $appCreditQuery->where('type_of_transaction', $request->type);
+        }
+
+        // Apply sorting
+        $sortBy = $request->sort_by ?? 'created_at';
+        $sortDirection = $request->sort_direction ?? 'desc';
+
+        if ($sortBy === 'date') {
+            $sortBy = 'created_at';
+        }
+
+        $appCreditQuery->orderBy($sortBy, $sortDirection);
+
+        // Pagination
+        $perPage = $request->per_page ?? 15;
+        $appCreditTransactions = $appCreditQuery->paginate($perPage);
+
+        $responseData = [
+            'balance' => $user->balance,
+            'app_credit_total' => $user->app_credit,
+            'transactions' => $appCreditTransactions->items(),
+            'meta' => [
+                'current_page' => $appCreditTransactions->currentPage(),
+                'last_page' => $appCreditTransactions->lastPage(),
+                'per_page' => $appCreditTransactions->perPage(),
+                'total' => $appCreditTransactions->total()
+            ]
+        ];
+
+        return $this->success_response('App credit transactions retrieved successfully', $responseData);
+    }
+
+    public function addBalance(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:0.01|max:10000',
         ]);
 
         if ($validator->fails()) {
-            return $this->error_response($validator->errors(),[]);
+            return $this->error_response($validator->errors(), []);
         }
 
         // Get authenticated driver from token
         $user = Auth::guard('user-api')->user();
         if (!$user) {
-            return $this->error_response(__('messages.driver_not_authenticated'),[]);
+            return $this->error_response(__('messages.driver_not_authenticated'), []);
         }
 
         DB::beginTransaction();
@@ -118,11 +177,9 @@ class WalletController extends Controller
                 __('messages.balance_added_successfully'),
                 $responseData
             );
-
         } catch (\Exception $e) {
             DB::rollback();
-            return $this->error_response(__('messages.error_adding_balance') . ': ' . $e->getMessage(),[]);
+            return $this->error_response(__('messages.error_adding_balance') . ': ' . $e->getMessage(), []);
         }
     }
-    
 }

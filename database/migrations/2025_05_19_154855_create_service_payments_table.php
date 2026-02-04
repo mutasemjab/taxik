@@ -17,8 +17,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('service_id')->nullable();
             $table->foreign('service_id')->references('id')->on('services')->onDelete('cascade');
-             $table->enum('payment_method', ['cash', 'visa', 'wallet'])
-                  ->default('cash');
+            $table->enum('payment_method', ['cash', 'visa', 'wallet', 'app_credit'])->default('cash');
                   
            $table->timestamps();
         });

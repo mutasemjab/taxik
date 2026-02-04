@@ -198,6 +198,10 @@
                                     <input type="checkbox" name="payment_methods[]" value="wallet" {{ old('payment_methods') && in_array('wallet', old('payment_methods')) ? 'checked' : '' }}>
                                     <span></span>{{ __('Wallet') }}
                                 </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="payment_methods[]" value="app_credit" {{ old('payment_methods') && in_array('app_credit', old('payment_methods')) ? 'checked' : '' }}>
+                                    <span></span>{{ __('App_credit') }}
+                                </label>
                             </div>
                             @error('payment_methods')
                                 <div class="invalid-feedback">{{ $message }}</div>

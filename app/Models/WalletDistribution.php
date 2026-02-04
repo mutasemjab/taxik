@@ -14,48 +14,58 @@ class WalletDistribution extends Model
         'total_amount' => 'decimal:2',
         'number_of_orders' => 'integer',
         'amount_per_order' => 'decimal:2',
-        'activate' => 'integer'
+        'activate' => 'integer',
     ];
 
     /**
-     * حساب المبلغ لكل رحلة تلقائياً
+     * Boot method - حساب المبلغ لكل رحلة تلقائياً
      */
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($distribution) {
-            $distribution->amount_per_order = round($distribution->total_amount / $distribution->number_of_orders, 2);
+            if ($distribution->number_of_orders > 0) {
+                $distribution->amount_per_order = $distribution->total_amount / $distribution->number_of_orders;
+            }
         });
 
         static::updating(function ($distribution) {
-            $distribution->amount_per_order = round($distribution->total_amount / $distribution->number_of_orders, 2);
+            if ($distribution->number_of_orders > 0) {
+                $distribution->amount_per_order = $distribution->total_amount / $distribution->number_of_orders;
+            }
         });
     }
 
     /**
-     * تطبيق هذا التوزيع على جميع المستخدمين
+     * ✅ تطبيق التوزيع على رصيد التطبيق لجميع المستخدمين
      */
     public function applyToAllUsers()
     {
-        \DB::table('users')->update([
-            'wallet_amount_per_order' => $this->amount_per_order,
-            'wallet_orders_remaining' => $this->number_of_orders,
-        ]);
+        $users = User::where('activate', 1)->get();
 
-        \Log::info("Applied wallet distribution {$this->id} to all users: {$this->amount_per_order} JD per order for {$this->number_of_orders} orders");
+        foreach ($users as $user) {
+            $user->applyAppCreditDistribution(
+                $this->total_amount,
+                $this->number_of_orders,
+                auth('admin')->id() ?? null
+            );
+        }
+
+        \Log::info("App credit distribution {$this->id} applied to " . $users->count() . " users");
     }
 
     /**
-     * إلغاء التوزيع من جميع المستخدمين
+     * ✅ إزالة التوزيع من رصيد التطبيق لجميع المستخدمين
      */
     public static function removeFromAllUsers()
     {
-        \DB::table('users')->update([
-            'wallet_amount_per_order' => 0,
-            'wallet_orders_remaining' => 0,
-        ]);
+        $users = User::where('activate', 1)->get();
 
-        \Log::info("Removed wallet distribution from all users");
+        foreach ($users as $user) {
+            $user->removeAppCreditDistribution();
+        }
+
+        \Log::info("App credit distribution removed from " . $users->count() . " users");
     }
 }

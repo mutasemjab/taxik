@@ -26,8 +26,9 @@ return new class extends Migration
             $table->foreign('coupon_id')->references('id')->on('coupons')->onDelete('cascade');
 
             $table->string('tracking_token', 64)->unique()->nullable();
+           
 
-
+            $table->decimal('app_credit_amount_used', 10, 2)->default(0);
             $table->decimal('wallet_amount_used', 10, 2)->default(0);
             $table->decimal('cash_amount_due', 10, 2)->default(0);
             $table->boolean('is_hybrid_payment')->default(false);
@@ -68,9 +69,9 @@ return new class extends Migration
     
             $table->text('reason_for_cancel')->nullable();
 
-            $table->enum('payment_method', ['cash', 'visa', 'wallet'])
-                  ->default('cash');
-
+           $table->enum('payment_method', ['cash', 'visa', 'wallet', 'app_credit'])
+            ->default('cash');
+            
             // Change status_payment to ENUM
             $table->enum('status_payment', ['pending', 'paid'])
                   ->default('pending');

@@ -25,6 +25,7 @@ class ServicePayment extends Model
             PaymentMethod::Cash => __('messages.Cash'),
             PaymentMethod::Visa => __('messages.Visa'),
             PaymentMethod::Wallet => __('messages.Wallet'),
+            PaymentMethod::AppCredit=>__('messages.AppCredit'),
             default => __('messages.Unknown'),
         };
     }

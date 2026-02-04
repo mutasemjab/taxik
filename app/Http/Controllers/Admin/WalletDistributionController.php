@@ -24,9 +24,9 @@ class WalletDistributionController extends Controller
     {
         $distributions = WalletDistribution::latest()->paginate(10);
         
-        // التحقق من تفعيل النظام
+        // ✅ تحديث: التحقق من تفعيل نظام رصيد التطبيق
         $systemEnabled = DB::table('settings')
-            ->where('key', 'enable_wallet_distribution_system')
+            ->where('key', 'enable_app_credit_distribution_system')
             ->value('value') == 1;
 
         return view('admin.wallet-distributions.index', compact('distributions', 'systemEnabled'));
@@ -63,12 +63,12 @@ class WalletDistributionController extends Controller
             'activate' => $request->has('activate') ? 1 : 0,
         ]);
 
-        // إذا كان التوزيع مفعل، طبقه على جميع المستخدمين
+        // ✅ إذا كان التوزيع مفعل، طبقه على رصيد التطبيق لجميع المستخدمين
         if ($distribution->activate == 1) {
             // تعطيل كل التوزيعات الأخرى
             WalletDistribution::where('id', '!=', $distribution->id)->update(['activate' => 0]);
             
-            // تطبيق التوزيع على جميع المستخدمين
+            // تطبيق التوزيع على رصيد التطبيق
             $distribution->applyToAllUsers();
         }
 
@@ -110,15 +110,15 @@ class WalletDistributionController extends Controller
             'activate' => $request->has('activate') ? 1 : 0,
         ]);
 
-        // إذا كان التوزيع مفعل، طبقه على جميع المستخدمين
+        // ✅ إذا كان التوزيع مفعل، طبقه على رصيد التطبيق
         if ($distribution->activate == 1) {
             // تعطيل كل التوزيعات الأخرى
             WalletDistribution::where('id', '!=', $distribution->id)->update(['activate' => 0]);
             
-            // تطبيق التوزيع على جميع المستخدمين
+            // تطبيق التوزيع على رصيد التطبيق
             $distribution->applyToAllUsers();
         } else {
-            // إذا تم تعطيل التوزيع، احذفه من جميع المستخدمين
+            // إذا تم تعطيل التوزيع، احذفه من رصيد التطبيق
             WalletDistribution::removeFromAllUsers();
         }
 
@@ -133,7 +133,7 @@ class WalletDistributionController extends Controller
     {
         $distribution = WalletDistribution::findOrFail($id);
         
-        // إذا كان التوزيع مفعل، احذفه من جميع المستخدمين
+        // ✅ إذا كان التوزيع مفعل، احذفه من رصيد التطبيق
         if ($distribution->activate == 1) {
             WalletDistribution::removeFromAllUsers();
         }
@@ -158,7 +158,7 @@ class WalletDistributionController extends Controller
             // تعطيل كل التوزيعات الأخرى
             WalletDistribution::where('id', '!=', $id)->update(['activate' => 0]);
             
-            // تطبيق التوزيع على جميع المستخدمين
+            // تطبيق التوزيع على رصيد التطبيق
             $distribution->activate = 1;
             $distribution->save();
             $distribution->applyToAllUsers();
@@ -169,7 +169,7 @@ class WalletDistributionController extends Controller
             $distribution->activate = 0;
             $distribution->save();
             
-            // إزالة التوزيع من جميع المستخدمين
+            // إزالة التوزيع من رصيد التطبيق
             WalletDistribution::removeFromAllUsers();
             
             $message = __('messages.distribution_deactivated_successfully');
@@ -180,7 +180,7 @@ class WalletDistributionController extends Controller
     }
 
     /**
-     * تفعيل/تعطيل النظام بالكامل
+     * ✅ تحديث: تفعيل/تعطيل نظام رصيد التطبيق
      */
     public function toggleSystem(Request $request)
     {
@@ -188,12 +188,12 @@ class WalletDistributionController extends Controller
         
         DB::table('settings')
             ->updateOrInsert(
-                ['key' => 'enable_wallet_distribution_system'],
+                ['key' => 'enable_app_credit_distribution_system'],
                 ['value' => $enabled, 'updated_at' => now()]
             );
         
         if ($enabled == 0) {
-            // إذا تم تعطيل النظام، احذف التوزيع من جميع المستخدمين
+            // إذا تم تعطيل النظام، احذف التوزيع من رصيد التطبيق
             WalletDistribution::removeFromAllUsers();
         } else {
             // إذا تم تفعيل النظام، طبق التوزيع المفعل (إن وجد)

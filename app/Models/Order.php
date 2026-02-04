@@ -96,15 +96,16 @@ class Order extends Model
         return $number;
     }
 
-    public function getPaymentMethodText()
-    {
-        return match ($this->payment_method) {
-            PaymentMethod::Cash => __('messages.Cash'),
-            PaymentMethod::Visa => __('messages.Visa'),
-            PaymentMethod::Wallet => __('messages.Wallet'),
-            default => __('messages.Unknown'),
-        };
-    }
+   public function getPaymentMethodText()
+{
+    return match($this->payment_method) {
+        PaymentMethod::Cash => 'نقدي',
+        PaymentMethod::Visa => 'بطاقة ائتمانية',
+        PaymentMethod::Wallet => 'محفظة',
+        PaymentMethod::AppCredit => 'رصيد التطبيق', // ✅ NEW
+        default => 'غير محدد'
+    };
+}
 
     public function getPaymentStatusText()
     {

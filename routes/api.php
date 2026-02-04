@@ -86,7 +86,8 @@ Route::group(['prefix' => 'v1/user'], function () {
         Route::put('/addresses/{id}', [UserAddressController::class, 'update']);
         Route::delete('/addresses/{id}', [UserAddressController::class, 'destroy']);
 
-        Route::get('/wallet/transactions', [WalletController::class, 'getTransactions']);
+        Route::get('/wallet/transactions', [WalletController::class, 'getWalletTransactions']);
+        Route::get('/app-credit/transactions', [WalletController::class, 'getAppCreditTransactions']);
 
         // not use
         Route::get('/complaints', [ComplaintController::class, 'index']);
@@ -160,5 +161,5 @@ Route::group(['prefix' => 'v1/driver'], function () {
     });
 });
 
-Route::post('/internal/update-order-radius', [\App\Http\Controllers\Api\v1\User\OrderController::class, 'updateOrderRadius'])
-    ->middleware('throttle:60,1');
+Route::post('/internal/update-order-radius', [OrderController::class, 'updateOrderRadius']);
+

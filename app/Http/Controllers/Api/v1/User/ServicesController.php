@@ -50,7 +50,9 @@ class ServicesController extends Controller
             $startPrice = $isEvening ? $service->start_price_evening : $service->start_price_morning;
             $pricePerKm = $isEvening ? $service->price_per_km_evening : $service->price_per_km_morning;
             
-            $price = $startPrice + ($pricePerKm * $distance);
+            // Subtract 2.5 km from distance before calculating price (minimum 0)
+            $billableDistance = max(0, $distance - 2.5);
+            $price = $startPrice + ($pricePerKm * $billableDistance);
 
             $serviceData = $service->toArray();
             $serviceData['distance_km'] = round($distance, 2);

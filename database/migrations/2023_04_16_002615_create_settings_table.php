@@ -29,7 +29,7 @@ return new class extends Migration
             ['key' => "maximum_radius_to_find_drivers", 'value' => 20], // km
             ['key' => "can_driver_withdrawal", 'value' => 1], // 1 yes , 2 no
             [
-                'key' => 'enable_wallet_distribution_system', 
+                'key' => 'enable_app_credit_distribution_system', 
                 'value' => 1 // 1 yes , 0 no
             ],
         ]);

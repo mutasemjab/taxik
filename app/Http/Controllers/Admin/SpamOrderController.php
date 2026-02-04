@@ -63,24 +63,32 @@ class SpamOrderController extends Controller
     /**
      * Display the specified spam order with detailed tracking
      */
+    /**
+     * Display the specified spam order with detailed tracking
+     */
     public function show($id)
     {
         $spamOrder = OrderSpam::with(['user', 'driver', 'service'])
             ->findOrFail($id);
 
-        // ✅ Use original_order_id to get notified drivers
-        $originalOrderId = $spamOrder->original_order_id ?? $id;
+        // ✅ Get original order ID from spam table
+        $originalOrderId = $spamOrder->original_order_id;
 
-        // Get drivers who were notified from database using ORIGINAL order ID
+        if (!$originalOrderId) {
+            // Fallback: if original_order_id is not set, try using spam order id
+            $originalOrderId = $id;
+        }
+
+        // ✅ NOW THIS WORKS: Query using the original order ID
+        // Since we removed the foreign key, order_id doesn't become NULL
         $driversNotified = OrderDriverNotified::with('driver')
-            ->where('order_id', $originalOrderId)  // Use original order ID
+            ->where('order_id', $originalOrderId)
             ->orderBy('distance_km', 'asc')
             ->get();
 
-        // Get current driver IDs in Firebase to determine who rejected
-        $currentDriverIdsInFirebase = $this->getDriverIdsFromFirebase($originalOrderId);  // Also use original ID for Firebase
+        // Get current driver IDs in Firebase
+        $currentDriverIdsInFirebase = $this->getDriverIdsFromFirebase($originalOrderId);
 
-        // Rest of your code remains the same...
         $notifiedDriverIds = $driversNotified->pluck('driver_id')->toArray();
         $assignedDriverId = $spamOrder->driver_id;
 

@@ -25,9 +25,11 @@ return new class extends Migration
             $table->double('balance')->default(0);
             $table->text('referral_code')->nullable();
             $table->tinyInteger('activate')->default(1); // 1 yes //2 no
-            $table->unsignedBigInteger('user_id')->nullable(); 
-            $table->decimal('wallet_amount_per_order', 10, 2)->default(0);
-            $table->integer('wallet_orders_remaining')->default(0);
+            $table->unsignedBigInteger('user_id')->nullable();
+            // new 
+            $table->decimal('app_credit', 10, 2)->default(0);
+            $table->decimal('app_credit_amount_per_order', 10, 2)->default(0);
+            $table->integer('app_credit_orders_remaining')->default(0);
             $table->rememberToken();
             $table->timestamps();
         });

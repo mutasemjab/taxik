@@ -271,6 +271,13 @@ class HomeController extends Controller
                 'message' => $lang === 'ar' 
                     ? 'نظام الرصيد الترويجي غير مفعل حالياً' 
                     : 'App credit distribution system is currently disabled',
+                'has_active_distribution' => false,
+                'title' => '',
+                'description' => '',
+                'total_amount' => 0,
+                'number_of_orders' => 0,
+                'amount_per_order' => '0.00',
+                'note' => '',
             ];
         }
 
@@ -286,6 +293,12 @@ class HomeController extends Controller
                 'message' => $lang === 'ar' 
                     ? 'لا توجد خطة رصيد ترويجي نشطة حالياً' 
                     : 'No active app credit distribution plan available',
+                'title' => '',
+                'description' => '',
+                'total_amount' => 0,
+                'number_of_orders' => 0,
+                'amount_per_order' => '0.00',
+                'note' => '',
             ];
         }
 

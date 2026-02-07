@@ -390,64 +390,73 @@ class OrderPaymentService
     /**
      * ✅ Update Wallet Payment (Remove App Credit Logic)
      */
-    private function processWalletPayment($order, $driver, $finalPrice, $driverBaseEarning, $discountValue, &$paymentDetails)
+     private function processWalletPayment($order, $driver, $finalPrice, $driverBaseEarning, $discountValue, &$paymentDetails)
     {
         $user = $order->user;
         $realWalletBalance = $user->balance;
 
-        if ($realWalletBalance < $finalPrice) {
-            throw new \Exception("Insufficient wallet balance");
+        // ========== حساب المبلغ من المحفظة والنقدي ==========
+        $amountFromWallet = min($realWalletBalance, $finalPrice); // خصم فقط ما هو متاح
+        $cashAmount = max(0, $finalPrice - $amountFromWallet); // الباقي نقدي
+
+        $isHybridPayment = ($cashAmount > 0);
+
+        // ========== خصم من المحفظة الحقيقية ==========
+        if ($amountFromWallet > 0) {
+            DB::table('wallet_transactions')->insert([
+                'order_id' => $order->id,
+                'user_id' => $user->id,
+                'amount' => $amountFromWallet,
+                'type_of_transaction' => 2, // withdrawal
+                'note' => $isHybridPayment
+                    ? "الدفع للطلب رقم {$order->id} من المحفظة ({$amountFromWallet} JD) والباقي نقدي ({$cashAmount} JD)"
+                    : "الدفع للطلب رقم {$order->id} من المحفظة ({$amountFromWallet} JD)",
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::table('users')
+                ->where('id', $user->id)
+                ->decrement('balance', $amountFromWallet);
+
+            $paymentDetails['transactions_created'][] = [
+                'type' => 'wallet_deduction',
+                'amount' => $amountFromWallet,
+                'description' => $isHybridPayment ? 'Partial payment from wallet' : 'Full payment from wallet'
+            ];
         }
 
-        // خصم من المحفظة الحقيقية
-        DB::table('wallet_transactions')->insert([
-            'order_id' => $order->id,
-            'user_id' => $user->id,
-            'amount' => $finalPrice,
-            'type_of_transaction' => 2, // withdrawal
-            'note' => "الدفع للطلب رقم {$order->id} من المحفظة",
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-
-        DB::table('users')
-            ->where('id', $user->id)
-            ->decrement('balance', $finalPrice);
-
-        $paymentDetails['transactions_created'][] = [
-            'type' => 'wallet_deduction',
-            'amount' => $finalPrice,
-            'description' => 'Payment from real wallet balance'
-        ];
-
+        // ✅ تحديث الطلب بمعلومات الدفع
         $order->app_credit_amount_used = 0;
-        $order->wallet_amount_used = $finalPrice;
-        $order->cash_amount_due = 0;
-        $order->is_hybrid_payment = false;
+        $order->wallet_amount_used = $amountFromWallet;
+        $order->cash_amount_due = $cashAmount;
+        $order->is_hybrid_payment = $isHybridPayment;
         $order->save();
 
-        // تحويل للسائق
-        DB::table('wallet_transactions')->insert([
-            'order_id' => $order->id,
-            'driver_id' => $driver->id,
-            'amount' => $finalPrice,
-            'type_of_transaction' => 1, // addition
-            'note' => "تحويل المبلغ من المستخدم للطلب رقم {$order->id}",
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
+        // ========== تحويل المبلغ من المحفظة للسائق ==========
+        if ($amountFromWallet > 0) {
+            DB::table('wallet_transactions')->insert([
+                'order_id' => $order->id,
+                'driver_id' => $driver->id,
+                'amount' => $amountFromWallet,
+                'type_of_transaction' => 1, // addition
+                'note' => "تحويل {$amountFromWallet} JD من محفظة المستخدم للطلب رقم {$order->id}",
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
 
-        DB::table('drivers')
-            ->where('id', $driver->id)
-            ->increment('balance', $finalPrice);
+            DB::table('drivers')
+                ->where('id', $driver->id)
+                ->increment('balance', $amountFromWallet);
 
-        $paymentDetails['transactions_created'][] = [
-            'type' => 'transfer_to_driver',
-            'amount' => $finalPrice,
-            'description' => 'Amount transferred to driver from user wallet'
-        ];
+            $paymentDetails['transactions_created'][] = [
+                'type' => 'transfer_to_driver_from_wallet',
+                'amount' => $amountFromWallet,
+                'description' => 'Amount transferred to driver from user wallet'
+            ];
+        }
 
-        // خصم عمولة الإدارة
+        // ========== خصم عمولة الإدارة من السعر الكلي ==========
         $adminCommission = $this->getServiceCommission($order->service_id, $order->total_price_before_discount)['admin_commission'];
 
         DB::table('wallet_transactions')->insert([
@@ -470,7 +479,7 @@ class OrderPaymentService
             'description' => 'Admin commission deducted from driver wallet'
         ];
 
-        // تعويض الخصم
+        // ========== تعويض الخصم (الكوبون) ==========
         if ($discountValue > 0) {
             DB::table('wallet_transactions')->insert([
                 'order_id' => $order->id,
@@ -493,11 +502,31 @@ class OrderPaymentService
             ];
         }
 
+        // ========== معلومات الدفع ==========
+        $paymentDetails['payment_type'] = $isHybridPayment ? 'hybrid_wallet_cash' : 'full_wallet';
+        $paymentDetails['wallet_details'] = [
+            'amount_used_from_wallet' => $amountFromWallet,
+            'cash_amount_required' => $cashAmount,
+            'is_hybrid_payment' => $isHybridPayment
+        ];
+
+        if ($isHybridPayment) {
+            $paymentDetails['cash_collection_required'] = true;
+            $paymentDetails['cash_collection_details'] = [
+                'amount' => $cashAmount,
+                'note' => 'Driver must collect this amount in cash from user',
+                'message_ar' => "يجب على السائق تحصيل {$cashAmount} JD نقداً من المستخدم",
+                'message_en' => "Driver must collect JD {$cashAmount} cash from user"
+            ];
+        }
+
         $paymentDetails['user_final_balance'] = $user->fresh()->balance;
         $paymentDetails['driver_final_balance'] = $driver->fresh()->balance;
 
         Log::info("Wallet payment processed for order {$order->id}", [
-            'amount' => $finalPrice
+            'amount_from_wallet' => $amountFromWallet,
+            'cash_amount' => $cashAmount,
+            'is_hybrid' => $isHybridPayment
         ]);
     }
 

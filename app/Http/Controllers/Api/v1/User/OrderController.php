@@ -348,7 +348,7 @@ class OrderController extends Controller
                 // ✅ التحقق من المحفظة الحقيقية فقط
                 $realWalletBalance = $user->balance;
 
-                if ($realWalletBalance < $finalPrice) {
+                if ($realWalletBalance == 0) {
                     return response()->json([
                         'status' => false,
                         'type' => 'insufficient_wallet_balance',

@@ -213,7 +213,7 @@
                                         <div class="form-group">
                                             <label
                                                 for="wallet_amount_used">{{ __('messages.Wallet_Amount_Used') }}</label>
-                                            <input type="number" step="0.01" class="form-control"
+                                            <input type="number" step="any" class="form-control"
                                                 id="wallet_amount_used" name="wallet_amount_used"
                                                 value="{{ old('wallet_amount_used', $order->wallet_amount_used) }}"
                                                 min="0">
@@ -221,7 +221,7 @@
 
                                         <div class="form-group">
                                             <label for="cash_amount_due">{{ __('messages.Cash_Amount_Due') }}</label>
-                                            <input type="number" step="0.01" class="form-control"
+                                            <input type="number" step="any" class="form-control"
                                                 id="cash_amount_due" name="cash_amount_due"
                                                 value="{{ old('cash_amount_due', $order->cash_amount_due) }}"
                                                 min="0">
@@ -240,35 +240,35 @@
                                         <label for="trip_started_at">{{ __('messages.Trip_Started_At') }}</label>
                                         <input type="datetime-local" class="form-control" id="trip_started_at"
                                             name="trip_started_at"
-                                            value="{{ old('trip_started_at', $order->trip_started_at ? $order->trip_started_at->format('Y-m-d\TH:i') : '') }}">
+                                            value="{{ old('trip_started_at', $order->trip_started_at ? $order->trip_started_at->format('Y-m-d\TH:i') : '') }}" readonly>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="trip_completed_at">{{ __('messages.Trip_Completed_At') }}</label>
                                         <input type="datetime-local" class="form-control" id="trip_completed_at"
                                             name="trip_completed_at"
-                                            value="{{ old('trip_completed_at', $order->trip_completed_at ? $order->trip_completed_at->format('Y-m-d\TH:i') : '') }}">
+                                            value="{{ old('trip_completed_at', $order->trip_completed_at ? $order->trip_completed_at->format('Y-m-d\TH:i') : '') }}" readonly>
                                     </div>
 
                                     <div class="form-group">
                                         <label
                                             for="actual_trip_duration_minutes">{{ __('messages.Actual_Duration_Minutes') }}</label>
-                                        <input type="number" step="0.01" class="form-control"
+                                        <input type="number" step="any" class="form-control"
                                             id="actual_trip_duration_minutes" name="actual_trip_duration_minutes"
                                             value="{{ old('actual_trip_duration_minutes', $order->actual_trip_duration_minutes) }}"
-                                            min="0">
+                                            min="0" readonly>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="live_distance">{{ __('messages.Live_Distance_KM') }}</label>
-                                        <input type="number" step="0.01" class="form-control" id="live_distance"
+                                        <input type="number" step="any" class="form-control" id="live_distance"
                                             name="live_distance"
-                                            value="{{ old('live_distance', $order->live_distance) }}" min="0">
+                                            value="{{ old('live_distance', $order->live_distance) }}" min="0" readonly>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="returned_amount">{{ __('messages.Returned_Amount') }}</label>
-                                        <input type="number" step="0.01" class="form-control" id="returned_amount"
+                                        <input type="number" step="any" class="form-control" id="returned_amount"
                                             name="returned_amount"
                                             value="{{ old('returned_amount', $order->returned_amount) }}" min="0">
                                         <small
@@ -298,7 +298,7 @@
                                                         class="text-danger">*</span></label>
                                                 <input type="number" step="any" class="form-control" id="pick_lat"
                                                     name="pick_lat" value="{{ old('pick_lat', $order->pick_lat) }}"
-                                                    required>
+                                                    required readonly>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -307,7 +307,7 @@
                                                         class="text-danger">*</span></label>
                                                 <input type="number" step="any" class="form-control" id="pick_lng"
                                                     name="pick_lng" value="{{ old('pick_lng', $order->pick_lng) }}"
-                                                    required>
+                                                    required readonly>
                                             </div>
                                         </div>
                                     </div>
@@ -329,14 +329,14 @@
                                             <div class="form-group">
                                                 <label for="drop_lat">{{ __('messages.Latitude') }}</label>
                                                 <input type="number" step="any" class="form-control" id="drop_lat"
-                                                    name="drop_lat" value="{{ old('drop_lat', $order->drop_lat) }}">
+                                                    name="drop_lat" value="{{ old('drop_lat', $order->drop_lat) }}" readonly>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="drop_lng">{{ __('messages.Longitude') }}</label>
                                                 <input type="number" step="any" class="form-control" id="drop_lng"
-                                                    name="drop_lng" value="{{ old('drop_lng', $order->drop_lng) }}">
+                                                    name="drop_lng" value="{{ old('drop_lng', $order->drop_lng) }}" readonly>
                                             </div>
                                         </div>
                                     </div>
@@ -355,7 +355,7 @@
                                                 <label
                                                     for="total_price_before_discount">{{ __('messages.Original_Price') }}
                                                     <span class="text-danger">*</span></label>
-                                                <input type="number" step="0.01" class="form-control"
+                                                <input type="number" step="any" class="form-control"
                                                     id="total_price_before_discount" name="total_price_before_discount"
                                                     value="{{ old('total_price_before_discount', $order->total_price_before_discount) }}"
                                                     required min="0">
@@ -364,7 +364,7 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="discount_value">{{ __('messages.Discount') }}</label>
-                                                <input type="number" step="0.01" class="form-control"
+                                                <input type="number" step="any" class="form-control"
                                                     id="discount_value" name="discount_value"
                                                     value="{{ old('discount_value', $order->discount_value) }}"
                                                     min="0">
@@ -376,7 +376,7 @@
                                             <div class="form-group">
                                                 <label for="total_price_after_discount">{{ __('messages.Final_Price') }}
                                                     <span class="text-danger">*</span></label>
-                                                <input type="number" step="0.01" class="form-control"
+                                                <input type="number" step="any" class="form-control"
                                                     id="total_price_after_discount" name="total_price_after_discount"
                                                     value="{{ old('total_price_after_discount', $order->total_price_after_discount) }}"
                                                     required min="0">
@@ -386,7 +386,7 @@
                                             <div class="form-group">
                                                 <label for="commision_of_admin">{{ __('messages.Admin_Commission') }}
                                                     <span class="text-danger">*</span></label>
-                                                <input type="number" step="0.01" class="form-control"
+                                                <input type="number" step="any" class="form-control"
                                                     id="commision_of_admin" name="commision_of_admin"
                                                     value="{{ old('commision_of_admin', $order->commision_of_admin) }}"
                                                     required min="0">
@@ -396,7 +396,7 @@
                                     <div class="form-group">
                                         <label for="net_price_for_driver">{{ __('messages.Driver_Earning') }} <span
                                                 class="text-danger">*</span></label>
-                                        <input type="number" step="0.01" class="form-control"
+                                        <input type="number" step="any" class="form-control"
                                             id="net_price_for_driver" name="net_price_for_driver"
                                             value="{{ old('net_price_for_driver', $order->net_price_for_driver) }}"
                                             required min="0">
@@ -418,7 +418,7 @@
                                                 <label for="arrived_at">{{ __('messages.Arrived_At') }}</label>
                                                 <input type="datetime-local" class="form-control" id="arrived_at"
                                                     name="arrived_at"
-                                                    value="{{ old('arrived_at', $order->arrived_at ? $order->arrived_at->format('Y-m-d\TH:i') : '') }}">
+                                                    value="{{ old('arrived_at', $order->arrived_at ? $order->arrived_at->format('Y-m-d\TH:i') : '') }}" readonly>
                                             </div>
                                         </div>
 
@@ -429,17 +429,17 @@
                                                 <input type="number" class="form-control" id="total_waiting_minutes"
                                                     name="total_waiting_minutes"
                                                     value="{{ old('total_waiting_minutes', $order->total_waiting_minutes) }}"
-                                                    min="0">
+                                                    min="0" readonly>
                                             </div>
                                         </div>
 
                                         <div class="col-md-4">
                                             <div class="form-group">
                                                 <label for="waiting_charges">{{ __('messages.Waiting_Charges') }}</label>
-                                                <input type="number" step="0.01" class="form-control"
+                                                <input type="number" step="any" class="form-control"
                                                     id="waiting_charges" name="waiting_charges"
                                                     value="{{ old('waiting_charges', $order->waiting_charges) }}"
-                                                    min="0">
+                                                    min="0" readonly>
                                             </div>
                                         </div>
                                     </div>
@@ -454,7 +454,7 @@
                                                 <input type="number" class="form-control" id="in_trip_waiting_minutes"
                                                     name="in_trip_waiting_minutes"
                                                     value="{{ old('in_trip_waiting_minutes', $order->in_trip_waiting_minutes) }}"
-                                                    min="0">
+                                                    min="0" readonly>
                                             </div>
                                         </div>
 
@@ -462,10 +462,10 @@
                                             <div class="form-group">
                                                 <label
                                                     for="in_trip_waiting_charges">{{ __('messages.In_Trip_Waiting_Charges') }}</label>
-                                                <input type="number" step="0.01" class="form-control"
+                                                <input type="number" step="any" class="form-control"
                                                     id="in_trip_waiting_charges" name="in_trip_waiting_charges"
                                                     value="{{ old('in_trip_waiting_charges', $order->in_trip_waiting_charges) }}"
-                                                    min="0">
+                                                    min="0" readonly>
                                             </div>
                                         </div>
                                     </div>

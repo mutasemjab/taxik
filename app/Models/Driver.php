@@ -31,6 +31,12 @@ class Driver extends Authenticatable
         'no_criminal_record_url',
     ];
 
+     protected $casts = [
+        'last_login' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
     // Activity Log Configuration
     public function getActivitylogOptions(): LogOptions
     {

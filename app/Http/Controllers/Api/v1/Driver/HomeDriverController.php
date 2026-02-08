@@ -17,36 +17,39 @@ use Illuminate\Support\Facades\Validator;
 class HomeDriverController extends Controller
 {
     use Responses;
-    
+
     public function __invoke(Request $request)
     {
         try {
             // Get the authenticated driver
             $driver = auth('driver-api')->user();
-            
+
+            // Update last login timestamp
+            $driver->update(['last_login' => now()]);
+
             // Get language from header (default to 'en')
             $lang = $request->header('lang', 'en');
-            
+
             // Get driver's rating
             $rating = $driver->ratings()->avg('rating') ?? 5;
-            
+
             // Get only active services
             $activeServices = $driver->activeServices()->get();
-            
+
             // Get driver's options
             $driverOptions = $driver->options()->get();
-            
+
             // Get minimum wallet balance setting
             $minWalletBalance = DB::table('settings')
                 ->where('key', 'minimum_money_in_wallet_driver_to_get_order')
                 ->value('value') ?? 0;
-            
+
             // Check if driver's balance is below minimum required
             $walletStatus = $this->checkWalletStatus($driver->balance, $minWalletBalance, $lang);
-            
+
             // Get today's statistics
             $todayStats = $this->getTodayStatistics($driver->id);
-            
+
             // Prepare the response data
             $responseData = [
                 'profile' => $driver,
@@ -63,11 +66,11 @@ class HomeDriverController extends Controller
                 ],
                 'today_statistics' => $todayStats
             ];
-            
+
             // Add ban information if driver is banned
             if ($driver->activate == 2) {
                 $responseData['ban_info'] = $this->getBanInfo($driver, $lang);
-                
+
                 // ========== LOG BANNED DRIVER ACCESS ==========
                 \Log::channel('home_driver')->warning('Banned driver accessed home', [
                     'driver_id' => $driver->id,
@@ -82,7 +85,7 @@ class HomeDriverController extends Controller
                 ]);
                 // ========== END LOG BANNED DRIVER ACCESS ==========
             }
-            
+
             return $this->success_response('Home data retrieved successfully', $responseData);
         } catch (\Exception $e) {
             // ========== LOG HOME DATA RETRIEVAL FAILURE ==========
@@ -104,7 +107,7 @@ class HomeDriverController extends Controller
             return $this->error_response('Failed to retrieve home data', $e->getMessage());
         }
     }
-    
+
     /**
      * Get ban information for the driver
      */
@@ -112,18 +115,18 @@ class HomeDriverController extends Controller
     {
         try {
             $activeBan = $driver->activeBan;
-            
+
             if (!$activeBan) {
                 $message = $lang === 'ar' ? 'تم حظر حسابك.' : 'Your account has been banned.';
-                
+
                 return [
                     'is_banned' => true,
                     'message' => $message,
                 ];
             }
 
-            $message = $lang === 'ar' 
-                ? 'تم حظر حسابك. يمكنك فقط عرض المعلومات وسحب رصيدك.' 
+            $message = $lang === 'ar'
+                ? 'تم حظر حسابك. يمكنك فقط عرض المعلومات وسحب رصيدك.'
                 : 'Your account has been banned. You can only view information and withdraw your balance.';
 
             $banInfo = [
@@ -171,7 +174,7 @@ class HomeDriverController extends Controller
             ];
         }
     }
-    
+
     /**
      * Check wallet status and determine if driver needs to recharge
      */
@@ -180,15 +183,15 @@ class HomeDriverController extends Controller
         $isEligible = $currentBalance >= $minBalance;
         $needsRecharge = !$isEligible;
         $requiredAmount = $needsRecharge ? ($minBalance - $currentBalance) : 0;
-        
+
         $popupMessage = null;
         if ($needsRecharge) {
             $title = $lang === 'ar' ? 'يتطلب شحن المحفظة' : 'Wallet Recharge Required';
-            $message = $lang === 'ar' 
+            $message = $lang === 'ar'
                 ? "رصيد محفظتك هو {$currentBalance}. تحتاج إلى {$minBalance} على الأقل لاستلام الطلبات. يرجى شحن محفظتك بمبلغ {$requiredAmount} أو أكثر لبدء استلام الطلبات."
                 : "Your wallet balance is {$currentBalance}. You need at least {$minBalance} to receive orders. Please recharge your wallet with {$requiredAmount} or more to start receiving orders.";
             $actionText = $lang === 'ar' ? 'شحن المحفظة' : 'Recharge Wallet';
-            
+
             $popupMessage = [
                 'title' => $title,
                 'message' => $message,
@@ -196,7 +199,7 @@ class HomeDriverController extends Controller
                 'show_popup' => true
             ];
         }
-        
+
         return [
             'is_eligible' => $isEligible,
             'needs_recharge' => $needsRecharge,
@@ -204,7 +207,7 @@ class HomeDriverController extends Controller
             'popup_message' => $popupMessage
         ];
     }
-    
+
     /**
      * Get today's statistics for the driver
      */
@@ -212,24 +215,24 @@ class HomeDriverController extends Controller
     {
         try {
             $today = now()->format('Y-m-d');
-        
+
             // Get today's completed orders count
             $todayOrdersCount = DB::table('orders')
                 ->where('driver_id', $driverId)
                 ->where('status', 'completed')
                 ->whereDate('updated_at', $today)
                 ->count();
-        
+
             // Get today's earnings from completed orders
             $todayEarnings = DB::table('orders')
                 ->where('driver_id', $driverId)
                 ->where('status', 'completed')
                 ->whereDate('updated_at', $today)
                 ->sum('net_price_for_driver');
-        
+
             // Calculate today's distance
             $todayDistance = $this->calculateTodayDistance($driverId, $today);
-        
+
             return [
                 'orders_completed_today' => $todayOrdersCount,
                 'earnings_today' => round($todayEarnings, 2),
@@ -263,7 +266,7 @@ class HomeDriverController extends Controller
             ];
         }
     }
-    
+
     /**
      * Calculate total distance traveled today based on completed orders
      */
@@ -280,9 +283,9 @@ class HomeDriverController extends Controller
                 ->whereNotNull('drop_lng')
                 ->select('pick_lat', 'pick_lng', 'drop_lat', 'drop_lng')
                 ->get();
-            
+
             $totalDistance = 0;
-            
+
             foreach ($completedOrders as $order) {
                 $distance = $this->calculateDistance(
                     $order->pick_lat,
@@ -290,11 +293,11 @@ class HomeDriverController extends Controller
                     $order->drop_lat,
                     $order->drop_lng
                 );
-                
+
                 // Convert from kilometers to meters
                 $totalDistance += ($distance * 1000);
             }
-            
+
             return $totalDistance;
         } catch (\Exception $e) {
             // ========== LOG DISTANCE CALCULATION FAILURE ==========
@@ -312,7 +315,7 @@ class HomeDriverController extends Controller
             return 0;
         }
     }
-    
+
     /**
      * Calculate distance between two coordinates using Haversine formula
      * Returns distance in kilometers
@@ -320,17 +323,17 @@ class HomeDriverController extends Controller
     private function calculateDistance($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // Earth's radius in kilometers
-        
+
         $dLat = deg2rad($lat2 - $lat1);
         $dLng = deg2rad($lng2 - $lng1);
-        
-        $a = sin($dLat/2) * sin($dLat/2) + 
-             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * 
+
+        $a = sin($dLat/2) * sin($dLat/2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
              sin($dLng/2) * sin($dLng/2);
-        
+
         $c = 2 * atan2(sqrt($a), sqrt(1-$a));
         $distance = $earthRadius * $c;
-        
+
         return $distance;
     }
 }

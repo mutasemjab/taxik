@@ -26,7 +26,7 @@ return new class extends Migration
             $table->double('balance')->default(0);
             $table->tinyInteger('activate')->default(1); // 1 yes //2 no
             $table->tinyInteger('status')->default(1); // 1 on //2 off
-            // other information 
+            // other information
             // car
             $table->string('photo_of_car')->nullable();
             $table->string('model')->nullable();
@@ -39,6 +39,8 @@ return new class extends Migration
             $table->string('car_license_front')->nullable();
             $table->string('car_license_back')->nullable();
             $table->string('no_criminal_record')->nullable();
+
+            $table->dateTime('last_login')->nullable();
 
             $table->unsignedBigInteger('representive_id')->nullable();
             $table->foreign('representive_id')->references('id')->on('representives')->onDelete('cascade');

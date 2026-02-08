@@ -348,6 +348,9 @@ class AuthController extends Controller
                     ]);
                     $welcomeBonusApplied = true;
                 }
+                // ========== APPLY ACTIVE APP CREDIT DISTRIBUTION TO NEW USER ==========
+                \App\Models\WalletDistribution::applyToUser($user);
+                // ========== END APP CREDIT DISTRIBUTION ==========
                 // ========== HANDLE REFERRAL AND CHALLENGE ==========
                 if ($userType === 'user' && $request->has('referral_code')) {
                     $referralCode = $request->referral_code;

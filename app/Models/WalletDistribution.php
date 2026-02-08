@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class WalletDistribution extends Model
 {
@@ -67,5 +68,48 @@ class WalletDistribution extends Model
         }
 
         \Log::info("App credit distribution removed from " . $users->count() . " users");
+    }
+
+    /**
+     * ✅ NEW: تطبيق التوزيع النشط على مستخدم واحد (للمستخدمين الجدد)
+     */
+    public static function applyToUser($user)
+    {
+        // التحقق من تفعيل نظام رصيد التطبيق
+        $systemEnabled = DB::table('settings')
+            ->where('key', 'enable_app_credit_distribution_system')
+            ->value('value') == 1;
+
+        if (!$systemEnabled) {
+            \Log::info("App credit distribution system is disabled - skipping for user {$user->id}");
+            return false;
+        }
+
+        // الحصول على التوزيع النشط
+        $activeDistribution = self::where('activate', 1)->first();
+
+        if (!$activeDistribution) {
+            \Log::info("No active app credit distribution found - skipping for user {$user->id}");
+            return false;
+        }
+
+        // تطبيق التوزيع على المستخدم
+        $user->applyAppCreditDistribution(
+            $activeDistribution->total_amount,
+            $activeDistribution->number_of_orders,
+            null // No admin for automatic registration
+        );
+
+        \Log::info("Active app credit distribution ({$activeDistribution->id}) applied to new user {$user->id}");
+
+        return true;
+    }
+
+    /**
+     * ✅ NEW: الحصول على التوزيع النشط
+     */
+    public static function getActiveDistribution()
+    {
+        return self::where('activate', 1)->first();
     }
 }

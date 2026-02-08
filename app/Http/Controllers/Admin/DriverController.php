@@ -65,15 +65,39 @@ class DriverController extends Controller
             $query->where('balance', '<=', $request->max_balance);
         }
 
-        // Order by newest first
-        $query->orderBy('created_at', 'desc');
+        // Filter by last login date range
+        if ($request->has('last_login_from') && $request->last_login_from != '') {
+            $query->where('last_login', '>=', $request->last_login_from);
+        }
+
+        if ($request->has('last_login_to') && $request->last_login_to != '') {
+            $query->where('last_login', '<=', $request->last_login_to . ' 23:59:59');
+        }
+
+        // Filter by online status (logged in within last 5 minutes)
+        if ($request->has('online_status') && $request->online_status != '') {
+            if ($request->online_status == 'online') {
+                $query->where('last_login', '>=', now()->subMinutes(5));
+            } elseif ($request->online_status == 'offline') {
+                $query->where(function ($q) {
+                    $q->where('last_login', '<', now()->subMinutes(5))
+                        ->orWhereNull('last_login');
+                });
+            }
+        }
+
+        // Order by newest first (or by last_login if specified)
+        if ($request->has('sort_by') && $request->sort_by == 'last_login') {
+            $query->orderBy('last_login', 'desc')->orderBy('created_at', 'desc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
 
         // Paginate results
         $drivers = $query->paginate(15)->appends($request->all());
 
         return view('admin.drivers.index', compact('drivers'));
     }
-
     /**
      * Show the form for creating a new resource.
      *

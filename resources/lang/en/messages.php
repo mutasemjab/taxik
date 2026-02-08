@@ -1341,7 +1341,7 @@ return [
     'No_data' => 'No data found',
     'minimum_money_in_wallet_driver_to_get_order' =>
     'Minimum driver wallet balance to receive orders',
-   
+
     'can_driver_withdrawal' =>
     'Can driver withdrawal from his wallet (1=>Yes, 2=>No)',
 
@@ -1895,14 +1895,14 @@ return [
     'save' => 'Save',
     'update' => 'Update',
     'back' => 'Back',
-    
+
     // System Status
     'system_status' => 'System Status',
     'system_enabled' => 'System Enabled',
     'system_disabled' => 'System Disabled',
     'enable_system' => 'Enable System',
     'disable_system' => 'Disable System',
-    
+
     // Messages
     'distribution_created_successfully' => 'Distribution created successfully',
     'distribution_updated_successfully' => 'Distribution updated successfully',
@@ -1912,7 +1912,7 @@ return [
     'distribution_system_enabled' => 'Wallet distribution system enabled',
     'distribution_system_disabled' => 'Wallet distribution system disabled',
     'no_distributions_found' => 'No distributions found',
-    
+
     // Validation
     'total_amount_required' => 'Total amount is required',
     'total_amount_numeric' => 'Total amount must be a number',
@@ -1920,20 +1920,29 @@ return [
     'number_of_orders_required' => 'Number of orders is required',
     'number_of_orders_integer' => 'Number of orders must be an integer',
     'number_of_orders_min' => 'Number of orders must be at least 1',
-    
+
     // Help Text
     'enter_total_amount' => 'Enter total amount',
     'total_amount_help' => 'The amount to be distributed across orders (e.g., 2 JD)',
     'enter_number_of_orders' => 'Enter number of orders',
     'number_of_orders_help' => 'Number of orders the amount will be distributed across (e.g., 4 orders)',
     'amount_per_order_help' => 'This will be calculated automatically (Total Amount ÷ Number of Orders)',
-    
+
     // How it works
     'how_it_works' => 'How It Works?',
     'distribution_explanation_1' => 'Create a new distribution by specifying total amount and number of orders',
     'distribution_explanation_2' => 'When activated, it will automatically apply to all users',
     'distribution_explanation_3' => 'For each order, only the specified amount will be deducted from user wallet',
     'distribution_explanation_4' => 'Only one distribution can be active at a time',
+    'Last_Login' => 'Last Login',
+'Last_Login_From' => 'Last Login From',
+'Last_Login_To' => 'Last Login To',
+'Online' => 'Online',
+'Offline' => 'Offline',
+'Online_Status' => 'Online Status',
+'Never_Logged_In' => 'Never Logged In',
+'Registration_Date' => 'Registration Date',
+'Sort_By' => 'Sort By',
     '' => '',
     '' => '',
     '' => '',

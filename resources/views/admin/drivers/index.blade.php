@@ -11,12 +11,13 @@
                 <i class="fas fa-plus"></i> {{ __('messages.Add_New_Driver') }}
             </a>
         </div>
+
         <!-- Search and Filter Section -->
         <div class="card shadow mb-4">
             <div class="card-body">
                 <form action="{{ route('drivers.index') }}" method="GET">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>{{ __('messages.Search') }}</label>
                                 <input type="text" name="search" class="form-control"
@@ -40,6 +41,18 @@
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
+                                <label>{{ __('messages.Online_Status') }}</label>
+                                <select name="online_status" class="form-control">
+                                    <option value="">{{ __('messages.All') }}</option>
+                                    <option value="online" {{ request('online_status') == 'online' ? 'selected' : '' }}>
+                                        {{ __('messages.Online') }}</option>
+                                    <option value="offline" {{ request('online_status') == 'offline' ? 'selected' : '' }}>
+                                        {{ __('messages.Offline') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
                                 <label>{{ __('messages.Min_Balance') }}</label>
                                 <input type="number" name="min_balance" class="form-control" step="0.01"
                                     value="{{ request('min_balance') }}">
@@ -52,7 +65,35 @@
                                     value="{{ request('max_balance') }}">
                             </div>
                         </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{{ __('messages.Last_Login_From') }}</label>
+                                <input type="date" name="last_login_from" class="form-control"
+                                    value="{{ request('last_login_from') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{{ __('messages.Last_Login_To') }}</label>
+                                <input type="date" name="last_login_to" class="form-control"
+                                    value="{{ request('last_login_to') }}">
+                            </div>
+                        </div>
                         <div class="col-md-2">
+                            <div class="form-group">
+                                <label>{{ __('messages.Sort_By') }}</label>
+                                <select name="sort_by" class="form-control">
+                                    <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>
+                                        {{ __('messages.Registration_Date') }}</option>
+                                    <option value="last_login" {{ request('sort_by') == 'last_login' ? 'selected' : '' }}>
+                                        {{ __('messages.Last_Login') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label>&nbsp;</label>
                                 <div>
@@ -69,6 +110,7 @@
                 </form>
             </div>
         </div>
+
         <!-- DataTales Example -->
         <div class="card shadow mb-4">
             <div class="card-header py-3">
@@ -85,6 +127,7 @@
                                 <th>{{ __('messages.Phone') }}</th>
                                 <th>{{ __('messages.Car') }}</th>
                                 <th>{{ __('messages.Balance') }}</th>
+                                <th>{{ __('messages.Last_Login') }}</th>
                                 <th>{{ __('messages.Status') }}</th>
                                 <th>{{ __('messages.Actions') }}</th>
                             </tr>
@@ -120,6 +163,33 @@
                                         @endif
                                     </td>
                                     <td>{{ $driver->balance }}</td>
+                                    <td>
+                                        @if ($driver->last_login)
+                                            @php
+                                                $isOnline = $driver->last_login >= now()->subMinutes(5);
+                                            @endphp
+                                            <div>
+                                                @if ($isOnline)
+                                                    <span class="badge badge-success">
+                                                        <i class="fas fa-circle"></i> {{ __('messages.Online') }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge badge-secondary">
+                                                        <i class="fas fa-circle"></i> {{ __('messages.Offline') }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <small class="text-muted">
+                                                {{ $driver->last_login->diffForHumans() }}
+                                            </small>
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ $driver->last_login->format('Y-m-d H:i') }}
+                                            </small>
+                                        @else
+                                            <span class="badge badge-warning">{{ __('messages.Never_Logged_In') }}</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if ($driver->activate == 1)
                                             <span class="badge badge-success">{{ __('messages.Active') }}</span>

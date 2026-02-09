@@ -26,6 +26,8 @@ return new class extends Migration
             $table->double('balance')->default(0);
             $table->tinyInteger('activate')->default(1); // 1 yes //2 no
             $table->tinyInteger('status')->default(1); // 1 on //2 off
+            $table->text('referral_code')->nullable();
+
             // other information
             // car
             $table->string('photo_of_car')->nullable();

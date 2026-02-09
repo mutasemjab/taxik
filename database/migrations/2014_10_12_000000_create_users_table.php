@@ -26,7 +26,10 @@ return new class extends Migration
             $table->text('referral_code')->nullable();
             $table->tinyInteger('activate')->default(1); // 1 yes //2 no
             $table->unsignedBigInteger('user_id')->nullable();
-            // new 
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->unsignedBigInteger('driver_id')->nullable();
+            $table->foreign('driver_id')->references('id')->on('drivers')->onDelete('cascade');
+            // new
             $table->decimal('app_credit', 10, 2)->default(0);
             $table->decimal('app_credit_amount_per_order', 10, 2)->default(0);
             $table->integer('app_credit_orders_remaining')->default(0);

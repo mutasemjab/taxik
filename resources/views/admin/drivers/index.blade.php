@@ -166,13 +166,13 @@
                                     <td>{{ $driver->balance }}</td>
                                     <td>
                                         @if ($driver->last_login)
-                                            <small class="text-muted">
+                                            <span class="text-muted">
                                                 {{ $driver->last_login->diffForHumans() }}
-                                            </small>
+                                            </span>
                                             <br>
-                                            <small class="text-muted">
+                                            <span class="text-muted">
                                                 {{ $driver->last_login->format('Y-m-d H:i') }}
-                                            </small>
+                                            </span>
                                         @else
                                             <span class="badge badge-warning">{{ __('messages.Never_Logged_In') }}</span>
                                         @endif

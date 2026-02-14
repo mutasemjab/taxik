@@ -1978,5 +1978,48 @@ return [
     'Never_Logged_In' => 'لم يسجل دخول مطلقاً',
     'Registration_Date' => 'تاريخ التسجيل',
     'Sort_By' => 'ترتيب حسب',
+    // Referral System Translations
+    'user_referral_user_reward' => 'مكافأة إحالة مستخدم لمستخدم (دينار)',
+    'driver_referral_user_reward' => 'مكافأة إحالة  سائق لمستخدم (دينار)',
+    'number_of_referral_user_to_reward' => 'عدد الإحالات المطلوبة',
+    'number_of_order_to_get_reward' => 'عدد الطلبات للحصول على المكافأة',
+
+    // Descriptions (optional, for tooltips or help text)
+    'user_referral_user_reward_desc' => 'المبلغ المدفوع عندما يقوم مستخدم بإحالة مستخدم آخر',
+    'driver_referral_user_reward_desc' => 'المبلغ المدفوع عندما يقوم مستخدم بإحالة سائق',
+    'number_of_referral_user_to_reward_desc' => 'كم عدد المستخدمين المطلوب إحالتهم (محجوز للمستقبل)',
+    'number_of_order_to_get_reward_desc' => 'كم عدد الطلبات التي يجب أن يكملها الشخص المُحال قبل حصول المُحيل على المكافأة',
+
+    // Additional translations
+    'Referral_Settings' => 'إعدادات الإحالة',
+    'Referral_System' => 'نظام الإحالة',
+    'Reward_Amount' => 'مبلغ المكافأة',
+    'Orders_Required' => 'الطلبات المطلوبة',
+    'enable_app_credit_distribution_system' => 'تشغيل نظام توزيع رصيد التطبيق',
+    'Adding_new_payment_will_create_new_record' => 'إنشاء رصيد في محفظة السائق',
+        'times_that_user_cancel_orders_in_one_day' => 'عدد مرات المسموح لليوزر الغاء الطلب في اليوم',
+    'fee_when_user_cancel_order_more_times' => 'رسوم الالغاء التي ستخصم من اليوزر اذا تجاوز الحد',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+    '' => '',
+
 
 ];

@@ -23,17 +23,22 @@ return new class extends Migration
             ['key' => "minimum_money_in_wallet_driver_to_get_order", 'value' => 1],
             ['key' => "times_that_driver_cancel_orders_in_one_day", 'value' => 2], // fixed
             ['key' => "fee_when_driver_cancel_order_more_times", 'value' => 0.5], // fixed
+            ['key' => "times_that_user_cancel_orders_in_one_day", 'value' => 2],
+            ['key' => "fee_when_user_cancel_order_more_times", 'value' => 0.5],
             ['key' => "new_user_register_add_balance", 'value' => 0], // fixed
             ['key' => "new_driver_register_add_balance", 'value' => 0], // fixed
             ['key' => "find_drivers_in_radius", 'value' => 5], // km
             ['key' => "maximum_radius_to_find_drivers", 'value' => 20], // km
             ['key' => "can_driver_withdrawal", 'value' => 1], // 1 yes , 2 no
             [
-                'key' => 'enable_app_credit_distribution_system', 
+                'key' => 'enable_app_credit_distribution_system',
                 'value' => 1 // 1 yes , 0 no
             ],
+            ['key' => 'user_referral_user_reward', 'value' => 5], // Amount user gets when they refer another user
+            ['key' => 'driver_referral_user_reward', 'value' => 10], // Amount driver gets when they refer a user
+            ['key' => 'number_of_referral_user_to_reward', 'value' => 5], // How many users need to be referred before reward
+            ['key' => 'number_of_order_to_get_reward', 'value' => 1], // After how many orders the referrer gets the reward
         ]);
-
     }
 
     /**

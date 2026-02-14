@@ -11,10 +11,6 @@ class Challenge extends Model
     use HasFactory;
 
     const CHALLENGE_TYPES = [
-        'referral' => [
-            'en' => 'Invite Friends',
-            'ar' => 'دعوة أصدقاء'
-        ],
         'trips' => [
             'en' => 'Complete Trips',
             'ar' => 'إكمال رحلات'

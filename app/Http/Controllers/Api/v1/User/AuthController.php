@@ -197,7 +197,7 @@ class AuthController extends Controller
         ]);
     }
 
-   public function register(Request $request)
+    public function register(Request $request)
     {
         $userType = $request->user_type ?? 'user';
 
@@ -223,17 +223,17 @@ class AuthController extends Controller
                 'sos_phone' => 'nullable|string',
                 'option_ids' => 'required|array',
                 'option_ids.*' => 'required|exists:options,id',
-                'photo_of_car' => 'nullable|image|mimes:jpeg,png,jpg',
+                'photo_of_car' => 'required|image|mimes:jpeg,png,jpg',
                 'passenger_number' => 'nullable',
                 'model' => 'nullable|string|max:255',
                 'production_year' => 'nullable|string|max:4',
                 'color' => 'nullable|string|max:255',
                 'plate_number' => 'nullable|string|max:255',
-                'driving_license_front' => 'nullable|image|mimes:jpeg,png,jpg',
-                'driving_license_back' => 'nullable|image|mimes:jpeg,png,jpg',
-                'car_license_front' => 'nullable|image|mimes:jpeg,png,jpg',
-                'car_license_back' => 'nullable|image|mimes:jpeg,png,jpg',
-                'no_criminal_record' => 'nullable|image|mimes:jpeg,png,jpg',
+                'driving_license_front' => 'required|image|mimes:jpeg,png,jpg',
+                'driving_license_back' => 'required|image|mimes:jpeg,png,jpg',
+                'car_license_front' => 'required|image|mimes:jpeg,png,jpg',
+                'car_license_back' => 'required|image|mimes:jpeg,png,jpg',
+                'no_criminal_record' => 'required|image|mimes:jpeg,png,jpg',
             ]);
         }
 
@@ -275,35 +275,46 @@ class AuthController extends Controller
                 $userData['activate'] = 3;
                 $userData['status'] = 2;
                 $userData['balance'] = $welcomeBonus;
-                $userData['referral_code'] = $this->generateReferralCode(); // Generate referral code for driver
+                $userData['referral_code'] = $this->generateReferralCode();
 
                 $userData = array_merge($userData, $request->only(['passenger_number', 'model', 'production_year', 'color', 'plate_number']));
 
+                // Upload driver photo if exists (before creating driver record)
+                if ($request->hasFile('photo')) {
+                    $userData['photo'] = uploadImage('assets/admin/uploads', $request->file('photo'));
+                }
+
+                // Create driver record first to get the ID
+                $user = \App\Models\Driver::create($userData);
+                $driverId = 'driver_' . $user->id;
+
+                // Now upload all driver-specific images to their folder
                 if ($request->hasFile('photo_of_car')) {
-                    $userData['photo_of_car'] = uploadImage('assets/admin/uploads', $request->file('photo_of_car'));
+                    $user->photo_of_car = uploadImage('assets/admin/uploads', $request->file('photo_of_car'), $driverId);
                 }
 
                 if ($request->hasFile('driving_license_front')) {
-                    $userData['driving_license_front'] = uploadImage('assets/admin/uploads', $request->file('driving_license_front'));
+                    $user->driving_license_front = uploadImage('assets/admin/uploads', $request->file('driving_license_front'), $driverId);
                 }
 
                 if ($request->hasFile('driving_license_back')) {
-                    $userData['driving_license_back'] = uploadImage('assets/admin/uploads', $request->file('driving_license_back'));
+                    $user->driving_license_back = uploadImage('assets/admin/uploads', $request->file('driving_license_back'), $driverId);
                 }
 
                 if ($request->hasFile('car_license_front')) {
-                    $userData['car_license_front'] = uploadImage('assets/admin/uploads', $request->file('car_license_front'));
+                    $user->car_license_front = uploadImage('assets/admin/uploads', $request->file('car_license_front'), $driverId);
                 }
 
                 if ($request->hasFile('car_license_back')) {
-                    $userData['car_license_back'] = uploadImage('assets/admin/uploads', $request->file('car_license_back'));
+                    $user->car_license_back = uploadImage('assets/admin/uploads', $request->file('car_license_back'), $driverId);
                 }
 
                 if ($request->hasFile('no_criminal_record')) {
-                    $userData['no_criminal_record'] = uploadImage('assets/admin/uploads', $request->file('no_criminal_record'));
+                    $user->no_criminal_record = uploadImage('assets/admin/uploads', $request->file('no_criminal_record'), $driverId);
                 }
 
-                $user = \App\Models\Driver::create($userData);
+                // Save the updated image paths to database
+                $user->save();
 
                 if ($request->has('option_ids') && is_array($request->option_ids)) {
                     $user->options()->attach($request->option_ids);
@@ -327,33 +338,6 @@ class AuthController extends Controller
                 $userData['referral_code'] = $this->generateReferralCode();
                 $userData['balance'] = $welcomeBonus;
 
-                // ========== HANDLE REFERRAL CODE INPUT ==========
-                if ($request->has('referral_code') && !empty($request->referral_code)) {
-                    $referralCode = $request->referral_code;
-
-                    // Check if referral code belongs to a user
-                    $referrer = \App\Models\User::where('referral_code', $referralCode)->first();
-
-                    if ($referrer) {
-                        // Link the new user to the referring user
-                        $userData['user_id'] = $referrer->id;
-                        Log::info("New user will be linked to user {$referrer->id} via referral code {$referralCode}");
-                    } else {
-                        // Check if referral code belongs to a driver
-                        $referrerDriver = \App\Models\Driver::where('referral_code', $referralCode)->first();
-
-                        if ($referrerDriver) {
-                            // Link the new user to the referring driver
-                            $userData['driver_id'] = $referrerDriver->id;
-                            Log::info("New user will be linked to driver {$referrerDriver->id} via referral code {$referralCode}");
-                        } else {
-                            // Invalid referral code - log but don't fail registration
-                            Log::warning("Invalid referral code provided during registration: {$referralCode}");
-                        }
-                    }
-                }
-                // ========== END HANDLE REFERRAL CODE INPUT ==========
-
                 $user = \App\Models\User::create($userData);
 
                 if ($welcomeBonus > 0) {
@@ -370,17 +354,22 @@ class AuthController extends Controller
 
                 \App\Models\WalletDistribution::applyToUser($user);
 
-                // ========== UPDATE REFERRER'S CHALLENGE PROGRESS ==========
-                if (isset($userData['user_id'])) {
-                    // Referrer is a user
-                    $referrer = \App\Models\User::find($userData['user_id']);
-                    if ($referrer) {
-                        $referrer->updateChallengeProgress('referral', 1);
-                        Log::info("Updated challenge progress for user {$referrer->id}");
+                // ========== PROCESS REFERRAL CODE ==========
+                if ($request->has('referral_code') && !empty($request->referral_code)) {
+                    try {
+                        $referralService = app(\App\Services\ReferralService::class);
+                        $referralResult = $referralService->processUserReferral($user, $request->referral_code);
+
+                        if ($referralResult['success']) {
+                            Log::info("Referral processed successfully for user {$user->id}", $referralResult);
+                        } else {
+                            Log::warning("Referral processing failed for user {$user->id}: {$referralResult['message']}");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Error processing referral for user {$user->id}: " . $e->getMessage());
                     }
                 }
-                // Note: If you want to track driver referrals too, you can add challenge system for drivers
-                // ========== END UPDATE CHALLENGE PROGRESS ==========
+                // ========== END PROCESS REFERRAL CODE ==========
             }
 
             DB::commit();
@@ -728,10 +717,8 @@ class AuthController extends Controller
             // Check uniqueness in both users and drivers tables
             $existsInUsers = \App\Models\User::where('referral_code', $referralCode)->exists();
             $existsInDrivers = \App\Models\Driver::where('referral_code', $referralCode)->exists();
-
         } while ($existsInUsers || $existsInDrivers);
 
         return $referralCode;
     }
-
 }

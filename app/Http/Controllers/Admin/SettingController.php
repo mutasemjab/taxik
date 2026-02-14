@@ -16,7 +16,7 @@ class SettingController extends Controller
 
     public function index()
     {
-        $data = Setting::paginate(PAGINATION_COUNT);
+        $data = Setting::paginate(20);
         return view('admin.settings.index', ['data' => $data]);
     }
 

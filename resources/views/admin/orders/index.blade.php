@@ -397,14 +397,9 @@
                                     <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm mb-1" title="{{ __('messages.Edit') }}">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <button class="btn btn-danger btn-sm" onclick="deleteOrder({{ $order->id }})" title="{{ __('messages.Delete') }}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                  
                                 </div>
-                                <form id="delete-form-{{ $order->id }}" action="{{ route('orders.destroy', $order->id) }}" method="POST" style="display: none;">
-                                    @csrf
-                                    @method('DELETE')
-                                </form>
+                              
                             </td>
                         </tr>
                         @endforeach
@@ -464,14 +459,4 @@
         }
     }
 </style>
-
-@section('script')
-<script>
-function deleteOrder(id) {
-    if (confirm('{{ __("messages.Are_You_Sure_Delete") }}')) {
-        document.getElementById('delete-form-' + id).submit();
-    }
-}
-</script>
-@endsection
 @endsection

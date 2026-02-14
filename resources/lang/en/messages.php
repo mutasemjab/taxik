@@ -1346,10 +1346,10 @@ return [
     'Can driver withdrawal from his wallet (1=>Yes, 2=>No)',
 
     'times_that_driver_cancel_orders_in_one_day' =>
-    'Number of order cancellations allowed per day',
+    'Number of order cancellations allowed per day for driver',
 
     'fee_when_driver_cancel_order_more_times' =>
-    'Penalty fee when driver exceeds cancellation limit',
+    'Penalty fee when driver exceeds cancellation limit for driver',
 
     'new_user_register_add_balance' =>
     'Bonus balance for new user registration',
@@ -1943,10 +1943,27 @@ return [
 'Never_Logged_In' => 'Never Logged In',
 'Registration_Date' => 'Registration Date',
 'Sort_By' => 'Sort By',
-    '' => '',
-    '' => '',
-    '' => '',
-    '' => '',
+ // Referral System Translations
+    'user_referral_user_reward' => 'User Referral User Reward (JD)',
+    'driver_referral_user_reward' => 'Driver Referral User Reward (JD)',
+    'number_of_referral_user_to_reward' => 'Number of Referrals Required',
+    'number_of_order_to_get_reward' => 'Number of Orders to Get Reward',
+
+    // Descriptions (optional, for tooltips or help text)
+    'user_referral_user_reward_desc' => 'Amount paid when a user refers another user',
+    'driver_referral_user_reward_desc' => 'Amount paid when a user refers a driver',
+    'number_of_referral_user_to_reward_desc' => 'How many users need to be referred (reserved for future)',
+    'number_of_order_to_get_reward_desc' => 'How many orders the referred person must complete before referrer gets reward',
+
+    // Additional translations
+    'Referral_Settings' => 'Referral Settings',
+    'Referral_System' => 'Referral System',
+    'Reward_Amount' => 'Reward Amount',
+    'Orders_Required' => 'Orders Required',
+    'enable_app_credit_distribution_system' => 'Enable app credit distribution system',
+    'Adding_new_payment_will_create_new_record' => 'Adding new payment will create new record',
+    'times_that_user_cancel_orders_in_one_day' => 'Number of order cancellations allowed per day for user',
+    'fee_when_user_cancel_order_more_times' => 'Penalty fee when driver exceeds cancellation limit for user',
     '' => '',
     '' => '',
     '' => '',

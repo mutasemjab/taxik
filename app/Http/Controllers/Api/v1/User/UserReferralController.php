@@ -3,99 +3,109 @@
 namespace App\Http\Controllers\Api\v1\User;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Driver;
-use App\Models\Challenge;
+use App\Services\ReferralService;
+use App\Models\ReferralReward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class UserReferralController extends Controller
 {
+    protected $referralService;
+    
+    public function __construct(ReferralService $referralService)
+    {
+        $this->referralService = $referralService;
+    }
+    
     /**
-     * Get comprehensive referral information including stats, challenges, and referred users list
-     * 
-     * Query Parameters:
-     * - per_page: Number of items per page (default: 15)
-     * - type: Filter type ('all', 'users', 'drivers') (default: 'all')
-     * - page: Page number (default: 1)
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Get comprehensive referral information
      */
     public function getReferralInfo(Request $request)
     {
         try {
             $user = Auth::guard('user-api')->user();
             
-            // Pagination parameters
+            // Get settings
+            $ordersRequiredForReward = $this->getSetting('number_of_order_to_get_reward', 1);
+            $usersRequiredForReward = $this->getSetting('number_of_referral_user_to_reward', 5);
+            $userReferralReward = $this->getSetting('user_referral_user_reward', 5);
+            
+            // Get all referrals
+            $allReferrals = ReferralReward::where('referrer_id', $user->id)
+                ->where('referrer_type', 'user')
+                ->with(['referred'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            // Calculate totals
+            $totalReferrals = $allReferrals->count();
+            
+            // Count qualified referrals (users who completed required orders)
+            $qualifiedReferrals = $allReferrals->filter(function ($referral) use ($ordersRequiredForReward) {
+                return $referral->orders_completed >= $ordersRequiredForReward;
+            })->count();
+            
+            $totalEarnings = $allReferrals->where('reward_paid', true)->sum('reward_amount');
+            
+            // Check if user can receive rewards
+            $canReceiveRewards = $qualifiedReferrals >= $usersRequiredForReward;
+            
+            // Paginate for list
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
             
-            // Get users referred by this user (stored in users.user_id)
-            $referredUsers = User::where('user_id', $user->id)
-                ->select('id', 'name', 'phone', 'photo', 'created_at')
-                ->get()
-                ->map(function ($refUser) {
-                    return [
-                        'id' => $refUser->id,
-                        'name' => $refUser->name,
-                        'phone' => $refUser->phone,
-                        'photo_url' => $refUser->photo_url,
-                        'type' => 'user',
-                        'joined_date' => $refUser->created_at->format('Y-m-d H:i:s'),
-                        'formatted_date' => $refUser->created_at->diffForHumans(),
-                    ];
-                });
-            
-            // Sort by date
-            $allReferrals = $referredUsers->sortByDesc('joined_date')->values();
-            
-            // Calculate counts
-            $referredUsersCount = User::where('user_id', $user->id)->count();
-            $totalReferrals = $referredUsersCount;
-            
-            // Paginate
-            $total = $allReferrals->count();
-            $items = $allReferrals->forPage($page, $perPage)->values();
-            
-            // Calculate total earnings from completed referral challenges
-            $totalEarnings = DB::table('user_challenge_progress')
-                ->join('challenges', 'user_challenge_progress.challenge_id', '=', 'challenges.id')
-                ->where('user_challenge_progress.user_id', $user->id)
-                ->where('challenges.challenge_type', 'referral')
-                ->where('user_challenge_progress.is_completed', true)
-                ->sum(DB::raw('challenges.reward_amount * user_challenge_progress.times_completed'));
-            
-            // Get referral challenge progress
-            $referralChallenges = Challenge::active()
-                ->ofType('referral')
-                ->get()
-                ->map(function ($challenge) use ($user) {
-                    $progress = $user->getChallengeProgress($challenge->id);
+            // Format the list with all required details
+            $formattedList = $allReferrals->map(function ($referral) use ($ordersRequiredForReward, $userReferralReward, $canReceiveRewards) {
+                $referred = $referral->referred;
+                $isQualified = $referral->orders_completed >= $ordersRequiredForReward;
+                
+                return [
+                    'id' => $referral->id,
+                    'referred_name' => $referred->name ?? 'N/A',
+                    'referred_phone' => $referred->phone ?? 'N/A',
+                    'referred_photo_url' => $referred->photo_url ?? null,
+                    'referred_type' => 'user',
                     
-                    return [
-                        'id' => $challenge->id,
-                        'title' => $challenge->getTitle(request()->header('Accept-Language', 'en')),
-                        'description' => $challenge->getDescription(request()->header('Accept-Language', 'en')),
-                        'target_count' => $challenge->target_count,
-                        'current_count' => $progress->current_count,
-                        'reward_amount' => $challenge->reward_amount,
-                        'is_completed' => $progress->is_completed,
-                        'times_completed' => $progress->times_completed,
-                        'max_completions' => $challenge->max_completions_per_user,
-                        'can_complete_again' => $progress->times_completed < $challenge->max_completions_per_user,
-                        'progress_percentage' => min(100, ($progress->current_count / $challenge->target_count) * 100),
-                    ];
-                });
+                    // Progress details
+                    'orders_completed' => $referral->orders_completed,
+                    'orders_required' => $ordersRequiredForReward,
+                    'orders_remaining' => max(0, $ordersRequiredForReward - $referral->orders_completed),
+                    'progress_percentage' => min(100, ($referral->orders_completed / $ordersRequiredForReward) * 100),
+                    'is_qualified' => $isQualified,
+                    
+                    // Reward details
+                    'reward_paid' => $referral->reward_paid,
+                    'reward_amount' => $referral->reward_paid ? (float) $referral->reward_amount : ($canReceiveRewards && $isQualified ? $userReferralReward : 0),
+                    'expected_reward' => (float) $userReferralReward,
+                    
+                    // Status
+                    'status' => $referral->reward_paid ? 'rewarded' : 
+                               (!$canReceiveRewards ? 'waiting_for_more_referrals' : 
+                               ($isQualified ? 'pending_payment' : 'in_progress')),
+                    
+                    // Dates
+                    'joined_date' => $referral->created_at->format('Y-m-d H:i:s'),
+                    'formatted_date' => $referral->created_at->diffForHumans(),
+                    'reward_paid_at' => $referral->reward_paid_at ? $referral->reward_paid_at->format('Y-m-d H:i:s') : null,
+                ];
+            });
+            
+            // Paginate manually
+            $total = $formattedList->count();
+            $items = $formattedList->forPage($page, $perPage)->values();
             
             return response()->json([
-                'success' => true,
+                'status' => true,
                 'data' => [
                     'referral_code' => $user->referral_code,
                     'total_referrals' => $totalReferrals,
-                    'total_earnings_from_challenges' => (float) $totalEarnings,
-                    'referral_challenges' => $referralChallenges,
+                    'qualified_referrals' => $qualifiedReferrals,
+                    'users_required_for_reward' => $usersRequiredForReward,
+                    'orders_required_per_user' => $ordersRequiredForReward,
+                    'can_receive_rewards' => $canReceiveRewards,
+                    'total_earnings' => (float) $totalEarnings,
+                    'reward_per_referral' => (float) $userReferralReward,
                     'referred_list' => $items,
                     'pagination' => [
                         'total' => $total,
@@ -108,12 +118,18 @@ class UserReferralController extends Controller
             
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
+                'status' => false,
                 'message' => 'Error fetching referral information',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
     
-    
+    /**
+     * Get setting value
+     */
+    private function getSetting($key, $default = 0)
+    {
+        return DB::table('settings')->where('key', $key)->value('value') ?? $default;
+    }
 }

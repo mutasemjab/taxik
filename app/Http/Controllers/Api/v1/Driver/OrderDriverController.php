@@ -633,18 +633,29 @@ class OrderDriverController extends Controller
                 try {
                     // Update trips challenge
                     $order->user->updateChallengeProgress('trips', 1);
-                    
+
                     // Update spending challenge
                     if ($order->total_price_after_discount > 0) {
                         $order->user->updateChallengeProgress('spending', $order->total_price_after_discount);
                     }
-                    
+
                     Log::info("User {$order->user_id} challenges updated for order {$order->id}");
                 } catch (\Exception $e) {
                     Log::error("Error updating user challenges: " . $e->getMessage());
-                    // Don't throw error, just log it
                 }
                 // ========== END UPDATE USER CHALLENGES ==========
+
+                // ========== PROCESS REFERRAL REWARDS ==========
+                try {
+                    $referralService = app(\App\Services\ReferralService::class);
+                    $referralService->processOrderCompletion($order->user_id);
+
+                    Log::info("Referral progress updated for order {$order->id}, user {$order->user_id}");
+                } catch (\Exception $e) {
+                    Log::error("Error processing referral for order {$order->id}: " . $e->getMessage());
+                }
+                // ========== END PROCESS REFERRAL REWARDS ==========
+
             } else if ($newStatus !== OrderStatus::waitingPayment) {
                 // Update status for other cases
                 $order->status = $newStatus;

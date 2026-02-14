@@ -801,12 +801,32 @@ class OrderController extends Controller
             $cancellationFeeApplied = false;
             $cancellationFeeAmount = 0;
 
-            if ($isDriverAccepted && $order->service) {
-                $cancellationFeeAmount = $order->service->cancellation_fee;
+            // ✅ NEW: Check cancellation count and apply fee if exceeded
+            if ($isDriverAccepted) {
+                // Get settings
+                $maxCancellations = (int) DB::table('settings')
+                    ->where('key', 'times_that_user_cancel_orders_in_one_day')
+                    ->value('value') ?? 2;
 
-                if ($cancellationFeeAmount > 0) {
-                    $this->deductCancellationFee($user->id, $order->id, $cancellationFeeAmount);
+                $cancellationFee = (float) DB::table('settings')
+                    ->where('key', 'fee_when_user_cancel_order_more_times')
+                    ->value('value') ?? 0.5;
+
+                // Count today's cancellations
+                $todayCancellations = Order::where('user_id', $user->id)
+                    ->where('status', OrderStatus::UserCancelOrder)
+                    ->whereDate('updated_at', today())
+                    ->count();
+
+                \Log::info("User {$user->id} cancellations today: {$todayCancellations}, max allowed: {$maxCancellations}");
+
+                // Apply fee if exceeded limit
+                if ($todayCancellations >= $maxCancellations && $cancellationFee > 0) {
+                    $this->deductCancellationFee($user->id, $order->id, $cancellationFee);
                     $cancellationFeeApplied = true;
+                    $cancellationFeeAmount = $cancellationFee;
+
+                    \Log::info("Cancellation fee of {$cancellationFee} JD applied to user {$user->id} for order {$order->id}");
                 }
             }
 
@@ -819,8 +839,7 @@ class OrderController extends Controller
                 // ✅ Move to spam table (creates backup)
                 $spamOrder = $this->moveOrderToSpamTable($order, $request->reason_for_cancel);
 
-                // ✅ CRITICAL: Keep notification records, delete the order
-                // Since we removed cascade, notification records will remain
+                // ✅ Delete the order (notifications remain)
                 $order->delete();
 
                 $responseData = [
@@ -834,7 +853,7 @@ class OrderController extends Controller
                     'cancellation_fee_amount' => 0
                 ];
             } else {
-                // For non-pending orders, just update status (don't delete)
+                // For non-pending orders, just update status
 
                 // Notify driver about cancellation
                 if ($order->driver_id) {
@@ -849,7 +868,11 @@ class OrderController extends Controller
                     'message' => 'Order cancelled successfully',
                     'cancellation_fee_applied' => $cancellationFeeApplied,
                     'cancellation_fee_amount' => $cancellationFeeAmount,
-                    'remaining_balance' => $user->fresh()->balance
+                    'remaining_balance' => $user->fresh()->balance,
+                    'cancellations_today' => Order::where('user_id', $user->id)
+                        ->where('status', OrderStatus::UserCancelOrder)
+                        ->whereDate('updated_at', today())
+                        ->count()
                 ];
             }
 

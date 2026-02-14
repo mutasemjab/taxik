@@ -30,7 +30,7 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>{{ __('messages.Title') }}</label>
-                            <input name="title" id="title" class=""
+                            <input name="title" id="title" class="form-control"
                                 value="{{ old('title', $data['title']) }}">
                             @error('title')
                                 <span class="text-danger">{{ $message }}</span>
@@ -38,11 +38,10 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
+                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>{{ __('messages.Content') }}</label>
-                            <input name="content" id="content" class=""
-                                value="{{ old('content', $data['content']) }}">
+                            <label> {{ __('messages.Content') }}</label>
+                            <textarea name="content" id="content" class="form-control" rows="12">{{ $data['content'] }}</textarea>
                             @error('content')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror

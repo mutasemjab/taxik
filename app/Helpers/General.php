@@ -1,12 +1,26 @@
 <?php
 
-function uploadImage($folder, $image)
+function uploadImage($folder, $image, $subFolder = null)
 {
-  $extension = strtolower($image->extension());
- // $filename = time() . rand(100, 999) . '.' . $extension;
-  $filename= $image->getClientOriginalName() ;
-  $image->move($folder, $filename);
-  return $filename;
+    $extension = strtolower($image->extension());
+    
+    // Generate unique filename
+    $filename = time() . '_' . uniqid() . '_' . rand(1000, 9999) . '.' . $extension;
+    
+    // If subfolder is provided (e.g., driver ID), create it
+    if ($subFolder) {
+        $folder = $folder . '/' . $subFolder;
+        
+        // Create directory if it doesn't exist
+        if (!file_exists($folder)) {
+            mkdir($folder, 0755, true);
+        }
+    }
+    
+    $image->move($folder, $filename);
+    
+    // Return relative path for database storage
+    return $subFolder ? $subFolder . '/' . $filename : $filename;
 }
 
 

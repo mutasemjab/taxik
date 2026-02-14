@@ -3,65 +3,109 @@
 namespace App\Http\Controllers\Api\v1\Driver;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Driver;
+use App\Services\ReferralService;
+use App\Models\ReferralReward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DriverReferralController extends Controller
 {
+    protected $referralService;
+    
+    public function __construct(ReferralService $referralService)
+    {
+        $this->referralService = $referralService;
+    }
+    
     /**
-     * Get comprehensive referral information including stats and referred users list
-     * 
-     * Query Parameters:
-     * - per_page: Number of items per page (default: 15)
-     * - type: Filter type ('all', 'users', 'drivers') (default: 'all')
-     * - page: Page number (default: 1)
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Get comprehensive referral information
      */
-   public function getReferralInfo(Request $request)
+    public function getReferralInfo(Request $request)
     {
         try {
             $driver = Auth::guard('driver-api')->user();
             
-            // Pagination parameters
+            // Get settings
+            $ordersRequiredForReward = $this->getSetting('number_of_order_to_get_reward', 1);
+            $usersRequiredForReward = $this->getSetting('number_of_referral_user_to_reward', 5);
+            $driverReferralReward = $this->getSetting('driver_referral_user_reward', 10);
+            
+            // Get all referrals
+            $allReferrals = ReferralReward::where('referrer_id', $driver->id)
+                ->where('referrer_type', 'driver')
+                ->with(['referred'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            // Calculate totals
+            $totalReferrals = $allReferrals->count();
+            
+            // Count qualified referrals (users who completed required orders)
+            $qualifiedReferrals = $allReferrals->filter(function ($referral) use ($ordersRequiredForReward) {
+                return $referral->orders_completed >= $ordersRequiredForReward;
+            })->count();
+            
+            $totalEarnings = $allReferrals->where('reward_paid', true)->sum('reward_amount');
+            
+            // Check if driver can receive rewards
+            $canReceiveRewards = $qualifiedReferrals >= $usersRequiredForReward;
+            
+            // Paginate for list
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
             
-            // Get all users referred by this driver (stored in users.driver_id)
-            $referredUsers = User::where('driver_id', $driver->id)
-                ->select('id', 'name', 'phone', 'photo', 'created_at')
-                ->get()
-                ->map(function ($refUser) {
-                    return [
-                        'id' => $refUser->id,
-                        'name' => $refUser->name,
-                        'phone' => $refUser->phone,
-                        'photo_url' => $refUser->photo_url,
-                        'type' => 'user',
-                        'joined_date' => $refUser->created_at->format('Y-m-d H:i:s'),
-                        'formatted_date' => $refUser->created_at->diffForHumans(),
-                    ];
-                });
+            // Format the list with all required details
+            $formattedList = $allReferrals->map(function ($referral) use ($ordersRequiredForReward, $driverReferralReward, $canReceiveRewards) {
+                $referred = $referral->referred;
+                $isQualified = $referral->orders_completed >= $ordersRequiredForReward;
+                
+                return [
+                    'id' => $referral->id,
+                    'referred_name' => $referred->name ?? 'N/A',
+                    'referred_phone' => $referred->phone ?? 'N/A',
+                    'referred_photo_url' => $referred->photo_url ?? null,
+                    'referred_type' => 'user',
+                    
+                    // Progress details
+                    'orders_completed' => $referral->orders_completed,
+                    'orders_required' => $ordersRequiredForReward,
+                    'orders_remaining' => max(0, $ordersRequiredForReward - $referral->orders_completed),
+                    'progress_percentage' => min(100, ($referral->orders_completed / $ordersRequiredForReward) * 100),
+                    'is_qualified' => $isQualified,
+                    
+                    // Reward details
+                    'reward_paid' => $referral->reward_paid,
+                    'reward_amount' => $referral->reward_paid ? (float) $referral->reward_amount : ($canReceiveRewards && $isQualified ? $driverReferralReward : 0),
+                    'expected_reward' => (float) $driverReferralReward,
+                    
+                    // Status
+                    'status' => $referral->reward_paid ? 'rewarded' : 
+                               (!$canReceiveRewards ? 'waiting_for_more_referrals' : 
+                               ($isQualified ? 'pending_payment' : 'in_progress')),
+                    
+                    // Dates
+                    'joined_date' => $referral->created_at->format('Y-m-d H:i:s'),
+                    'formatted_date' => $referral->created_at->diffForHumans(),
+                    'reward_paid_at' => $referral->reward_paid_at ? $referral->reward_paid_at->format('Y-m-d H:i:s') : null,
+                ];
+            });
             
-            // Sort by date
-            $allReferrals = $referredUsers->sortByDesc('joined_date')->values();
-            
-            // Calculate counts
-            $totalReferrals = User::where('driver_id', $driver->id)->count();
-            
-            // Paginate
-            $total = $allReferrals->count();
-            $items = $allReferrals->forPage($page, $perPage)->values();
+            // Paginate manually
+            $total = $formattedList->count();
+            $items = $formattedList->forPage($page, $perPage)->values();
             
             return response()->json([
-                'success' => true,
+                'status' => true,
                 'data' => [
                     'referral_code' => $driver->referral_code,
                     'total_referrals' => $totalReferrals,
+                    'qualified_referrals' => $qualifiedReferrals,
+                    'users_required_for_reward' => $usersRequiredForReward,
+                    'orders_required_per_user' => $ordersRequiredForReward,
+                    'can_receive_rewards' => $canReceiveRewards,
+                    'total_earnings' => (float) $totalEarnings,
+                    'reward_per_referral' => (float) $driverReferralReward,
                     'referred_list' => $items,
                     'pagination' => [
                         'total' => $total,
@@ -74,12 +118,18 @@ class DriverReferralController extends Controller
             
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
+                'status' => false,
                 'message' => 'Error fetching referral information',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
     
-    
+    /**
+     * Get setting value
+     */
+    private function getSetting($key, $default = 0)
+    {
+        return DB::table('settings')->where('key', $key)->value('value') ?? $default;
+    }
 }

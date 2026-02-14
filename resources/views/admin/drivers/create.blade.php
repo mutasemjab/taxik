@@ -31,6 +31,9 @@
                     @csrf
                     <div class="row">
                         <div class="col-md-6">
+
+                            <input type="text" class="form-control" id="country_code" name="country_code"
+                                value="{{ old('country_code', '+962') }}" required placeholder="+962" hidden>
                             <!-- Basic Information -->
                             <div class="form-group">
                                 <label for="name">{{ __('messages.Name') }} <span class="text-danger">*</span></label>
@@ -41,7 +44,7 @@
                             <div class="form-group">
                                 <label for="phone">{{ __('messages.Phone') }} <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="phone" name="phone"
-                                    value="{{ old('phone') }}" required>
+                                    placeholder="7xxxxx without zero" value="{{ old('phone') }}" required>
                             </div>
 
                             <div class="form-group">
@@ -51,22 +54,56 @@
                             </div>
 
 
-
                             <div class="form-group">
-                                <label>{{ __('Options') }}</label>
+                                <label>{{ __('messages.Options') }}</label>
                                 <div class="checkbox-list">
                                     @foreach ($options as $option)
                                         <label class="checkbox">
                                             <input type="checkbox" name="option_ids[]" value="{{ $option->id }}"
                                                 @if (isset($driver) && $driver->options->contains($option->id)) checked
-                                        @elseif(old('option_ids') && in_array($option->id, old('option_ids')))
-                                            checked @endif>
+                    @elseif(old('option_ids') && in_array($option->id, old('option_ids')))
+                        checked @endif>
                                             <span></span>{{ $option->name_en }} ({{ $option->name_ar }})
                                         </label>
                                     @endforeach
                                 </div>
                                 @error('option_ids')
                                     <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Services Section - ADD THIS -->
+                            <div class="form-group">
+                                <label for="service_id">{{ __('messages.Service') }} <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-control" id="primary_service_id" name="primary_service_id" required>
+                                    <option value="">{{ __('messages.Select_Service') }}</option>
+                                    @foreach ($services as $service)
+                                        <option value="{{ $service->id }}"
+                                            {{ old('primary_service_id') == $service->id ? 'selected' : '' }}>
+                                            {{ $service->name_en }} ({{ $service->name_ar }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('primary_service_id')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label>{{ __('messages.Optional_Services') }}</label>
+                                <div class="checkbox-list">
+                                    @foreach ($services as $service)
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="optional_service_ids[]"
+                                                value="{{ $service->id }}"
+                                                @if (old('optional_service_ids') && in_array($service->id, old('optional_service_ids'))) checked @endif>
+                                            <span></span>{{ $service->name_en }} ({{ $service->name_ar }})
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('optional_service_ids')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
 
@@ -275,16 +312,16 @@
 @section('script')
     <script>
         // Show image previews
-      $(document).ready(function() {
+        $(document).ready(function() {
             // تعيين القيمة الافتراضية من الإعدادات
             const defaultBalance = {{ $defaultBalance ?? 0 }};
-            
+
             // عند تحميل الصفحة، إذا كانت القيمة فارغة
             if ($('#amount_added_to_wallet').val() == 0) {
                 $('#amount_added_to_wallet').val(defaultBalance);
                 $('#balance').val(defaultBalance);
             }
-            
+
             // عند تغيير amount_added_to_wallet، تحديث balance
             $('#amount_added_to_wallet').on('input', function() {
                 $('#balance').val($(this).val());

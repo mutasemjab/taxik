@@ -106,11 +106,12 @@ class DriverController extends Controller
     public function create()
     {
         $options = Option::all();
+        $services = Service::all(); // Add this line to fetch all services
 
         // جلب القيمة الافتراضية من الإعدادات
         $defaultBalance = Setting::where('key', 'new_driver_register_add_balance')->first()->value ?? 0;
 
-        return view('admin.drivers.create', compact('options', 'defaultBalance'));
+        return view('admin.drivers.create', compact('options', 'services', 'defaultBalance'));
     }
 
     /**
@@ -127,8 +128,8 @@ class DriverController extends Controller
             'phone' => 'required|string|unique:drivers',
             'email' => 'nullable|email|unique:drivers',
             'sos_phone' => 'nullable|string',
-            'option_ids' => 'required|array',
-            'option_ids.*' => 'required|exists:options,id',
+            'option_ids' => 'nullable|array', // Changed from 'required' to 'nullable'
+            'option_ids.*' => 'exists:options,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'total_paid' => 'nullable|numeric|min:0',
             'amount_kept' => 'nullable|numeric|min:0',

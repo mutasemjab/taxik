@@ -33,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
             'order' => 'App\Models\Order',
             'admin' => 'App\Models\Admin',
             'setting' => 'App\Models\Setting',
+            'setting' => 'App\Models\Coupon',
+            'setting' => 'App\Models\WalletTransaction',
 
         ]);
     

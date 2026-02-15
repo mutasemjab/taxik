@@ -198,97 +198,128 @@ class AuthController extends Controller
     }
 
     public function register(Request $request)
-    {
-        $userType = $request->user_type ?? 'user';
+{
+    $userType = $request->user_type ?? 'user';
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'country_code' => 'required',
-            'phone' => 'required|string|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
-            'email' => 'nullable|email|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
-            'fcm_token' => 'nullable|string',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg',
+    $validator = Validator::make($request->all(), [
+        'name' => 'required|string|max:255',
+        'country_code' => 'required',
+        'phone' => 'required|string|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
+        'email' => 'nullable|email|unique:' . ($userType === 'driver' ? 'drivers' : 'users'),
+        'fcm_token' => 'nullable|string',
+        'photo' => 'nullable|image|mimes:jpeg,png,jpg',
+    ]);
+
+    // ========== ADD REFERRAL CODE VALIDATION ==========
+    if ($userType === 'user') {
+        $validator->addRules([
+            'referral_code' => 'nullable|string',
+        ]);
+    }
+    // ========== END REFERRAL CODE VALIDATION ==========
+
+    if ($userType === 'driver') {
+        $validator->addRules([
+            'sos_phone' => 'nullable|string',
+            'option_ids' => 'required|array',
+            'option_ids.*' => 'required|exists:options,id',
+            'photo_of_car' => 'required|image|mimes:jpeg,png,jpg',
+            'passenger_number' => 'nullable',
+            'model' => 'nullable|string|max:255',
+            'production_year' => 'nullable|string|max:4',
+            'color' => 'nullable|string|max:255',
+            'plate_number' => 'nullable|string|max:255',
+            'driving_license_front' => 'required|image|mimes:jpeg,png,jpg|max:6048',
+            'driving_license_back' => 'required|image|mimes:jpeg,png,jpg|max:6048',
+            'car_license_front' => 'required|image|mimes:jpeg,png,jpg|max:6048',
+            'car_license_back' => 'required|image|mimes:jpeg,png,jpg|max:6048',
+            'no_criminal_record' => 'required|image|mimes:jpeg,png,jpg|max:6048',
+        ]);
+    }
+
+    if ($validator->fails()) {
+        $errorMessage = $validator->errors()->first();
+
+        \Log::channel('register_failed')->error('Registration validation failed', [
+            'user_type' => $userType,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'name' => $request->name,
+            'errors' => $validator->errors()->toArray(),
+            'first_error' => $errorMessage,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'timestamp' => now()->toDateTimeString(),
         ]);
 
-        // ========== ADD REFERRAL CODE VALIDATION ==========
-        if ($userType === 'user') {
-            $validator->addRules([
-                'referral_code' => 'nullable|string',
-            ]);
+        return $this->error_response($errorMessage, $validator->errors());
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $userData = $request->only(['name', 'country_code', 'phone', 'email', 'fcm_token']);
+        $userData['balance'] = 0;
+
+        // Validate file before processing
+        if ($request->hasFile('photo')) {
+            $photoFile = $request->file('photo');
+            if (!$photoFile->isValid()) {
+                throw new \Exception('The photo file is invalid or corrupted. Please try uploading again.');
+            }
+            if (!$photoFile->getRealPath() || !is_readable($photoFile->getRealPath())) {
+                throw new \Exception('The photo file cannot be read. Please try uploading again.');
+            }
+            $userData['photo'] = uploadImage('assets/admin/uploads', $photoFile);
         }
-        // ========== END REFERRAL CODE VALIDATION ==========
+
+        $welcomeBonus = 0;
+        $welcomeBonusApplied = false;
 
         if ($userType === 'driver') {
-            $validator->addRules([
-                'sos_phone' => 'nullable|string',
-                'option_ids' => 'required|array',
-                'option_ids.*' => 'required|exists:options,id',
-                'photo_of_car' => 'required|image|mimes:jpeg,png,jpg',
-                'passenger_number' => 'nullable',
-                'model' => 'nullable|string|max:255',
-                'production_year' => 'nullable|string|max:4',
-                'color' => 'nullable|string|max:255',
-                'plate_number' => 'nullable|string|max:255',
-                'driving_license_front' => 'required|image|mimes:jpeg,png,jpg',
-                'driving_license_back' => 'required|image|mimes:jpeg,png,jpg',
-                'car_license_front' => 'required|image|mimes:jpeg,png,jpg',
-                'car_license_back' => 'required|image|mimes:jpeg,png,jpg',
-                'no_criminal_record' => 'required|image|mimes:jpeg,png,jpg',
-            ]);
-        }
+            // Validate all required files before processing
+            $requiredFiles = [
+                'photo_of_car',
+                'driving_license_front',
+                'driving_license_back',
+                'car_license_front',
+                'car_license_back',
+                'no_criminal_record'
+            ];
 
-        if ($validator->fails()) {
-            $errorMessage = $validator->errors()->first();
+            foreach ($requiredFiles as $fileField) {
+                if ($request->hasFile($fileField)) {
+                    $file = $request->file($fileField);
+                    if (!$file->isValid()) {
+                        throw new \Exception("The {$fileField} file is invalid or corrupted. Please try uploading again.");
+                    }
+                    if (!$file->getRealPath() || !is_readable($file->getRealPath())) {
+                        throw new \Exception("The {$fileField} file cannot be read. The file may have been deleted during upload. Please try again.");
+                    }
+                }
+            }
 
-            \Log::channel('register_failed')->error('Registration validation failed', [
-                'user_type' => $userType,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'name' => $request->name,
-                'errors' => $validator->errors()->toArray(),
-                'first_error' => $errorMessage,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'timestamp' => now()->toDateTimeString(),
-            ]);
+            $welcomeBonus = $this->getSettingValue('new_driver_register_add_balance', 0);
 
-            return $this->error_response($errorMessage, $validator->errors());
-        }
+            $userData['sos_phone'] = $request->sos_phone;
+            $userData['activate'] = 3;
+            $userData['status'] = 2;
+            $userData['balance'] = $welcomeBonus;
+            $userData['referral_code'] = $this->generateReferralCode();
 
-        try {
-            DB::beginTransaction();
+            $userData = array_merge($userData, $request->only(['passenger_number', 'model', 'production_year', 'color', 'plate_number']));
 
-            $userData = $request->only(['name', 'country_code', 'phone', 'email', 'fcm_token']);
-            $userData['balance'] = 0;
-
+            // Upload driver photo if exists (before creating driver record)
             if ($request->hasFile('photo')) {
                 $userData['photo'] = uploadImage('assets/admin/uploads', $request->file('photo'));
             }
 
-            $welcomeBonus = 0;
-            $welcomeBonusApplied = false;
+            // Create driver record first to get the ID
+            $user = \App\Models\Driver::create($userData);
+            $driverId = 'driver_' . $user->id;
 
-            if ($userType === 'driver') {
-                $welcomeBonus = $this->getSettingValue('new_driver_register_add_balance', 0);
-
-                $userData['sos_phone'] = $request->sos_phone;
-                $userData['activate'] = 3;
-                $userData['status'] = 2;
-                $userData['balance'] = $welcomeBonus;
-                $userData['referral_code'] = $this->generateReferralCode();
-
-                $userData = array_merge($userData, $request->only(['passenger_number', 'model', 'production_year', 'color', 'plate_number']));
-
-                // Upload driver photo if exists (before creating driver record)
-                if ($request->hasFile('photo')) {
-                    $userData['photo'] = uploadImage('assets/admin/uploads', $request->file('photo'));
-                }
-
-                // Create driver record first to get the ID
-                $user = \App\Models\Driver::create($userData);
-                $driverId = 'driver_' . $user->id;
-
-                // Now upload all driver-specific images to their folder
+            // Now upload all driver-specific images to their folder
+            try {
                 if ($request->hasFile('photo_of_car')) {
                     $user->photo_of_car = uploadImage('assets/admin/uploads', $request->file('photo_of_car'), $driverId);
                 }
@@ -312,108 +343,120 @@ class AuthController extends Controller
                 if ($request->hasFile('no_criminal_record')) {
                     $user->no_criminal_record = uploadImage('assets/admin/uploads', $request->file('no_criminal_record'), $driverId);
                 }
-
-                // Save the updated image paths to database
-                $user->save();
-
-                if ($request->has('option_ids') && is_array($request->option_ids)) {
-                    $user->options()->attach($request->option_ids);
-                }
-
-                if ($welcomeBonus > 0) {
-                    DB::table('wallet_transactions')->insert([
-                        'driver_id' => $user->id,
-                        'amount' => $welcomeBonus,
-                        'type_of_transaction' => 1,
-                        'note' => 'Welcome bonus for new driver registration',
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                    $welcomeBonusApplied = true;
-                }
-            } else {
-                // ========== USER REGISTRATION ==========
-                $welcomeBonus = $this->getSettingValue('new_user_register_add_balance', 0);
-
-                $userData['referral_code'] = $this->generateReferralCode();
-                $userData['balance'] = $welcomeBonus;
-
-                $user = \App\Models\User::create($userData);
-
-                if ($welcomeBonus > 0) {
-                    DB::table('wallet_transactions')->insert([
-                        'user_id' => $user->id,
-                        'amount' => $welcomeBonus,
-                        'type_of_transaction' => 1,
-                        'note' => 'Welcome bonus for new user registration',
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                    $welcomeBonusApplied = true;
-                }
-
-                \App\Models\WalletDistribution::applyToUser($user);
-
-                // ========== PROCESS REFERRAL CODE ==========
-                if ($request->has('referral_code') && !empty($request->referral_code)) {
-                    try {
-                        $referralService = app(\App\Services\ReferralService::class);
-                        $referralResult = $referralService->processUserReferral($user, $request->referral_code);
-
-                        if ($referralResult['success']) {
-                            Log::info("Referral processed successfully for user {$user->id}", $referralResult);
-                        } else {
-                            Log::warning("Referral processing failed for user {$user->id}: {$referralResult['message']}");
-                        }
-                    } catch (\Exception $e) {
-                        Log::error("Error processing referral for user {$user->id}: " . $e->getMessage());
-                    }
-                }
-                // ========== END PROCESS REFERRAL CODE ==========
+            } catch (\Exception $fileException) {
+                throw new \Exception('File upload failed: ' . $fileException->getMessage() . '. Please check your internet connection and try again.');
             }
 
-            DB::commit();
+            // Save the updated image paths to database
+            $user->save();
 
-            $accessToken = $user->createToken('authToken')->accessToken;
+            if ($request->has('option_ids') && is_array($request->option_ids)) {
+                $user->options()->attach($request->option_ids);
+            }
 
-            $responseData = [
-                'token' => $accessToken,
-                'user' => $user,
-                'new_user' => true,
-            ];
-
-            if ($welcomeBonusApplied) {
-                $responseData['welcome_bonus'] = [
+            if ($welcomeBonus > 0) {
+                DB::table('wallet_transactions')->insert([
+                    'driver_id' => $user->id,
                     'amount' => $welcomeBonus,
-                    'message' => $userType === 'driver'
-                        ? "Welcome! You've received {$welcomeBonus} JD as a welcome bonus."
-                        : "Welcome! You've received {$welcomeBonus} JD as a welcome bonus.",
-                    'current_balance' => $user->balance
-                ];
+                    'type_of_transaction' => 1,
+                    'note' => 'Welcome bonus for new driver registration',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                $welcomeBonusApplied = true;
+            }
+        } else {
+            // ========== USER REGISTRATION ==========
+            $welcomeBonus = $this->getSettingValue('new_user_register_add_balance', 0);
+
+            $userData['referral_code'] = $this->generateReferralCode();
+            $userData['balance'] = $welcomeBonus;
+
+            $user = \App\Models\User::create($userData);
+
+            if ($welcomeBonus > 0) {
+                DB::table('wallet_transactions')->insert([
+                    'user_id' => $user->id,
+                    'amount' => $welcomeBonus,
+                    'type_of_transaction' => 1,
+                    'note' => 'Welcome bonus for new user registration',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                $welcomeBonusApplied = true;
             }
 
-            return $this->success_response('Registration successful', $responseData);
-        } catch (\Exception $e) {
-            DB::rollBack();
+            \App\Models\WalletDistribution::applyToUser($user);
 
-            \Log::channel('register_failed')->error('Registration process failed', [
-                'user_type' => $userType,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'name' => $request->name,
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'stack_trace' => $e->getTraceAsString(),
-                'request_data' => $request->except(['photo', 'photo_of_car', 'driving_license_front', 'driving_license_back', 'car_license_front', 'car_license_back', 'no_criminal_record']),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'timestamp' => now()->toDateTimeString(),
-            ]);
+            // ========== PROCESS REFERRAL CODE ==========
+            if ($request->has('referral_code') && !empty($request->referral_code)) {
+                try {
+                    $referralService = app(\App\Services\ReferralService::class);
+                    $referralResult = $referralService->processUserReferral($user, $request->referral_code);
 
-            return $this->error_response('Registration failed', $e->getMessage());
+                    if ($referralResult['success']) {
+                        Log::info("Referral processed successfully for user {$user->id}", $referralResult);
+                    } else {
+                        Log::warning("Referral processing failed for user {$user->id}: {$referralResult['message']}");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error processing referral for user {$user->id}: " . $e->getMessage());
+                }
+            }
+            // ========== END PROCESS REFERRAL CODE ==========
         }
+
+        DB::commit();
+
+        $accessToken = $user->createToken('authToken')->accessToken;
+
+        $responseData = [
+            'token' => $accessToken,
+            'user' => $user,
+            'new_user' => true,
+        ];
+
+        if ($welcomeBonusApplied) {
+            $responseData['welcome_bonus'] = [
+                'amount' => $welcomeBonus,
+                'message' => $userType === 'driver'
+                    ? "Welcome! You've received {$welcomeBonus} JD as a welcome bonus."
+                    : "Welcome! You've received {$welcomeBonus} JD as a welcome bonus.",
+                'current_balance' => $user->balance
+            ];
+        }
+
+        return $this->success_response('Registration successful', $responseData);
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        \Log::channel('register_failed')->error('Registration process failed', [
+            'user_type' => $userType,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'name' => $request->name,
+            'error_message' => $e->getMessage(),
+            'error_file' => $e->getFile(),
+            'error_line' => $e->getLine(),
+            'stack_trace' => $e->getTraceAsString(),
+            'request_data' => $request->except(['photo', 'photo_of_car', 'driving_license_front', 'driving_license_back', 'car_license_front', 'car_license_back', 'no_criminal_record']),
+            'uploaded_files' => [
+                'photo' => $request->hasFile('photo') ? 'present' : 'missing',
+                'photo_of_car' => $request->hasFile('photo_of_car') ? 'present' : 'missing',
+                'driving_license_front' => $request->hasFile('driving_license_front') ? 'present' : 'missing',
+                'driving_license_back' => $request->hasFile('driving_license_back') ? 'present' : 'missing',
+                'car_license_front' => $request->hasFile('car_license_front') ? 'present' : 'missing',
+                'car_license_back' => $request->hasFile('car_license_back') ? 'present' : 'missing',
+                'no_criminal_record' => $request->hasFile('no_criminal_record') ? 'present' : 'missing',
+            ],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+
+        return $this->error_response('Registration failed. Please try again.', ['error' => $e->getMessage()]);
     }
+}
 
 
     /**

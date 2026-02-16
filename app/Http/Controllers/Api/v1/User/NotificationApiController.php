@@ -68,8 +68,7 @@ class NotificationApiController extends Controller
         ]);
 
         try {
-            // ✅ احصل على المستخدم المصادق من user-api guard
-            $user = auth('user-api')->user();
+            $user = $request->user();
 
             if (!$user) {
                 return response()->json([
@@ -113,7 +112,7 @@ class NotificationApiController extends Controller
 
         try {
             // ✅ احصل على السائق المصادق من driver-api guard
-            $driver = auth('driver-api')->user();
+            $driver = $request->user();
 
             if (!$driver) {
                 return response()->json([

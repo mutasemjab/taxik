@@ -197,7 +197,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(Request $request)
+  public function register(Request $request)
 {
     $userType = $request->user_type ?? 'user';
 
@@ -261,44 +261,15 @@ class AuthController extends Controller
         $userData = $request->only(['name', 'country_code', 'phone', 'email', 'fcm_token']);
         $userData['balance'] = 0;
 
-        // Validate file before processing
+        // Upload photo if exists (removed extra validation)
         if ($request->hasFile('photo')) {
-            $photoFile = $request->file('photo');
-            if (!$photoFile->isValid()) {
-                throw new \Exception('The photo file is invalid or corrupted. Please try uploading again.');
-            }
-            if (!$photoFile->getRealPath() || !is_readable($photoFile->getRealPath())) {
-                throw new \Exception('The photo file cannot be read. Please try uploading again.');
-            }
-            $userData['photo'] = uploadImage('assets/admin/uploads', $photoFile);
+            $userData['photo'] = uploadImage('assets/admin/uploads', $request->file('photo'));
         }
 
         $welcomeBonus = 0;
         $welcomeBonusApplied = false;
 
         if ($userType === 'driver') {
-            // Validate all required files before processing
-            $requiredFiles = [
-                'photo_of_car',
-                'driving_license_front',
-                'driving_license_back',
-                'car_license_front',
-                'car_license_back',
-                'no_criminal_record'
-            ];
-
-            foreach ($requiredFiles as $fileField) {
-                if ($request->hasFile($fileField)) {
-                    $file = $request->file($fileField);
-                    if (!$file->isValid()) {
-                        throw new \Exception("The {$fileField} file is invalid or corrupted. Please try uploading again.");
-                    }
-                    if (!$file->getRealPath() || !is_readable($file->getRealPath())) {
-                        throw new \Exception("The {$fileField} file cannot be read. The file may have been deleted during upload. Please try again.");
-                    }
-                }
-            }
-
             $welcomeBonus = $this->getSettingValue('new_driver_register_add_balance', 0);
 
             $userData['sos_phone'] = $request->sos_phone;
@@ -308,11 +279,6 @@ class AuthController extends Controller
             $userData['referral_code'] = $this->generateReferralCode();
 
             $userData = array_merge($userData, $request->only(['passenger_number', 'model', 'production_year', 'color', 'plate_number']));
-
-            // Upload driver photo if exists (before creating driver record)
-            if ($request->hasFile('photo')) {
-                $userData['photo'] = uploadImage('assets/admin/uploads', $request->file('photo'));
-            }
 
             // Create driver record first to get the ID
             $user = \App\Models\Driver::create($userData);

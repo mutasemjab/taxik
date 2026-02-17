@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
             'setting' => 'App\Models\Setting',
             'setting' => 'App\Models\Coupon',
             'setting' => 'App\Models\WalletTransaction',
+            'setting' => 'App\Models\Service',
 
         ]);
     

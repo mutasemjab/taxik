@@ -754,7 +754,7 @@ class DriverLocationService
                 'search_radius_km' => $searchRadius,
 
                 'reason_for_cancel' => $order->reason_for_cancel,
-                'distance' => $order->getDistance(),
+                'distance' => 0,
 
                 'created_at' => $order->created_at->toIso8601String(),
                 'updated_at' => $order->updated_at->toIso8601String(),

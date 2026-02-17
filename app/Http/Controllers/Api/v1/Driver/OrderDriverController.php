@@ -453,8 +453,10 @@ class OrderDriverController extends Controller
                     'updated_at' => now()
                 ]);
 
-
                 DB::commit();
+
+                // ✅ Mark Firebase search as ended — driver accepted the order
+                app(\App\Services\DriverLocationService::class)->updateEndSearchFlag($orderId, true);
 
                 EnhancedFCMService::sendOrderStatusToUser($orderId, OrderStatus::DriverAccepted);
 

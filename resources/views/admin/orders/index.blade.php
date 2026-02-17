@@ -296,7 +296,7 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="badge badge-info">{{ $order->getDistance() }} km</span>
+                                <span class="badge badge-info">{{ $order->live_distance ?? 0 }} km</span>
                             </td>
                             <td>
                                 <div class="price-info">

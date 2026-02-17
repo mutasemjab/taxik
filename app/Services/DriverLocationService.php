@@ -279,15 +279,32 @@ class DriverLocationService
                 // ✅ ONLY set end_search=true if this is the LAST zone
                 $searchEnding = ($nextRadius === null);
 
-                // ✅ Write to Firebase with correct end_search flag
+                // AFTER (fixed) ↓
                 $firebaseResult = $this->writeOrderToFirebase(
                     $orderId,
                     $sortedDrivers,
                     $serviceId,
                     $orderStatus,
                     $currentRadius,
-                    $searchEnding // Will be true ONLY on last zone
+                    $searchEnding
                 );
+
+                // ✅ CRITICAL FIX: If there's a next zone, schedule expansion even when
+                // drivers were found in this zone (they may all reject the order)
+                if ($firebaseResult['success'] && $nextRadius !== null) {
+                    $order->refresh();
+                    if ($order->status == OrderStatus::Pending && !$order->driver_id) {
+                        \App\Jobs\SearchDriversInNextZone::dispatch(
+                            $orderId,
+                            $currentRadius,
+                            $serviceId,
+                            $userLat,
+                            $userLng
+                        )->delay(now()->addSeconds(30)); // 30s for drivers to respond
+
+                        \Log::info("Drivers found in {$currentRadius}km, scheduled fallback search for {$nextRadius}km in 30s for order {$orderId}");
+                    }
+                }
 
                 return [
                     'success' => $firebaseResult['success'],

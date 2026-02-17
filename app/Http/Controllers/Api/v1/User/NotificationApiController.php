@@ -111,8 +111,8 @@ class NotificationApiController extends Controller
         ]);
 
         try {
-            // ✅ احصل على السائق المصادق من driver-api guard
-            $driver = $request->user();
+            
+            $driver = Auth::guard('driver-api')->user();
 
             if (!$driver) {
                 return response()->json([

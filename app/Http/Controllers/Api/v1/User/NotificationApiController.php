@@ -111,7 +111,7 @@ class NotificationApiController extends Controller
         ]);
 
         try {
-            
+
             $driver = Auth::guard('driver-api')->user();
 
             if (!$driver) {
@@ -126,6 +126,13 @@ class NotificationApiController extends Controller
                 $request->user_id,
                 $driver->id
             );
+
+            \Log::info('sendToUser debug', [
+                'driver' => Auth::guard('driver-api')->user()?->id,
+                'target_user_id' => $request->user_id,
+                'user_exists' => \App\Models\User::find($request->user_id)?->id,
+                'user_fcm_token' => \App\Models\User::find($request->user_id)?->fcm_token,
+            ]);
 
             if ($response) {
                 return response()->json([

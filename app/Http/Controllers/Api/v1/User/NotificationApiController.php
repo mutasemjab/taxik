@@ -104,89 +104,59 @@ class NotificationApiController extends Controller
     }
 
     public function sendToUser(Request $request)
-{
-    // ✅ Fix 1: Use Validator facade instead of $this->validate()
-    // so exceptions are caught by your try/catch
-    $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-        'user_id' => 'required|integer',
-        'message' => 'required|string|max:500',
-    ]);
+    {
+        // ✅ Handle driver app sending wrong Content-Type
+        // Force merge JSON body if request->all() is empty
+        if (empty($request->all()) && !empty($request->getContent())) {
+            $jsonData = json_decode($request->getContent(), true);
+            if (is_array($jsonData)) {
+                $request->merge($jsonData);
+            }
+        }
 
-    if ($validator->fails()) {
-        \Log::error('sendToUser validation failed', $validator->errors()->toArray());
-        return response()->json([
-            'status' => false,
-            'message' => 'Validation failed',
-            'errors' => $validator->errors()
-        ], 422);
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'user_id' => 'required|integer',
+            'message' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $driver = Auth::guard('driver-api')->user();
+
+            if (!$driver) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Driver not authenticated'
+                ], 401);
+            }
+
+            $response = AdminFCMController::sendChatMessageToUser(
+                $request->message,
+                $request->user_id,
+                $driver->id
+            );
+
+            return response()->json([
+                'status'  => (bool) $response,
+                'message' => $response
+                    ? 'Notification sent successfully to user'
+                    : 'Failed to send notification to user'
+            ], $response ? 200 : 400);
+
+        } catch (\Exception $e) {
+            \Log::error('sendToUser exception: ' . $e->getMessage());
+            return response()->json([
+                'status'  => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    try {
-        $driver = Auth::guard('driver-api')->user();
-
-        \Log::info('sendToUser called', [
-            'driver_id' => $driver?->id,
-            'target_user_id' => $request->user_id,
-            'message' => $request->message,
-        ]);
-
-        if (!$driver) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Driver not authenticated'
-            ], 401);
-        }
-
-        // ✅ Fix 2: Validate target user exists and has FCM token BEFORE calling FCM
-        $targetUser = \App\Models\User::find($request->user_id);
-
-        \Log::info('sendToUser target user', [
-            'user_exists' => !is_null($targetUser),
-            'user_id' => $targetUser?->id,
-            'has_fcm_token' => !is_null($targetUser?->fcm_token),
-            'fcm_token' => $targetUser?->fcm_token,
-        ]);
-
-        if (!$targetUser) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Target user not found'
-            ], 404);
-        }
-
-        if (!$targetUser->fcm_token) {
-            return response()->json([
-                'status' => false,
-                'message' => 'User has no FCM token registered'
-            ], 400);
-        }
-
-        $response = AdminFCMController::sendChatMessageToUser(
-            $request->message,
-            $request->user_id,
-            $driver->id
-        );
-
-        if ($response) {
-            return response()->json([
-                'status' => true,
-                'message' => 'Notification sent successfully to user'
-            ], 200);
-        } else {
-            return response()->json([
-                'status' => false,
-                'message' => 'FCM send failed — check logs for FCM error details'
-            ], 400);
-        }
-
-    } catch (\Exception $e) {
-        \Log::error('sendToUser exception: ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
-        return response()->json([
-            'status' => false,
-            'message' => 'An error occurred: ' . $e->getMessage()
-        ], 500);
-    }
-}
 }

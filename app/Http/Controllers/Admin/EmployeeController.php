@@ -187,11 +187,11 @@ class EmployeeController extends Controller
             Admin::find($id)->delete();
             DB::table('model_has_roles')->where('model_type', 'App\Models\admin')->where('model_id', $id)->delete();
             DB::commit();
-            return redirect()->route('admins.index')
+            return redirect()->route('admin.employee.index')
                 ->with('success', 'Admin deleted successfully');
         } catch (Exception $e) {
             DB::rollback();
-            return redirect()->route('admins.index')
+            return redirect()->route('admin.employee.index')
                 ->with('error', 'Something Error');
         }
     }

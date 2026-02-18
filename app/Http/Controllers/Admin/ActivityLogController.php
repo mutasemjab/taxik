@@ -14,7 +14,7 @@ class ActivityLogController extends Controller
     public function show($modelClass, $modelId)
     {
         $model = "App\\Models\\{$modelClass}"::findOrFail($modelId);
-        
+
         $logs = Activity::forSubject($model)
             ->with('causer')
             ->latest()
@@ -29,6 +29,7 @@ class ActivityLogController extends Controller
     public function index(Request $request)
     {
         $query = Activity::with('causer', 'subject')
+            ->where('causer_type', 'App\\Models\\Admin') // ← فقط الأدمن
             ->latest();
 
         // Filter by model type

@@ -79,7 +79,7 @@
                                                             </a>
                                                         @endcan
                                                         @can('employee-delete')
-                                                            <form action="{{ route('admin.employee.destroy', $admin->id) }}"
+                                                            <form action="{{ route('admin.employee.destroy', $employee->id) }}"
                                                                 method="POST">
                                                                 @csrf
                                                                 @method('DELETE')

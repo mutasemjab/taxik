@@ -106,11 +106,11 @@ class NotificationApiController extends Controller
     public function sendToUser(Request $request)
     {
         \Log::info('sendToUser hit', [
-        'content_type' => $request->header('Content-Type'),
-        'raw_body'     => $request->getContent(),
-        'parsed'       => $request->all(),
-        'driver'       => Auth::guard('driver-api')->id(),
-    ]);
+            'content_type' => $request->header('Content-Type'),
+            'raw_body'     => $request->getContent(),
+            'parsed'       => $request->all(),
+            'driver'       => Auth::guard('driver-api')->id(),
+        ]);
         // ✅ Handle driver app sending wrong Content-Type
         // Force merge JSON body if request->all() is empty
         if (empty($request->all()) && !empty($request->getContent())) {
@@ -118,6 +118,10 @@ class NotificationApiController extends Controller
             if (is_array($jsonData)) {
                 $request->merge($jsonData);
             }
+        }
+
+        if ($request->has('sender_user_id') && !$request->has('user_id')) {
+            $request->merge(['user_id' => $request->sender_user_id]);
         }
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
@@ -155,7 +159,6 @@ class NotificationApiController extends Controller
                     ? 'Notification sent successfully to user'
                     : 'Failed to send notification to user'
             ], $response ? 200 : 400);
-
         } catch (\Exception $e) {
             \Log::error('sendToUser exception: ' . $e->getMessage());
             return response()->json([
@@ -164,5 +167,4 @@ class NotificationApiController extends Controller
             ], 500);
         }
     }
-
 }

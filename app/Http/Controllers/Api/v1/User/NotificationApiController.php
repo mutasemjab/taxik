@@ -105,6 +105,12 @@ class NotificationApiController extends Controller
 
     public function sendToUser(Request $request)
     {
+        \Log::info('sendToUser hit', [
+        'content_type' => $request->header('Content-Type'),
+        'raw_body'     => $request->getContent(),
+        'parsed'       => $request->all(),
+        'driver'       => Auth::guard('driver-api')->id(),
+    ]);
         // ✅ Handle driver app sending wrong Content-Type
         // Force merge JSON body if request->all() is empty
         if (empty($request->all()) && !empty($request->getContent())) {

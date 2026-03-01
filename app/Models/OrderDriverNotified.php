@@ -49,10 +49,25 @@ class OrderDriverNotified extends Model
     public static function recordNotifiedDrivers($orderId, array $drivers, $searchRadius = null)
     {
         try {
+            // ✅ Get already notified driver IDs for this order
+            $alreadyNotifiedIds = self::where('order_id', $orderId)
+                ->pluck('driver_id')
+                ->toArray();
+
+            \Log::info("Order {$orderId}: Found " . count($alreadyNotifiedIds) . " already notified drivers");
+
             $records = [];
+            $skipped = 0;
             $now = now();
 
             foreach ($drivers as $driver) {
+                // ✅ Skip if driver already notified
+                if (in_array($driver['id'], $alreadyNotifiedIds)) {
+                    \Log::debug("Driver {$driver['id']} already notified for order {$orderId}, skipping");
+                    $skipped++;
+                    continue;
+                }
+
                 $records[] = [
                     'order_id' => $orderId,
                     'driver_id' => $driver['id'],
@@ -66,17 +81,19 @@ class OrderDriverNotified extends Model
             }
 
             if (!empty($records)) {
-                \Log::info("Attempting to insert " . count($records) . " notified drivers for order {$orderId}");
+                \Log::info("Attempting to insert " . count($records) . " notified drivers for order {$orderId}" .
+                    ($skipped > 0 ? " (skipped {$skipped} duplicates)" : ""));
 
-                // Use insert instead of insertOrIgnore to see errors
+                // Use insert to catch any remaining errors
                 $inserted = \DB::table('order_drivers_notified')->insert($records);
 
-                \Log::info("Successfully inserted {$inserted} records for order {$orderId}");
+                \Log::info("Successfully inserted " . count($records) . " records for order {$orderId}");
 
                 return count($records);
             }
 
-            \Log::warning("No records to insert for order {$orderId}");
+            \Log::info("No NEW records to insert for order {$orderId}" .
+                ($skipped > 0 ? " (skipped {$skipped} duplicates)" : ""));
             return 0;
         } catch (\Exception $e) {
             \Log::error("Failed to record notified drivers for order {$orderId}: " . $e->getMessage());

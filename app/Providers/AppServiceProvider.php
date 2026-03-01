@@ -28,15 +28,14 @@ class AppServiceProvider extends ServiceProvider
         Paginator::USeBootstrap();
         // Define morph map for polymorphic relationships
         Relation::enforceMorphMap([
-            'user' => 'App\Models\User',
-            'driver' => 'App\Models\Driver',
-            'order' => 'App\Models\Order',
-            'admin' => 'App\Models\Admin',
-            'setting' => 'App\Models\Setting',
-            'setting' => 'App\Models\Coupon',
-            'setting' => 'App\Models\WalletTransaction',
-            'setting' => 'App\Models\Service',
-
+            'user'               => \App\Models\User::class,
+            'driver'             => \App\Models\Driver::class,
+            'order'              => \App\Models\Order::class,
+            'admin'              => \App\Models\Admin::class,
+            'setting'            => \App\Models\Setting::class,
+            'coupon'             => \App\Models\Coupon::class,
+            'wallet_transaction' => \App\Models\WalletTransaction::class,
+            'service'            => \App\Models\Service::class,
         ]);
     
     }

@@ -31,7 +31,7 @@ class Driver extends Authenticatable
         'no_criminal_record_url',
     ];
 
-     protected $casts = [
+    protected $casts = [
         'last_login' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -46,6 +46,11 @@ class Driver extends Authenticatable
             ->dontSubmitEmptyLogs()
             ->useLogName('driver') // Custom log name
             ->setDescriptionForEvent(fn(string $eventName) => "Driver has been {$eventName}");
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 
     /**

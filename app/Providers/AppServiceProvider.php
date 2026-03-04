@@ -37,6 +37,5 @@ class AppServiceProvider extends ServiceProvider
             'wallet_transaction' => \App\Models\WalletTransaction::class,
             'service'            => \App\Models\Service::class,
         ]);
-    
     }
 }

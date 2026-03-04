@@ -74,7 +74,7 @@ class DriverController extends Controller
             $query->where('last_login', '<=', $request->last_login_to . ' 23:59:59');
         }
 
-        // Filter by online status (logged in within last 5 minutes)
+        // Filter by online status
         if ($request->has('online_status') && $request->online_status != '') {
             if ($request->online_status == 'online') {
                 $query->where('last_login', '>=', now()->subMinutes(5));
@@ -85,6 +85,9 @@ class DriverController extends Controller
                 });
             }
         }
+
+        // Count orders for each driver
+        $query->withCount('orders');
 
         // Order by newest first (or by last_login if specified)
         if ($request->has('sort_by') && $request->sort_by == 'last_login') {
@@ -264,9 +267,33 @@ class DriverController extends Controller
      */
     public function show($id)
     {
-        $driver = Driver::with('options')->findOrFail($id);
+        $driver = Driver::with([
+            'options',
+            'orders.service',
+            'orders.user',
+            'walletTransactions' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            }
+        ])
+            ->withCount('orders')
+            ->findOrFail($id);
 
-        return view('admin.drivers.show', compact('driver'));
+        // Get orders with pagination
+        $orders = $driver->orders()
+            ->with(['service', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10, ['*'], 'orders_page');
+
+        // Get wallet transactions with pagination
+        $walletTransactions = $driver->walletTransactions()
+            ->orderBy('created_at', 'desc')
+            ->paginate(10, ['*'], 'wallet_page');
+
+        return view('admin.drivers.show', compact(
+            'driver',
+            'orders',
+            'walletTransactions'
+        ));
     }
 
     /**

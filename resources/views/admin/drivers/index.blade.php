@@ -130,6 +130,7 @@
                                 <th>{{ __('messages.Last_Login') }}</th>
                                 <th>{{ __('messages.Status') }}</th>
                                 <th>{{ __('messages.activate_status') }}</th>
+                                <th>{{ __('messages.Total_Orders') }}</th>
                                 <th>{{ __('messages.Actions') }}</th>
                             </tr>
                         </thead>
@@ -201,6 +202,9 @@
                                         @elseif($driver->activate == 3)
                                             <span class="badge badge-warning">{{ __('messages.Waiting_Approve') }}</span>
                                         @endif
+                                    </td>
+                                     <td>
+                                        <span class="badge badge-info">{{ $driver->orders_count }}</span>
                                     </td>
                                     <td>
                                         <div class="d-flex flex-wrap">

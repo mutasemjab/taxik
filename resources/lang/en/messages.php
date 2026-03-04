@@ -1964,7 +1964,7 @@ return [
     'Adding_new_payment_will_create_new_record' => 'Adding new payment will create new record',
     'times_that_user_cancel_orders_in_one_day' => 'Number of order cancellations allowed per day for user',
     'fee_when_user_cancel_order_more_times' => 'Penalty fee when driver exceeds cancellation limit for user',
-    '' => '',
+    'App_Credit' => 'App Credit',
     '' => '',
     '' => '',
     '' => '',

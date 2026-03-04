@@ -84,6 +84,8 @@
                                 <th>{{ __('messages.Phone') }}</th>
                                 <th>{{ __('messages.Email') }}</th>
                                 <th>{{ __('messages.Balance') }}</th>
+                                <th>{{ __('messages.App_Credit') }}</th>
+                                <th>{{ __('messages.Total_Orders') }}</th>
                                 <th>{{ __('messages.Status') }}</th>
                                 <th>{{ __('messages.Actions') }}</th>
                             </tr>
@@ -114,6 +116,20 @@
                                     <td>{{ $user->country_code }} {{ $user->phone }}</td>
                                     <td>{{ $user->email }}</td>
                                     <td>{{ $user->balance }}</td>
+
+                                    <td>
+                                        <div>{{ number_format($user->app_credit, 2) }}</div>
+                                        @if ($user->app_credit_orders_remaining > 0)
+                                            <small class="text-muted">
+                                                ({{ $user->app_credit_orders_remaining }}
+                                                {{ __('messages.Orders_Remaining') }})
+                                            </small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ $user->orders_count }}</span>
+                                    </td>
+
                                     <td>
                                         @if ($user->activate == 1)
                                             <span class="badge badge-success">{{ __('messages.Active') }}</span>
@@ -132,10 +148,10 @@
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             @can('wallet-add')
-                                            <button type="button" class="btn btn-success btn-sm mr-1 mb-1"
-                                                data-toggle="modal" data-target="#topUpModal{{ $user->id }}">
-                                                <i class="fas fa-wallet"></i>
-                                            </button>
+                                                <button type="button" class="btn btn-success btn-sm mr-1 mb-1"
+                                                    data-toggle="modal" data-target="#topUpModal{{ $user->id }}">
+                                                    <i class="fas fa-wallet"></i>
+                                                </button>
                                             @endcan
 
                                             @if ($user->activate == 2)
@@ -235,59 +251,60 @@
         </div>
     @endforeach
 
-<!-- Unban Modals -->
-@foreach ($users as $user)
-    @if ($user->activate == 2)
-        <div class="modal fade" id="unbanModal{{ $user->id }}" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header bg-warning">
-                        <h5 class="modal-title">
-                            <i class="fas fa-unlock"></i> {{ __('messages.Unban_User') }}: {{ $user->name }}
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                    <form action="{{ route('users.unban', $user->id) }}" method="POST">
-                        @csrf
-                        <div class="modal-body">
-                            @if ($user->activeBan)
-                                <div class="alert alert-info">
-                                    <strong>{{ __('messages.Current_Ban_Info') }}:</strong><br>
-                                    <strong>{{ __('messages.Reason') }}:</strong>
-                                    {{ $user->activeBan->getReasonText() }}<br>
-                                    <strong>{{ __('messages.Type') }}:</strong>
-                                    {{ $user->activeBan->is_permanent ? __('messages.Permanent') : __('messages.Temporary') }}<br>
-                                    @if (!$user->activeBan->is_permanent)
-                                        <strong>{{ __('messages.Until') }}:</strong>
-                                        {{ $user->activeBan->ban_until->format('Y-m-d H:i') }}<br>
-                                        <strong>{{ __('messages.Remaining') }}:</strong>
-                                        {{ $user->activeBan->getRemainingTime() }}
-                                    @endif
-                                </div>
-                            @endif
-
-                            <div class="form-group">
-                                <label>{{ __('messages.Unban_Reason') }} ({{ __('messages.Optional') }})</label>
-                                <textarea class="form-control" name="unban_reason" rows="3"></textarea>
-                            </div>
-
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                {{ __('messages.Unban_Confirmation_Message') }}
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('messages.Cancel') }}</button>
-                            <button type="submit" class="btn btn-warning">
-                                <i class="fas fa-unlock"></i> {{ __('messages.Unban_User') }}
+    <!-- Unban Modals -->
+    @foreach ($users as $user)
+        @if ($user->activate == 2)
+            <div class="modal fade" id="unbanModal{{ $user->id }}" tabindex="-1" role="dialog">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning">
+                            <h5 class="modal-title">
+                                <i class="fas fa-unlock"></i> {{ __('messages.Unban_User') }}: {{ $user->name }}
+                            </h5>
+                            <button type="button" class="close" data-dismiss="modal">
+                                <span>&times;</span>
                             </button>
                         </div>
-                    </form>
+                        <form action="{{ route('users.unban', $user->id) }}" method="POST">
+                            @csrf
+                            <div class="modal-body">
+                                @if ($user->activeBan)
+                                    <div class="alert alert-info">
+                                        <strong>{{ __('messages.Current_Ban_Info') }}:</strong><br>
+                                        <strong>{{ __('messages.Reason') }}:</strong>
+                                        {{ $user->activeBan->getReasonText() }}<br>
+                                        <strong>{{ __('messages.Type') }}:</strong>
+                                        {{ $user->activeBan->is_permanent ? __('messages.Permanent') : __('messages.Temporary') }}<br>
+                                        @if (!$user->activeBan->is_permanent)
+                                            <strong>{{ __('messages.Until') }}:</strong>
+                                            {{ $user->activeBan->ban_until->format('Y-m-d H:i') }}<br>
+                                            <strong>{{ __('messages.Remaining') }}:</strong>
+                                            {{ $user->activeBan->getRemainingTime() }}
+                                        @endif
+                                    </div>
+                                @endif
+
+                                <div class="form-group">
+                                    <label>{{ __('messages.Unban_Reason') }} ({{ __('messages.Optional') }})</label>
+                                    <textarea class="form-control" name="unban_reason" rows="3"></textarea>
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    {{ __('messages.Unban_Confirmation_Message') }}
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary"
+                                    data-dismiss="modal">{{ __('messages.Cancel') }}</button>
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-unlock"></i> {{ __('messages.Unban_User') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
-    @endif
-@endforeach
+        @endif
+    @endforeach
 @endsection

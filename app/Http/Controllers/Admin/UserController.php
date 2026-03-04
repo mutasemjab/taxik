@@ -31,41 +31,83 @@ class UserController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
-    {
-        $query = User::with('activeBan');
+{
+    $query = User::with(['activeBan', 'orders']);
 
-        // Search functionality
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by status
-        if ($request->has('status') && $request->status != '') {
-            $query->where('activate', $request->status);
-        }
-
-        // Filter by balance
-        if ($request->has('min_balance') && $request->min_balance != '') {
-            $query->where('balance', '>=', $request->min_balance);
-        }
-
-        if ($request->has('max_balance') && $request->max_balance != '') {
-            $query->where('balance', '<=', $request->max_balance);
-        }
-
-        // Order by newest first
-        $query->orderBy('created_at', 'desc');
-
-        // Paginate results
-        $users = $query->paginate(15)->appends($request->all());
-
-        return view('admin.users.index', compact('users'));
+    // Search functionality
+    if ($request->has('search') && $request->search != '') {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
+        });
     }
+
+    // Filter by status
+    if ($request->has('status') && $request->status != '') {
+        $query->where('activate', $request->status);
+    }
+
+    // Filter by balance
+    if ($request->has('min_balance') && $request->min_balance != '') {
+        $query->where('balance', '>=', $request->min_balance);
+    }
+
+    if ($request->has('max_balance') && $request->max_balance != '') {
+        $query->where('balance', '<=', $request->max_balance);
+    }
+
+    // Count orders for each user
+    $query->withCount('orders');
+
+    // Order by newest first
+    $query->orderBy('created_at', 'desc');
+
+    // Paginate results
+    $users = $query->paginate(15)->appends($request->all());
+
+    return view('admin.users.index', compact('users'));
+}
+
+public function show($id)
+{
+    $user = User::with([
+        'orders.service', 
+        'orders.driver',
+        'walletTransactions' => function($query) {
+            $query->orderBy('created_at', 'desc');
+        },
+        'appCreditTransactions' => function($query) {
+            $query->orderBy('created_at', 'desc');
+        }
+    ])
+    ->withCount('orders')
+    ->findOrFail($id);
+
+    // Get orders with pagination
+    $orders = $user->orders()
+        ->with(['service', 'driver'])
+        ->orderBy('created_at', 'desc')
+        ->paginate(10, ['*'], 'orders_page');
+
+    // Get wallet transactions with pagination
+    $walletTransactions = $user->walletTransactions()
+        ->orderBy('created_at', 'desc')
+        ->paginate(10, ['*'], 'wallet_page');
+
+    // Get app credit transactions with pagination
+    $appCreditTransactions = $user->appCreditTransactions()
+        ->orderBy('created_at', 'desc')
+        ->paginate(10, ['*'], 'credit_page');
+
+    return view('admin.users.show', compact(
+        'user', 
+        'orders', 
+        'walletTransactions', 
+        'appCreditTransactions'
+    ));
+}
 
     public function banForm($id)
     {
@@ -227,18 +269,6 @@ class UserController extends Controller
             ->with('success', 'User created successfully');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        $user = User::findOrFail($id);
-
-        return view('admin.users.show', compact('user'));
-    }
 
     /**
      * Show the form for editing the specified resource.

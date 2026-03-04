@@ -1999,6 +1999,7 @@ return [
     'Adding_new_payment_will_create_new_record' => 'إنشاء رصيد في محفظة السائق',
         'times_that_user_cancel_orders_in_one_day' => 'عدد مرات المسموح لليوزر الغاء الطلب في اليوم',
     'fee_when_user_cancel_order_more_times' => 'رسوم الالغاء التي ستخصم من اليوزر اذا تجاوز الحد',
+   'App_Credit' => 'رصيد التطبيق',
     '' => '',
     '' => '',
     '' => '',

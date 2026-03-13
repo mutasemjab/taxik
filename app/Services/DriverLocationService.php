@@ -362,17 +362,20 @@ class DriverLocationService
      * Sort drivers by distance using Haversine formula
      */
     private function sortDriversByDistance(array $drivers, $userLat, $userLng, $maxRadius)
-    {
-        if (empty($drivers)) return [];
+{
+    if (empty($drivers)) return [];
 
-        try {
-            $apiKey = config('firebase.google_maps_key');
+    try {
+        $apiKey = config('firebase.google_maps_key');
+        $driversWithDistance = [];
+        
+        // Google Distance Matrix allows max 25 destinations per request
+        $chunks = array_chunk($drivers, 25);
 
-
-            // Build all destinations in one request
+        foreach ($chunks as $chunk) {
             $destinations = implode('|', array_map(
                 fn($d) => "{$d['lat']},{$d['lng']}",
-                $drivers
+                $chunk
             ));
 
             $url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -384,18 +387,15 @@ class DriverLocationService
             $response = file_get_contents($url);
             $data = json_decode($response, true);
 
-            $driversWithDistance = [];
-
             if (isset($data['status']) && $data['status'] === 'OK') {
                 $elements = $data['rows'][0]['elements'] ?? [];
 
-                foreach ($drivers as $index => $driver) {
+                foreach ($chunk as $index => $driver) {
                     $element = $elements[$index] ?? null;
 
                     if ($element && $element['status'] === 'OK') {
                         $distanceKm = $element['distance']['value'] / 1000;
                     } else {
-                        // Fallback to Haversine for this driver
                         $distanceKm = $this->calculateDistanceFallback(
                             $userLat, $userLng, $driver['lat'], $driver['lng']
                         );
@@ -407,22 +407,31 @@ class DriverLocationService
                     }
                 }
             } else {
-                \Log::warning('Google Distance Matrix API failed', [
+                \Log::warning('Google Distance Matrix API failed for chunk', [
                     'status' => $data['status'] ?? 'unknown',
                 ]);
-                // Full fallback to Haversine
-                return $this->sortDriversByDistanceFallback($drivers, $userLat, $userLng, $maxRadius);
+                // Fallback for this chunk only
+                foreach ($chunk as $driver) {
+                    $distanceKm = $this->calculateDistanceFallback(
+                        $userLat, $userLng, $driver['lat'], $driver['lng']
+                    );
+                    if ($distanceKm <= $maxRadius) {
+                        $driver['distance'] = round($distanceKm, 2);
+                        $driversWithDistance[] = $driver;
+                    }
+                }
             }
-
-            usort($driversWithDistance, fn($a, $b) => $a['distance'] <=> $b['distance']);
-
-            return $driversWithDistance;
-
-        } catch (\Exception $e) {
-            \Log::error('Exception in Distance Matrix: ' . $e->getMessage());
-            return $this->sortDriversByDistanceFallback($drivers, $userLat, $userLng, $maxRadius);
         }
+
+        usort($driversWithDistance, fn($a, $b) => $a['distance'] <=> $b['distance']);
+
+        return $driversWithDistance;
+
+    } catch (\Exception $e) {
+        \Log::error('Exception in Distance Matrix: ' . $e->getMessage());
+        return $this->sortDriversByDistanceFallback($drivers, $userLat, $userLng, $maxRadius);
     }
+}
 
     private function sortDriversByDistanceFallback(array $drivers, $userLat, $userLng, $maxRadius)
     {

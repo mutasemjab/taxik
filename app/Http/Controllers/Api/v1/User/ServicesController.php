@@ -82,13 +82,13 @@ class ServicesController extends Controller
     private function calculateDistanceWithGoogleDirections($originLat, $originLng, $destinationLat, $destinationLng)
     {
         try {
-            $apiKey = config('services.google.maps_key');
+            $apiKey = config('firebase.google_maps_key');
 
             $url = "https://maps.googleapis.com/maps/api/directions/json"
                 . "?origin={$originLat},{$originLng}"
                 . "&destination={$destinationLat},{$destinationLng}"
                 . "&mode=driving"
-                . "&key=AIzaSyA4O4uw-ub7uKxuM8NdYIZfbTogAbQt4SE";
+                . "&key={$apiKey}";
 
             $response = file_get_contents($url);
             $data = json_decode($response, true);

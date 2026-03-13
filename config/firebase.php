@@ -10,7 +10,6 @@ return [
     
     'database_url' => env('FIREBASE_DATABASE_URL'),
 
-    'google' => [
-        'maps_key' => env('GOOGLE_MAPS_API_KEY'),
-    ],
+    'google_maps_key' => env('GOOGLE_MAPS_API_KEY'), 
+
 ];

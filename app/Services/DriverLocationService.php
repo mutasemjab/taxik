@@ -366,7 +366,8 @@ class DriverLocationService
         if (empty($drivers)) return [];
 
         try {
-            $apiKey = config('services.google.maps_key');
+            $apiKey = config('firebase.google_maps_key');
+
 
             // Build all destinations in one request
             $destinations = implode('|', array_map(

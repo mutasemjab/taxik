@@ -88,7 +88,7 @@ class ServicesController extends Controller
                 . "?origin={$originLat},{$originLng}"
                 . "&destination={$destinationLat},{$destinationLng}"
                 . "&mode=driving"
-                . "&key={$apiKey}";
+                . "&key=AIzaSyA4O4uw-ub7uKxuM8NdYIZfbTogAbQt4SE";
 
             $response = file_get_contents($url);
             $data = json_decode($response, true);

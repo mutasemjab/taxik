@@ -100,6 +100,7 @@ class ServicesController extends Controller
             ) {
                 // Distance is returned in meters, convert to kilometers
                 $distanceInMeters = $data['routes'][0]['legs'][0]['distance']['value'];
+                \Log::success('Done');
                 return $distanceInMeters / 1000; // Convert to KM
             } else {
                 \Log::warning('Google Directions API failed', [

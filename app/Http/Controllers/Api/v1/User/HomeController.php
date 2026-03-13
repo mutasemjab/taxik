@@ -28,6 +28,10 @@ class HomeController extends Controller
                 return $this->error_response('Unauthenticated', null, 401);
             }
 
+            if ($request->filled('fcm_token')) {
+                $user->update(['fcm_token' => $request->fcm_token]);
+            }
+
             // Get language from header (default to 'en')
             $lang = $request->header('lang', 'en');
 

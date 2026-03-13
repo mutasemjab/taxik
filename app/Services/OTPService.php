@@ -31,6 +31,50 @@ class OTPService
         $this->lang = request()->header('lang', 'en');
     }
 
+
+    /**
+     * Get remaining SMS balance from JoSMS gateway
+     */
+    public function getSMSBalance(): array
+    {
+        $url = 'https://www.josms.net/SMS/API/GetBalance?' . http_build_query([
+            'AccName' => $this->smsConfig['account_name'],
+            'AccPass' => $this->smsConfig['account_password'],
+        ]);
+
+        try {
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL            => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+            ]);
+
+            $response  = curl_exec($curl);
+            $httpCode  = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($curl);
+            curl_close($curl);
+
+            if ($httpCode == 200 && empty($curlError)) {
+                return [
+                    'success' => true,
+                    'balance' => trim($response),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error'   => $curlError ?: 'HTTP ' . $httpCode,
+            ];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
     /**
      * Get translated message
      *

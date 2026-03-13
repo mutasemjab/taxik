@@ -126,6 +126,12 @@ class DashboardController extends Controller
         ));
     }
 
+    public function getSMSBalance()
+    {
+        $result = app(\App\Services\OTPService::class)->getSMSBalance();
+        return response()->json($result);
+    }
+
     /**
      * Calculate today's total earnings from completed orders
      */

@@ -27,6 +27,10 @@ class HomeDriverController extends Controller
             // Update last login timestamp
             $driver->update(['last_login' => now()]);
 
+            if ($request->filled('fcm_token')) {
+                $driver->update(['fcm_token' => $request->fcm_token]);
+            }
+
             // Get language from header (default to 'en')
             $lang = $request->header('lang', 'en');
 

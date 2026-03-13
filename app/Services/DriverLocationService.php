@@ -363,25 +363,79 @@ class DriverLocationService
      */
     private function sortDriversByDistance(array $drivers, $userLat, $userLng, $maxRadius)
     {
+        if (empty($drivers)) return [];
+
+        try {
+            $apiKey = config('services.google.maps_key');
+
+            // Build all destinations in one request
+            $destinations = implode('|', array_map(
+                fn($d) => "{$d['lat']},{$d['lng']}",
+                $drivers
+            ));
+
+            $url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                . "?origins={$userLat},{$userLng}"
+                . "&destinations=" . urlencode($destinations)
+                . "&mode=driving"
+                . "&key={$apiKey}";
+
+            $response = file_get_contents($url);
+            $data = json_decode($response, true);
+
+            $driversWithDistance = [];
+
+            if (isset($data['status']) && $data['status'] === 'OK') {
+                $elements = $data['rows'][0]['elements'] ?? [];
+
+                foreach ($drivers as $index => $driver) {
+                    $element = $elements[$index] ?? null;
+
+                    if ($element && $element['status'] === 'OK') {
+                        $distanceKm = $element['distance']['value'] / 1000;
+                    } else {
+                        // Fallback to Haversine for this driver
+                        $distanceKm = $this->calculateDistanceFallback(
+                            $userLat, $userLng, $driver['lat'], $driver['lng']
+                        );
+                    }
+
+                    if ($distanceKm <= $maxRadius) {
+                        $driver['distance'] = round($distanceKm, 2);
+                        $driversWithDistance[] = $driver;
+                    }
+                }
+            } else {
+                \Log::warning('Google Distance Matrix API failed', [
+                    'status' => $data['status'] ?? 'unknown',
+                ]);
+                // Full fallback to Haversine
+                return $this->sortDriversByDistanceFallback($drivers, $userLat, $userLng, $maxRadius);
+            }
+
+            usort($driversWithDistance, fn($a, $b) => $a['distance'] <=> $b['distance']);
+
+            return $driversWithDistance;
+
+        } catch (\Exception $e) {
+            \Log::error('Exception in Distance Matrix: ' . $e->getMessage());
+            return $this->sortDriversByDistanceFallback($drivers, $userLat, $userLng, $maxRadius);
+        }
+    }
+
+    private function sortDriversByDistanceFallback(array $drivers, $userLat, $userLng, $maxRadius)
+    {
         $driversWithDistance = [];
 
         foreach ($drivers as $driver) {
-            $distance = $this->calculateDistanceFallback(
-                $userLat,
-                $userLng,
-                $driver['lat'],
-                $driver['lng']
-            );
-
+            $distance = $this->calculateDistanceFallback($userLat, $userLng, $driver['lat'], $driver['lng']);
             if ($distance <= $maxRadius) {
                 $driver['distance'] = round($distance, 2);
                 $driversWithDistance[] = $driver;
             }
         }
 
-        usort($driversWithDistance, function ($a, $b) {
-            return $a['distance'] <=> $b['distance'];
-        });
+        usort($driversWithDistance, fn($a, $b) => $a['distance'] <=> $b['distance']);
 
         return $driversWithDistance;
     }

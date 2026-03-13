@@ -118,6 +118,8 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
             return response()->json(Permission::where('guard_name', $guard_name)->get());
         });
 
+       Route::get('/sms-balance', [DashboardController::class, 'getSMSBalance'])->name('admin.sms-balance');
+
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/map', [App\Http\Controllers\Admin\DriverMapController::class, 'index'])
             ->name('map');

@@ -15,7 +15,6 @@ class ServicesController extends Controller
     
     public function index(Request $request)
     {
-        // Validate coordinates from the request
         $request->validate([
             'start_lat' => 'required|numeric',
             'start_lng' => 'required|numeric',
@@ -32,7 +31,7 @@ class ServicesController extends Controller
 
         // Only calculate distance if both end_lat and end_lng are present
         if (!is_null($endLat) && !is_null($endLng)) {
-            $distance = $this->calculateDistanceWithOSRM($startLat, $startLng, $endLat, $endLng); // in KM
+            $distance = $this->calculateDistanceWithGoogleDirections($startLat, $startLng, $endLat, $endLng); // in KM
         }
 
         $services = Service::where('activate', 1)
@@ -77,38 +76,40 @@ class ServicesController extends Controller
     }
 
     /**
-     * Calculate distance using OSRM (Open Source Routing Machine)
-     * Returns distance in kilometers
+     * Calculate distance using Google Directions API
+     * Returns distance in kilometers (real road distance)
      */
-    private function calculateDistanceWithOSRM($originLat, $originLng, $destinationLat, $destinationLng)
+    private function calculateDistanceWithGoogleDirections($originLat, $originLng, $destinationLat, $destinationLng)
     {
         try {
-            // OSRM format: longitude,latitude (note: reversed from Google!)
-            $url = "https://router.project-osrm.org/route/v1/driving/"
-                . "{$originLng},{$originLat};"
-                . "{$destinationLng},{$destinationLat}"
-                . "?overview=false&alternatives=false&steps=false";
+            $apiKey = config('services.google.maps_key');
 
-            // Use Guzzle or file_get_contents
+            $url = "https://maps.googleapis.com/maps/api/directions/json"
+                . "?origin={$originLat},{$originLng}"
+                . "&destination={$destinationLat},{$destinationLng}"
+                . "&mode=driving"
+                . "&key={$apiKey}";
+
             $response = file_get_contents($url);
             $data = json_decode($response, true);
 
-            // Check if the request was successful
-            if ($data['code'] === 'Ok' && isset($data['routes'][0]['distance'])) {
+            if (
+                isset($data['status']) &&
+                $data['status'] === 'OK' &&
+                isset($data['routes'][0]['legs'][0]['distance']['value'])
+            ) {
                 // Distance is returned in meters, convert to kilometers
-                $distanceInMeters = $data['routes'][0]['distance'];
+                $distanceInMeters = $data['routes'][0]['legs'][0]['distance']['value'];
                 return $distanceInMeters / 1000; // Convert to KM
             } else {
-                // Fallback to Haversine formula if OSRM fails
-                \Log::warning('OSRM API failed', [
-                    'code' => $data['code'] ?? 'unknown',
-                    'message' => $data['message'] ?? 'No message'
+                \Log::warning('Google Directions API failed', [
+                    'status'  => $data['status'] ?? 'unknown',
+                    'message' => $data['error_message'] ?? 'No message'
                 ]);
                 return $this->calculateDistanceFallback($originLat, $originLng, $destinationLat, $destinationLng);
             }
         } catch (\Exception $e) {
-            // Fallback to Haversine formula on exception
-            \Log::error('Exception in OSRM distance calculation', [
+            \Log::error('Exception in Google Directions distance calculation', [
                 'message' => $e->getMessage()
             ]);
             return $this->calculateDistanceFallback($originLat, $originLng, $destinationLat, $destinationLng);

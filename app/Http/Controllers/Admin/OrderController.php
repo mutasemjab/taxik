@@ -93,16 +93,16 @@ class OrderController extends Controller
     public function show($id)
     {
         $order = Order::with([
-            'user', 
-            'driver', 
-            'service', 
+            'user',
+            'driver',
+            'service',
             'coupon',
-            'complaints' => function($query) {
+            'complaints' => function ($query) {
                 $query->orderBy('created_at', 'desc');
             },
             'rating'
         ])->findOrFail($id);
-        
+
         return view('admin.orders.show', compact('order'));
     }
 
@@ -190,11 +190,15 @@ class OrderController extends Controller
         }
 
         $data = $request->all();
-        
+
         // Handle hybrid payment checkbox
         $data['is_hybrid_payment'] = $request->has('is_hybrid_payment') ? 1 : 0;
-        
+
         $order->update($data);
+
+
+        // ✅ Sync to Firestore
+        $this->syncOrderToFirestore($order->fresh());
 
         return redirect()
             ->route('orders.index')
@@ -254,6 +258,9 @@ class OrderController extends Controller
 
         $order->update($updateData);
 
+        // ✅ Sync to Firestore
+        $this->syncOrderToFirestore($order->fresh());
+
         return redirect()
             ->route('orders.show', $id)
             ->with('success', __('messages.Order_Status_Updated'));
@@ -280,8 +287,98 @@ class OrderController extends Controller
             'status_payment' => $request->status_payment
         ]);
 
+
+        // ✅ Sync to Firestore
+        $this->syncOrderToFirestore($order->fresh());
+
         return redirect()
             ->route('orders.show', $id)
             ->with('success', __('messages.Payment_Status_Updated'));
+    }
+
+    private function syncOrderToFirestore(Order $order)
+    {
+        try {
+            $projectId = config('firebase.project_id');
+            $baseUrl = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents";
+
+            // Check if document exists in Firestore first
+            $getResponse = \Http::timeout(10)->get("{$baseUrl}/ride_requests/{$order->id}");
+
+            if ($getResponse->status() === 404) {
+                // Document doesn't exist, nothing to sync
+                return;
+            }
+
+            $statusValue = is_object($order->status) ? $order->status->value : $order->status;
+            $paymentMethod = is_object($order->payment_method) ? $order->payment_method->value : $order->payment_method;
+            $paymentStatus = is_object($order->status_payment) ? $order->status_payment->value : $order->status_payment;
+
+            $isFinished = in_array($statusValue, [
+                'completed',
+                'user_cancel_order',
+                'driver_cancel_order',
+                'cancel_cron_job'
+            ]);
+
+            $firestoreData = [
+                'fields' => [
+                    'status' => ['stringValue' => $statusValue],
+                    'assigned_driver_id' => $order->driver_id
+                        ? ['integerValue' => (string)$order->driver_id]
+                        : ['nullValue' => null],
+                    'payment_info' => [
+                        'mapValue' => [
+                            'fields' => [
+                                'payment_method' => ['stringValue' => $paymentMethod],
+                                'payment_status'  => ['stringValue' => $paymentStatus],
+                            ]
+                        ]
+                    ],
+                    'pricing' => [
+                        'mapValue' => [
+                            'fields' => [
+                                'total_price_before_discount' => ['doubleValue' => (float)$order->total_price_before_discount],
+                                'discount_value'              => ['doubleValue' => (float)($order->discount_value ?? 0)],
+                                'total_price_after_discount'  => ['doubleValue' => (float)$order->total_price_after_discount],
+                                'net_price_for_driver'        => ['doubleValue' => (float)$order->net_price_for_driver],
+                                'commission_of_admin'         => ['doubleValue' => (float)$order->commision_of_admin],
+                            ]
+                        ]
+                    ],
+                    'reason_for_cancel'  => ['stringValue' => $order->reason_for_cancel ?? ''],
+                    'end_search'         => ['booleanValue' => $isFinished],
+                    'firebase_updated_at' => ['timestampValue' => now()->toIso8601String()],
+                ]
+            ];
+
+            $fields = [
+                'status',
+                'assigned_driver_id',
+                'payment_info',
+                'pricing',
+                'reason_for_cancel',
+                'end_search',
+                'firebase_updated_at',
+            ];
+
+            $updateMask = implode('&', array_map(
+                fn($f) => "updateMask.fieldPaths={$f}",
+                $fields
+            ));
+
+            $response = \Http::timeout(10)->patch(
+                "{$baseUrl}/ride_requests/{$order->id}?{$updateMask}",
+                $firestoreData
+            );
+
+            if ($response->successful()) {
+                \Log::info("Order #{$order->id} synced to Firestore from admin panel");
+            } else {
+                \Log::error("Failed to sync order #{$order->id} to Firestore: " . $response->body());
+            }
+        } catch (\Exception $e) {
+            \Log::error("Error syncing order #{$order->id} to Firestore: " . $e->getMessage());
+        }
     }
 }

@@ -139,8 +139,18 @@ class CleanupFinishedOrders extends Command
         // STEP 4: Process spam orders
         // ===================================
         foreach ($spamOrders as $spamOrder) {
-            try {
-                $removed = $this->removeOrderFromFirestore($spamOrder->id);
+            try {               
+                // ✅ Correct - this is the original order ID that Firestore knows about
+                $firestoreId = $spamOrder->original_order_id ?? $spamOrder->id;
+                
+                if (!$spamOrder->original_order_id) {
+                    \Log::warning("Spam order #{$spamOrder->id} has no original_order_id, skipping");
+                    $notFoundCount++;
+                    $progressBar->advance();
+                    continue;
+                }
+                
+                $removed = $this->removeOrderFromFirestore($spamOrder->original_order_id);
 
                 if ($removed === 'not_found') {
                     $notFoundCount++;
@@ -155,11 +165,10 @@ class CleanupFinishedOrders extends Command
             } catch (\Exception $e) {
                 $failCount++;
                 Log::error("Failed to remove spam order #{$spamOrder->id} from Firestore", [
-                    'order_id' => $spamOrder->id,
-                    'status' => $spamOrder->status,
+                    'spam_id' => $spamOrder->id,
+                    'original_order_id' => $spamOrder->original_order_id,
                     'error' => $e->getMessage()
                 ]);
-                
                 $progressBar->advance();
             }
         }

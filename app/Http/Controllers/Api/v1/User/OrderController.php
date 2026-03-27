@@ -500,6 +500,48 @@ class OrderController extends Controller
         return $hour >= 22 || $hour < 6;
     }
 
+    /**
+     * Read driver's current lat/lng directly from Firestore
+     * Collection: drivers / Document: {driver_id}
+     * Fields: lat (doubleValue), lng (doubleValue)
+     */
+    private function getDriverLocationFromFirestore(int $driverId): ?array
+    {
+        try {
+            $projectId = config('firebase.project_id');
+            $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/drivers/{$driverId}";
+
+            $response = Http::timeout(8)->get($url);
+
+            if (!$response->successful()) {
+                \Log::warning("Firestore: driver {$driverId} document not found (status {$response->status()})");
+                return null;
+            }
+
+            $fields = $response->json('fields') ?? [];
+
+            $lat = $this->extractFirestoreValue($fields, 'lat');
+            $lng = $this->extractFirestoreValue($fields, 'lng');
+
+            if ($lat === null || $lng === null) {
+                \Log::warning("Firestore: driver {$driverId} has no lat/lng");
+                return null;
+            }
+
+            return ['lat' => (float) $lat, 'lng' => (float) $lng];
+        } catch (\Exception $e) {
+            \Log::error("Firestore location fetch failed for driver {$driverId}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function extractFirestoreValue(array $fields, string $key)
+    {
+        if (!isset($fields[$key])) return null;
+        $f = $fields[$key];
+        return $f['doubleValue'] ?? $f['integerValue'] ?? $f['stringValue'] ?? null;
+    }
+
     private function haversineDistance($lat1, $lng1, $lat2, $lng2): float
     {
         $earthRadius = 6371;
@@ -799,8 +841,6 @@ class OrderController extends Controller
 
         $validator = Validator::make($request->all(), [
             'reason_for_cancel' => 'required|string|max:255',
-            'driver_current_lat' => 'nullable|numeric',
-            'driver_current_lng' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -824,36 +864,40 @@ class OrderController extends Controller
 
             if ($isFeeableStatus) {
                 // --- Check 1: Driver is more than halfway to the user → immediate fee ---
+                // Read driver's CURRENT location from Firestore (source of truth — updated by driver app)
                 $halfwayFeeApplied = false;
-                if (
-                    $request->filled('driver_current_lat') &&
-                    $request->filled('driver_current_lng') &&
-                    $order->driver_accepted_lat &&
-                    $order->driver_accepted_lng
-                ) {
-                    $driverCurrentLat = (float) $request->driver_current_lat;
-                    $driverCurrentLng = (float) $request->driver_current_lng;
-                    $acceptedLat      = (float) $order->driver_accepted_lat;
-                    $acceptedLng      = (float) $order->driver_accepted_lng;
-                    $pickLat          = (float) $order->pick_lat;
-                    $pickLng          = (float) $order->pick_lng;
+                if ($order->driver_id && $order->driver_accepted_lat && $order->driver_accepted_lng) {
+                    $driverCurrentLocation = $this->getDriverLocationFromFirestore($order->driver_id);
 
-                    $totalDistance   = $this->haversineDistance($acceptedLat, $acceptedLng, $pickLat, $pickLng);
-                    $remainingDistance = $this->haversineDistance($driverCurrentLat, $driverCurrentLng, $pickLat, $pickLng);
+                    if ($driverCurrentLocation) {
+                        $driverCurrentLat = $driverCurrentLocation['lat'];
+                        $driverCurrentLng = $driverCurrentLocation['lng'];
+                        $acceptedLat      = (float) $order->driver_accepted_lat;
+                        $acceptedLng      = (float) $order->driver_accepted_lng;
+                        $pickLat          = (float) $order->pick_lat;
+                        $pickLng          = (float) $order->pick_lng;
 
-                    // Driver has covered more than 50% of the route to pickup
-                    if ($totalDistance > 0 && $remainingDistance < ($totalDistance * 0.5)) {
-                        $halfwayFee = (float) (DB::table('settings')
-                            ->where('key', 'fee_when_user_cancel_with_driver_halfway')
-                            ->value('value') ?? 1.0);
+                        // Total distance driver needs to travel from acceptance point to pickup
+                        $totalDistance     = $this->haversineDistance($acceptedLat, $acceptedLng, $pickLat, $pickLng);
+                        // Remaining distance from driver's current position to pickup
+                        $remainingDistance = $this->haversineDistance($driverCurrentLat, $driverCurrentLng, $pickLat, $pickLng);
 
-                        if ($halfwayFee > 0) {
-                            $this->deductCancellationFee($user->id, $order->id, $halfwayFee);
-                            $cancellationFeeApplied = true;
-                            $cancellationFeeAmount  = $halfwayFee;
-                            $halfwayFeeApplied = true;
+                        \Log::info("Order {$order->id} halfway check: total={$totalDistance}km, remaining={$remainingDistance}km for driver {$order->driver_id}");
 
-                            \Log::info("Halfway cancellation fee of {$halfwayFee} JD applied to user {$user->id} for order {$order->id}");
+                        // Driver has covered more than 50% of the route to pickup
+                        if ($totalDistance > 0 && $remainingDistance < ($totalDistance * 0.5)) {
+                            $halfwayFee = (float) (DB::table('settings')
+                                ->where('key', 'fee_when_user_cancel_with_driver_halfway')
+                                ->value('value') ?? 1.0);
+
+                            if ($halfwayFee > 0) {
+                                $this->deductCancellationFee($user->id, $order->id, $halfwayFee);
+                                $cancellationFeeApplied = true;
+                                $cancellationFeeAmount  = $halfwayFee;
+                                $halfwayFeeApplied      = true;
+
+                                \Log::info("Halfway cancellation fee of {$halfwayFee} JD applied to user {$user->id} for order {$order->id}");
+                            }
                         }
                     }
                 }

@@ -29,6 +29,7 @@ class User extends Authenticatable
         'app_credit' => 'decimal:2',
         'app_credit_amount_per_order' => 'decimal:2',
         'app_credit_orders_remaining' => 'integer',
+        'app_credit_expires_at' => 'datetime',
         'wallet_amount_per_order' => 'decimal:2',
         'wallet_orders_remaining' => 'integer',
     ];
@@ -215,6 +216,18 @@ class User extends Authenticatable
             return 0;
         }
         
+        // التحقق من صلاحية رصيد التطبيق (انتهاء الصلاحية)
+        if ($this->app_credit_expires_at && now()->isAfter($this->app_credit_expires_at)) {
+            // انتهت صلاحية الرصيد، نصفّره
+            $this->update([
+                'app_credit' => 0,
+                'app_credit_orders_remaining' => 0,
+                'app_credit_amount_per_order' => 0,
+                'app_credit_expires_at' => null,
+            ]);
+            return 0;
+        }
+
         // إذا لم يكن هناك رحلات متبقية، لا يوجد رصيد متاح
         if ($this->app_credit_orders_remaining <= 0) {
             return 0;
@@ -245,13 +258,15 @@ class User extends Authenticatable
     /**
      * تطبيق توزيع رصيد التطبيق على المستخدم
      */
-    public function applyAppCreditDistribution($totalAmount, $numberOfOrders, $adminId = null)
+    public function applyAppCreditDistribution($totalAmount, $numberOfOrders, $adminId = null, $expiresDays = null)
     {
         $amountPerOrder = $numberOfOrders > 0 ? $totalAmount / $numberOfOrders : 0;
-        
+        $expiresAt = $expiresDays ? now()->addDays($expiresDays) : null;
+
         $this->app_credit = $totalAmount;
         $this->app_credit_amount_per_order = $amountPerOrder;
         $this->app_credit_orders_remaining = $numberOfOrders;
+        $this->app_credit_expires_at = $expiresAt;
         $this->save();
         
         // تسجيل الحركة

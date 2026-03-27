@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\RatingController;
 use App\Http\Controllers\Admin\SpamOrderController;
 use App\Http\Controllers\Admin\WalletDistributionController;
 use App\Http\Controllers\Reports\OrderStatusReportController;
+use App\Http\Controllers\Admin\DriverAcceptanceReportController;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
 use Spatie\Permission\Models\Permission;
 /*
@@ -64,6 +65,8 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
                 ->name('order-status-detail');
             Route::get('order-status-export', [OrderStatusReportController::class, 'export'])
                 ->name('order-status-export');
+            Route::get('driver-acceptance', [DriverAcceptanceReportController::class, 'index'])
+                ->name('driver-acceptance');
         });
 
         // تقارير السائقين
@@ -195,6 +198,7 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::get('orders/filter', [OrderController::class, 'filter'])->name('orders.filter');
         Route::post('orders/update-status/{id}', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
         Route::post('orders/update-payment-status/{id}', [OrderController::class, 'updatePaymentStatus'])->name('orders.updatePaymentStatus');
+        Route::get('orders/{id}/notified-drivers', [OrderController::class, 'notifiedDrivers'])->name('orders.notifiedDrivers');
         Route::get('users/{id}/orders', [OrderController::class, 'userOrders'])->name('orders.userOrders');
         Route::get('drivers/{id}/orders', [OrderController::class, 'driverOrders'])->name('orders.driverOrders');
 

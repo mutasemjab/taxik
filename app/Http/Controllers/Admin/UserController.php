@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
+use App\Models\RemovedRecord;
 use App\Models\User;
 use App\Models\UserBan;
 use App\Models\WalletTransaction;
@@ -333,17 +333,36 @@ public function show($id)
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
-    {
-        $user = User::findOrFail($id);
+    public function destroy(Request $request, $id)
+{
+    $user = User::findOrFail($id);
 
+    $request->validate([
+        'delete_reason' => 'nullable|string|max:500',
+    ]);
 
-        $user->delete();
+    \App\Models\RemovedRecord::create([
+        'type'                  => 'user',
+        'original_id'           => $user->id,
+        'name'                  => $user->name,
+        'phone'                 => $user->phone,
+        'country_code'          => $user->country_code,
+        'email'                 => $user->email,
+        'balance'               => $user->balance,
+        'photo'                 => $user->photo,
+        'activate'              => $user->activate,
+        'full_data'             => json_encode($user->toArray()),
+        'deleted_by_admin_id'   => auth()->guard('admin')->id(),
+        'delete_reason'         => $request->delete_reason,
+        'deleted_at_original'   => now(),
+    ]);
 
-        return redirect()
-            ->route('users.index')
-            ->with('success', 'User deleted successfully');
-    }
+    $user->delete();
+
+    return redirect()
+        ->route('users.index')
+        ->with('success', 'User deleted successfully');
+}
 
     public function topUp(Request $request, $id)
     {

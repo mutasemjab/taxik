@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\Driver;
 use App\Models\Service;
 use App\Models\Coupon;
+use App\Enums\OrderStatus;
+use App\Services\EnhancedFCMService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -194,15 +196,63 @@ class OrderController extends Controller
         // Handle hybrid payment checkbox
         $data['is_hybrid_payment'] = $request->has('is_hybrid_payment') ? 1 : 0;
 
+        $previousDriverId = $order->driver_id;
         $order->update($data);
 
+        $freshOrder = $order->fresh();
 
         // ✅ Sync to Firestore
-        $this->syncOrderToFirestore($order->fresh());
+        $this->syncOrderToFirestore($freshOrder);
+
+        // ✅ Notify newly assigned driver via FCM
+        $newDriverId = $freshOrder->driver_id;
+        if ($newDriverId && $newDriverId != $previousDriverId) {
+            $driver = Driver::find($newDriverId);
+            if ($driver && $driver->fcm_token) {
+                try {
+                    EnhancedFCMService::sendOrderStatusToDriver(
+                        $freshOrder->id,
+                        OrderStatus::DriverAccepted,
+                        'تم تعيينك على هذه الرحلة من قبل الإدارة'
+                    );
+                    \Log::info("Admin assigned driver #{$newDriverId} to order #{$freshOrder->id} — FCM sent");
+                } catch (\Exception $e) {
+                    \Log::error("FCM failed for admin driver assignment: " . $e->getMessage());
+                }
+            }
+        }
 
         return redirect()
             ->route('orders.index')
             ->with('success', __('messages.Order_Updated_Successfully'));
+    }
+
+    /**
+     * Get drivers that were notified for a specific order (for cancelled orders modal).
+     */
+    public function notifiedDrivers($id)
+    {
+        $order = Order::with('user')->findOrFail($id);
+
+        $notifiedDrivers = \DB::table('order_drivers_notified')
+            ->join('drivers', 'order_drivers_notified.driver_id', '=', 'drivers.id')
+            ->where('order_drivers_notified.order_id', $id)
+            ->select(
+                'drivers.id',
+                'drivers.name',
+                'drivers.phone',
+                'order_drivers_notified.distance_km',
+                'order_drivers_notified.search_radius_km',
+                'order_drivers_notified.notified_at'
+            )
+            ->orderBy('order_drivers_notified.distance_km')
+            ->get();
+
+        return response()->json([
+            'order_id' => $order->id,
+            'order_number' => $order->number,
+            'drivers' => $notifiedDrivers,
+        ]);
     }
 
     /**

@@ -1,90 +1,112 @@
 @extends('layouts.admin')
 @section('title')
-notifications
+{{ __('messages.Send_Notification') }}
 @endsection
 
-
 @section('content')
-
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title card_title_center"> Add New notifications   </h3>
-        </div>
-        <!-- /.card-header -->
-        <div class="card-body">
-
-
-<div class="row justify-content-center">
-    <div class="col-6">
-        <div class="card">
-            <div class="card-body">
-                <form action="{{route('notifications.send')}}" method="post">
-                    @csrf
-                    <div class="form-group mt-0">
-                        <label for="title">Title</label>
-                        <input type="text" class="form-control @if($errors->has('title')) is-invalid @endif" id="title" name="title" value="{{old('title')}}">
-                        @if($errors->has('title'))
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $errors->first('title') }}</strong>
-                            </span>
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title card_title_center">{{ __('messages.Send_Notification') }}</h3>
+    </div>
+    <div class="card-body">
+        <div class="row justify-content-center">
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-body">
+                        @if(session('message'))
+                            <div class="alert alert-success">{{ session('message') }}</div>
                         @endif
-                    </div>
 
-                    <div class="form-group">
-                        <label for="body">Body</label>
-                        <textarea name="body" id="body" class="form-control @if($errors->has('body')) is-invalid @endif">{{old('body')}}</textarea>
-                        @if($errors->has('body'))
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $errors->first('body') }}</strong>
-                            </span>
-                        @endif
-                    </div>
+                        <form action="{{ route('notifications.send') }}" method="post" id="notification-form">
+                            @csrf
 
-                    <div class="form-group">
-                        <label for="type">Notification Type</label>
-                       <select name="type" id="type" class="form-control">
-                            <option value="0">All Users and Drivers</option>
-                            <option value="1">Only Users</option>
-                            <option value="2">Only Drivers</option>
-                        </select>
+                            <div class="form-group mt-0">
+                                <label for="title">{{ __('messages.Title') }}</label>
+                                <input type="text"
+                                       class="form-control @error('title') is-invalid @enderror"
+                                       id="title" name="title" value="{{ old('title') }}">
+                                @error('title')
+                                    <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                @enderror
+                            </div>
 
-                        @if($errors->has('type'))
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $errors->first('type') }}</strong>
-                            </span>
-                        @endif
-                    </div>
+                            <div class="form-group">
+                                <label for="body">{{ __('messages.Body') }}</label>
+                                <textarea name="body" id="body"
+                                          class="form-control @error('body') is-invalid @enderror"
+                                          rows="4">{{ old('body') }}</textarea>
+                                @error('body')
+                                    <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                @enderror
+                            </div>
 
-                    <div class="text-right mt-3">
-                        <button type="submit" class="btn btn-primary waves-effect waves-light">Send Notification</button>
+                            <div class="form-group">
+                                <label for="type">{{ __('messages.Notification_Type') }}</label>
+                                <select name="type" id="type" class="form-control" onchange="toggleTargetField()">
+                                    <option value="0" {{ old('type') == '0' ? 'selected' : '' }}>{{ __('messages.All_Users_And_Drivers') }}</option>
+                                    <option value="1" {{ old('type') == '1' ? 'selected' : '' }}>{{ __('messages.Only_Users') }}</option>
+                                    <option value="2" {{ old('type') == '2' ? 'selected' : '' }}>{{ __('messages.Only_Drivers') }}</option>
+                                    <option value="3" {{ old('type') == '3' ? 'selected' : '' }}>{{ __('messages.Specific_User') }}</option>
+                                    <option value="4" {{ old('type') == '4' ? 'selected' : '' }}>{{ __('messages.Specific_Driver') }}</option>
+                                </select>
+                                @error('type')
+                                    <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
+                                @enderror
+                            </div>
+
+                            {{-- Specific User --}}
+                            <div class="form-group" id="specific-user-field" style="display:none;">
+                                <label for="target_id_user">{{ __('messages.Select_User') }}</label>
+                                <select name="target_id" id="target_id_user" class="form-control">
+                                    <option value="">-- {{ __('messages.Select_User') }} --</option>
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}" {{ old('target_id') == $user->id ? 'selected' : '' }}>
+                                            {{ $user->name }} ({{ $user->phone }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('target_id')
+                                    <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
+                                @enderror
+                            </div>
+
+                            {{-- Specific Driver --}}
+                            <div class="form-group" id="specific-driver-field" style="display:none;">
+                                <label for="target_id_driver">{{ __('messages.Select_Driver') }}</label>
+                                <select name="target_id" id="target_id_driver" class="form-control">
+                                    <option value="">-- {{ __('messages.Select_Driver') }} --</option>
+                                    @foreach($drivers as $driver)
+                                        <option value="{{ $driver->id }}" {{ old('target_id') == $driver->id ? 'selected' : '' }}>
+                                            {{ $driver->name }} ({{ $driver->phone }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="text-right mt-3">
+                                <button type="submit" class="btn btn-primary waves-effect waves-light">
+                                    <i class="fas fa-paper-plane"></i> {{ __('messages.Send_Notification') }}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<script>
+function toggleTargetField() {
+    var type = document.getElementById('type').value;
+    document.getElementById('specific-user-field').style.display   = (type === '3') ? 'block' : 'none';
+    document.getElementById('specific-driver-field').style.display = (type === '4') ? 'block' : 'none';
 
-
-
-            </div>
-
-
-
-
-        </div>
-      </div>
-
-
-
-
-
-
+    // Remove name from hidden selects to avoid sending both
+    document.getElementById('target_id_user').name   = (type === '3') ? 'target_id' : '';
+    document.getElementById('target_id_driver').name = (type === '4') ? 'target_id' : '';
+}
+// Run on page load to restore state after validation error
+document.addEventListener('DOMContentLoaded', toggleTargetField);
+</script>
 @endsection
-
-
-
-
-
-
-

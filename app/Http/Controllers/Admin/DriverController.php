@@ -480,11 +480,35 @@ class DriverController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $driver = Driver::findOrFail($id);
 
-        // Delete all driver images if they exist
+        $request->validate([
+            'delete_reason' => 'nullable|string|max:500',
+        ]);
+
+        \App\Models\RemovedRecord::create([
+            'type'                  => 'driver',
+            'original_id'           => $driver->id,
+            'name'                  => $driver->name,
+            'phone'                 => $driver->phone,
+            'country_code'          => $driver->country_code,
+            'email'                 => $driver->email,
+            'balance'               => $driver->balance,
+            'photo'                 => $driver->photo,
+            'activate'              => $driver->activate,
+            'model'                 => $driver->model,
+            'plate_number'          => $driver->plate_number,
+            'color'                 => $driver->color,
+            'production_year'       => $driver->production_year,
+            'full_data'             => json_encode($driver->toArray()),
+            'deleted_by_admin_id'   => auth()->guard('admin')->id(),
+            'delete_reason'         => $request->delete_reason,
+            'deleted_at_original'   => now(),
+        ]);
+
+        // Delete images
         $imageFields = [
             'photo',
             'photo_of_car',
@@ -493,7 +517,6 @@ class DriverController extends Controller
             'car_license_front',
             'car_license_back'
         ];
-
         foreach ($imageFields as $field) {
             if ($driver->$field && file_exists('assets/admin/uploads/' . $driver->$field)) {
                 unlink('assets/admin/uploads/' . $driver->$field);

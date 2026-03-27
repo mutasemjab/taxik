@@ -49,7 +49,8 @@ class WalletDistribution extends Model
             $user->applyAppCreditDistribution(
                 $this->total_amount,
                 $this->number_of_orders,
-                auth('admin')->id() ?? null
+                auth('admin')->id() ?? null,
+                $this->expires_days
             );
         }
 
@@ -97,7 +98,8 @@ class WalletDistribution extends Model
         $user->applyAppCreditDistribution(
             $activeDistribution->total_amount,
             $activeDistribution->number_of_orders,
-            null // No admin for automatic registration
+            null, // No admin for automatic registration
+            $activeDistribution->expires_days
         );
 
         \Log::info("Active app credit distribution ({$activeDistribution->id}) applied to new user {$user->id}");

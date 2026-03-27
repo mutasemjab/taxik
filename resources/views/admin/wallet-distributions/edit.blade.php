@@ -67,12 +67,33 @@
                             </div>
                         </div>
 
+                        <!-- تاريخ انتهاء الصلاحية (أيام) -->
+                        <div class="form-group">
+                            <label for="expires_days">{{ __('messages.expires_days') }}</label>
+                            <div class="input-group">
+                                <input type="number"
+                                       name="expires_days"
+                                       id="expires_days"
+                                       class="form-control @error('expires_days') is-invalid @enderror"
+                                       value="{{ old('expires_days', $distribution->expires_days) }}"
+                                       min="1"
+                                       placeholder="{{ __('messages.expires_days_placeholder') }}">
+                                <div class="input-group-append">
+                                    <span class="input-group-text">{{ __('messages.days') }}</span>
+                                </div>
+                                @error('expires_days')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <small class="form-text text-muted">{{ __('messages.expires_days_help') }}</small>
+                        </div>
+
                         <!-- تفعيل -->
                         <div class="form-group">
                             <div class="custom-control custom-switch">
-                                <input type="checkbox" 
-                                       name="activate" 
-                                       class="custom-control-input" 
+                                <input type="checkbox"
+                                       name="activate"
+                                       class="custom-control-input"
                                        id="activate"
                                        {{ old('activate', $distribution->activate) ? 'checked' : '' }}>
                                 <label class="custom-control-label" for="activate">

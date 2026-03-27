@@ -500,6 +500,19 @@ class OrderController extends Controller
         return $hour >= 22 || $hour < 6;
     }
 
+    private function haversineDistance($lat1, $lng1, $lat2, $lng2): float
+    {
+        $earthRadius = 6371;
+        $lat1 = deg2rad($lat1);
+        $lng1 = deg2rad($lng1);
+        $lat2 = deg2rad($lat2);
+        $lng2 = deg2rad($lng2);
+        $latDelta = $lat2 - $lat1;
+        $lngDelta = $lng2 - $lng1;
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($lat1) * cos($lat2) * pow(sin($lngDelta / 2), 2)));
+        return $earthRadius * $angle;
+    }
+
     private function calculateDistanceFallback($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // Radius in kilometers
@@ -785,7 +798,9 @@ class OrderController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'reason_for_cancel' => 'required|string|max:255'
+            'reason_for_cancel' => 'required|string|max:255',
+            'driver_current_lat' => 'nullable|numeric',
+            'driver_current_lng' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -796,37 +811,77 @@ class OrderController extends Controller
             \DB::beginTransaction();
 
             $isPendingOrder = $order->status === OrderStatus::Pending;
-            $isDriverAccepted = $order->status === OrderStatus::DriverAccepted;
+
+            // Fee applies whenever the driver has already been assigned (any post-acceptance status)
+            $isFeeableStatus = in_array($order->status, [
+                OrderStatus::DriverAccepted,
+                OrderStatus::DriverGoToUser,
+                OrderStatus::Arrived,
+            ]);
 
             $cancellationFeeApplied = false;
             $cancellationFeeAmount = 0;
 
-            // ✅ NEW: Check cancellation count and apply fee if exceeded
-            if ($isDriverAccepted) {
-                // Get settings
-                $maxCancellations = (int) DB::table('settings')
-                    ->where('key', 'times_that_user_cancel_orders_in_one_day')
-                    ->value('value') ?? 2;
+            if ($isFeeableStatus) {
+                // --- Check 1: Driver is more than halfway to the user → immediate fee ---
+                $halfwayFeeApplied = false;
+                if (
+                    $request->filled('driver_current_lat') &&
+                    $request->filled('driver_current_lng') &&
+                    $order->driver_accepted_lat &&
+                    $order->driver_accepted_lng
+                ) {
+                    $driverCurrentLat = (float) $request->driver_current_lat;
+                    $driverCurrentLng = (float) $request->driver_current_lng;
+                    $acceptedLat      = (float) $order->driver_accepted_lat;
+                    $acceptedLng      = (float) $order->driver_accepted_lng;
+                    $pickLat          = (float) $order->pick_lat;
+                    $pickLng          = (float) $order->pick_lng;
 
-                $cancellationFee = (float) DB::table('settings')
-                    ->where('key', 'fee_when_user_cancel_order_more_times')
-                    ->value('value') ?? 0.5;
+                    $totalDistance   = $this->haversineDistance($acceptedLat, $acceptedLng, $pickLat, $pickLng);
+                    $remainingDistance = $this->haversineDistance($driverCurrentLat, $driverCurrentLng, $pickLat, $pickLng);
 
-                // Count today's cancellations
-                $todayCancellations = Order::where('user_id', $user->id)
-                    ->where('status', OrderStatus::UserCancelOrder)
-                    ->whereDate('updated_at', today())
-                    ->count();
+                    // Driver has covered more than 50% of the route to pickup
+                    if ($totalDistance > 0 && $remainingDistance < ($totalDistance * 0.5)) {
+                        $halfwayFee = (float) (DB::table('settings')
+                            ->where('key', 'fee_when_user_cancel_with_driver_halfway')
+                            ->value('value') ?? 1.0);
 
-                \Log::info("User {$user->id} cancellations today: {$todayCancellations}, max allowed: {$maxCancellations}");
+                        if ($halfwayFee > 0) {
+                            $this->deductCancellationFee($user->id, $order->id, $halfwayFee);
+                            $cancellationFeeApplied = true;
+                            $cancellationFeeAmount  = $halfwayFee;
+                            $halfwayFeeApplied = true;
 
-                // Apply fee if exceeded limit
-                if ($todayCancellations >= $maxCancellations && $cancellationFee > 0) {
-                    $this->deductCancellationFee($user->id, $order->id, $cancellationFee);
-                    $cancellationFeeApplied = true;
-                    $cancellationFeeAmount = $cancellationFee;
+                            \Log::info("Halfway cancellation fee of {$halfwayFee} JD applied to user {$user->id} for order {$order->id}");
+                        }
+                    }
+                }
 
-                    \Log::info("Cancellation fee of {$cancellationFee} JD applied to user {$user->id} for order {$order->id}");
+                // --- Check 2: User exceeded daily cancellation limit ---
+                if (!$halfwayFeeApplied) {
+                    $maxCancellations = (int) (DB::table('settings')
+                        ->where('key', 'times_that_user_cancel_orders_in_one_day')
+                        ->value('value') ?? 2);
+
+                    $cancellationFee = (float) (DB::table('settings')
+                        ->where('key', 'fee_when_user_cancel_order_more_times')
+                        ->value('value') ?? 0.5);
+
+                    $todayCancellations = Order::where('user_id', $user->id)
+                        ->where('status', OrderStatus::UserCancelOrder)
+                        ->whereDate('updated_at', today())
+                        ->count();
+
+                    \Log::info("User {$user->id} cancellations today: {$todayCancellations}, max allowed: {$maxCancellations}");
+
+                    if ($todayCancellations > $maxCancellations && $cancellationFee > 0) {
+                        $this->deductCancellationFee($user->id, $order->id, $cancellationFee);
+                        $cancellationFeeApplied = true;
+                        $cancellationFeeAmount  = $cancellationFee;
+
+                        \Log::info("Cancellation fee of {$cancellationFee} JD applied to user {$user->id} for order {$order->id}");
+                    }
                 }
             }
 

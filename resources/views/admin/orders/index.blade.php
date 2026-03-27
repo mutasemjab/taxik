@@ -282,16 +282,34 @@
                             </td>
                             <td>
                                 <div class="route-info">
-                                    <div class="text-success">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <small>{{ Str::limit($order->pick_name, 20) }}</small>
+                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                        <i class="fas fa-map-marker-alt text-success"></i>
+                                        <small class="mr-1">{{ Str::limit($order->pick_name, 18) }}</small>
+                                        @if($order->pick_lat && $order->pick_lng)
+                                        <a href="https://www.google.com/maps?q={{ $order->pick_lat }},{{ $order->pick_lng }}"
+                                           target="_blank"
+                                           class="btn btn-xs btn-outline-success py-0 px-1"
+                                           title="{{ __('messages.View_On_Map') }}"
+                                           style="font-size:0.65rem;border-radius:10px;">
+                                            <i class="fas fa-map"></i>
+                                        </a>
+                                        @endif
                                     </div>
                                     <div class="text-center text-muted my-1">
                                         <i class="fas fa-arrow-down"></i>
                                     </div>
-                                    <div class="text-danger">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <small>{{ Str::limit($order->drop_name, 20) }}</small>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="fas fa-map-marker-alt text-danger"></i>
+                                        <small class="mr-1">{{ Str::limit($order->drop_name, 18) }}</small>
+                                        @if($order->drop_lat && $order->drop_lng)
+                                        <a href="https://www.google.com/maps?q={{ $order->drop_lat }},{{ $order->drop_lng }}"
+                                           target="_blank"
+                                           class="btn btn-xs btn-outline-danger py-0 px-1"
+                                           title="{{ __('messages.View_On_Map') }}"
+                                           style="font-size:0.65rem;border-radius:10px;">
+                                            <i class="fas fa-map"></i>
+                                        </a>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -397,9 +415,15 @@
                                     <a href="{{ route('orders.edit', $order->id) }}" class="btn btn-primary btn-sm mb-1" title="{{ __('messages.Edit') }}">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                  
+                                    @if(is_object($order->status) ? $order->status->value === 'driver_cancel_order' : $order->status === 'driver_cancel_order')
+                                    <button type="button"
+                                            class="btn btn-warning btn-sm mb-1"
+                                            title="{{ __('messages.View_Notified_Drivers') }}"
+                                            onclick="loadNotifiedDrivers({{ $order->id }}, '{{ $order->number ?? $order->id }}')">
+                                        <i class="fas fa-users"></i>
+                                    </button>
+                                    @endif
                                 </div>
-                              
                             </td>
                         </tr>
                         @endforeach
@@ -459,4 +483,93 @@
         }
     }
 </style>
+<!-- Notified Drivers Modal -->
+<div class="modal fade" id="notifiedDriversModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-users mr-2"></i>
+                    {{ __('messages.View_Notified_Drivers') }}
+                    <span id="modal-order-number" class="text-muted ml-2" style="font-size:0.85em;"></span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="notified-drivers-loading" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                </div>
+                <div id="notified-drivers-content" style="display:none;">
+                    <table class="table table-bordered table-sm">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>{{ __('messages.Driver') }}</th>
+                                <th>{{ __('messages.Phone') }}</th>
+                                <th>{{ __('messages.Distance') }}</th>
+                                <th>{{ __('messages.Search_Radius') }}</th>
+                                <th>{{ __('messages.Notified_At') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notified-drivers-tbody"></tbody>
+                    </table>
+                    <p id="no-drivers-msg" class="text-center text-muted" style="display:none;">
+                        {{ __('messages.No_Drivers_Notified') }}
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('messages.Close') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section('script')
+<script>
+function loadNotifiedDrivers(orderId, orderNumber) {
+    document.getElementById('modal-order-number').textContent = '#' + orderNumber;
+    document.getElementById('notified-drivers-loading').style.display = 'block';
+    document.getElementById('notified-drivers-content').style.display = 'none';
+    document.getElementById('no-drivers-msg').style.display = 'none';
+    document.getElementById('notified-drivers-tbody').innerHTML = '';
+
+    $('#notifiedDriversModal').modal('show');
+
+    fetch('{{ url('admiinnnwmk/orders') }}/' + orderId + '/notified-drivers', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('notified-drivers-loading').style.display = 'none';
+        document.getElementById('notified-drivers-content').style.display = 'block';
+
+        const tbody = document.getElementById('notified-drivers-tbody');
+        if (!data.drivers || data.drivers.length === 0) {
+            document.getElementById('no-drivers-msg').style.display = 'block';
+            return;
+        }
+
+        data.drivers.forEach((d, i) => {
+            const row = `<tr>
+                <td>${i + 1}</td>
+                <td><a href="/admiinnnwmk/drivers/${d.id}" target="_blank">${d.name}</a></td>
+                <td>${d.phone || '-'}</td>
+                <td>${d.distance_km ? d.distance_km + ' km' : '-'}</td>
+                <td>${d.search_radius_km ? d.search_radius_km + ' km' : '-'}</td>
+                <td>${d.notified_at ? new Date(d.notified_at).toLocaleString() : '-'}</td>
+            </tr>`;
+            tbody.insertAdjacentHTML('beforeend', row);
+        });
+    })
+    .catch(err => {
+        document.getElementById('notified-drivers-loading').style.display = 'none';
+        document.getElementById('notified-drivers-content').style.display = 'block';
+        document.getElementById('notified-drivers-tbody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading data</td></tr>';
+    });
+}
+</script>
+@endsection
 @endsection

@@ -252,6 +252,16 @@
                                                 title="{{ __('messages.Ban_History') }}">
                                                 <i class="fas fa-history"></i>
                                             </a>
+
+                                            @can('driver-delete')
+    <button type="button"
+            class="btn btn-danger btn-sm mr-1 mb-1"
+            data-toggle="modal"
+            data-target="#deleteModal{{ $driver->id }}"
+            title="{{ __('messages.Delete') }}">
+        <i class="fas fa-trash"></i>
+    </button>
+@endcan
                                         </div>
                                     </td>
 
@@ -389,4 +399,47 @@
         @endif
     @endforeach
 
+    {{-- Delete Modals --}}
+@foreach ($drivers as $driver)
+    @can('driver-delete')
+    <div class="modal fade" id="deleteModal{{ $driver->id }}" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trash"></i>
+                        {{ __('messages.Delete_Driver') }}: {{ $driver->name }}
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form action="{{ route('drivers.destroy', $driver->id) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            {{ __('messages.Delete_Confirmation_Message') }}
+                        </div>
+
+                        <div class="form-group">
+                            <label>{{ __('messages.Delete_Reason') }} ({{ __('messages.Optional') }})</label>
+                            <textarea class="form-control" name="delete_reason" rows="3"
+                                placeholder="{{ __('messages.Enter_Reason_For_Deletion') }}"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary"
+                            data-dismiss="modal">{{ __('messages.Cancel') }}</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> {{ __('messages.Delete') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endcan
+@endforeach
 @endsection

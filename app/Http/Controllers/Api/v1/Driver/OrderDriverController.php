@@ -13,6 +13,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\StatusPayment;
 use App\Models\OrderRejection;
+use App\Models\Rating;
 use App\Models\OrderStatusHistory;
 use App\Models\WalletTransaction;
 use Illuminate\Validation\Rule;
@@ -296,6 +297,19 @@ class OrderDriverController extends Controller
             return $this->error_response('Order not found', null);
         }
 
+        // Bug 4 fix: guard against cancelling orders that are already in a terminal state
+        $cancellableStatuses = [
+            OrderStatus::DriverAccepted,
+            OrderStatus::DriverGoToUser,
+            OrderStatus::Arrived,
+        ];
+
+        if (!in_array($order->status, $cancellableStatuses)) {
+            return $this->error_response('Order cannot be cancelled at this stage', [
+                'current_status' => $order->status->value,
+            ]);
+        }
+
         $validator = Validator::make($request->all(), [
             'reason_for_cancel' => 'required|string|max:255'
         ]);
@@ -358,10 +372,25 @@ class OrderDriverController extends Controller
                 // Deduct from driver's wallet
                 $this->deductFromDriverWallet($driverId, $orderId, $penaltyFee);
 
+                // Auto 1-star rating for driver when penalty is applied
+                $order = Order::with('user')->find($orderId);
+                if ($order && $order->user_id) {
+                    Rating::create([
+                        'rating'    => 1,
+                        'review'    => 'تم إلغاء الطلب من قبل السائق (غرامة تلقائية)',
+                        'user_id'   => $order->user_id,
+                        'driver_id' => $driverId,
+                        'order_id'  => $orderId,
+                    ]);
+
+                    \Log::info("Auto 1-star rating created for driver {$driverId} on order {$orderId}");
+                }
+
                 DB::commit();
 
                 $result['applied'] = true;
                 $result['amount'] = $penaltyFee;
+                $result['auto_rating_applied'] = true;
             } catch (\Exception $e) {
                 DB::rollback();
                 \Log::error('Error applying cancellation penalty: ' . $e->getMessage());
@@ -447,11 +476,19 @@ class OrderDriverController extends Controller
 
             try {
                 // Update order with driver information
-                $order->update([
+                $updateData = [
                     'driver_id' => $driver->id,
                     'status' => OrderStatus::DriverAccepted,
-                    'updated_at' => now()
-                ]);
+                    'updated_at' => now(),
+                ];
+
+                // Store driver's current position at acceptance for halfway cancellation fee calculation
+                if ($request->filled('driver_lat') && $request->filled('driver_lng')) {
+                    $updateData['driver_accepted_lat'] = $request->driver_lat;
+                    $updateData['driver_accepted_lng'] = $request->driver_lng;
+                }
+
+                $order->update($updateData);
 
                 DB::commit();
 

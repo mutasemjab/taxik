@@ -1,0 +1,298 @@
+/* =============================================
+   Taxik Admin Login Page - Custom Styles
+   ============================================= */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body.taxik-login {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f2f8;
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+}
+
+/* ---- Layout ---- */
+.login-layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* ---- Left Branding Panel ---- */
+.login-brand {
+    flex: 0 0 45%;
+    background: linear-gradient(145deg, #0f0c29 0%, #1e2a45 40%, #4361ee 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 40px;
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+}
+
+/* Decorative circles */
+.login-brand::before {
+    content: '';
+    position: absolute;
+    width: 450px; height: 450px;
+    border-radius: 50%;
+    border: 60px solid rgba(255,255,255,.04);
+    top: -120px; right: -120px;
+}
+.login-brand::after {
+    content: '';
+    position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    border: 40px solid rgba(255,255,255,.04);
+    bottom: -80px; left: -80px;
+}
+.brand-circle-mid {
+    position: absolute;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.03);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.brand-content {
+    position: relative; z-index: 1;
+    text-align: center;
+    max-width: 340px;
+}
+
+.brand-logo-wrap {
+    width: 90px; height: 90px;
+    border-radius: 24px;
+    background: rgba(255,255,255,.12);
+    border: 2px solid rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 2.5rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+
+.brand-name {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.brand-name span {
+    color: #4361ee;
+    background: rgba(255,255,255,.9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.brand-tagline {
+    font-size: 1rem;
+    opacity: .75;
+    margin-bottom: 40px;
+    line-height: 1.6;
+}
+
+/* Stats inside brand panel */
+.brand-stats {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 10px;
+}
+.brand-stat {
+    text-align: center;
+    padding: 14px 20px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    backdrop-filter: blur(6px);
+    min-width: 80px;
+}
+.brand-stat .bs-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+.brand-stat .bs-lbl {
+    font-size: .72rem;
+    opacity: .65;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+/* ---- Right Form Panel ---- */
+.login-form-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    background: #ffffff;
+}
+
+.login-box-inner {
+    width: 100%;
+    max-width: 420px;
+}
+
+.lf-header {
+    margin-bottom: 32px;
+    text-align: center;
+}
+.lf-header h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1e2a45;
+    margin-bottom: 6px;
+}
+.lf-header p {
+    font-size: .9rem;
+    color: #8492a6;
+}
+
+/* ---- Form Elements ---- */
+.lf-group {
+    margin-bottom: 20px;
+}
+.lf-group label {
+    display: block;
+    font-size: .82rem;
+    font-weight: 700;
+    color: #4a5568;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.lf-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.lf-input-wrap .lf-icon {
+    position: absolute;
+    left: 14px;
+    color: #8492a6;
+    font-size: .95rem;
+    pointer-events: none;
+    transition: color .2s;
+}
+.lf-input-wrap input {
+    width: 100%;
+    padding: 13px 14px 13px 42px;
+    border: 2px solid #e8ecf4;
+    border-radius: 10px;
+    font-size: .93rem;
+    color: #1e2a45;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color .2s, background .2s, box-shadow .2s;
+}
+.lf-input-wrap input::placeholder { color: #b0bac9; }
+.lf-input-wrap input:focus {
+    border-color: #4361ee;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(67,97,238,.1);
+}
+.lf-input-wrap input:focus + .lf-icon,
+.lf-input-wrap:focus-within .lf-icon {
+    color: #4361ee;
+}
+/* fix icon position when inside wrap (icon is before input in DOM) */
+.lf-input-wrap input { order: 2; }
+.lf-input-wrap .lf-icon { order: 1; }
+
+/* toggle password visibility */
+.lf-input-wrap .lf-eye {
+    position: absolute;
+    right: 14px;
+    color: #8492a6;
+    cursor: pointer;
+    font-size: .95rem;
+    background: none;
+    border: none;
+    padding: 0;
+    transition: color .2s;
+}
+.lf-input-wrap .lf-eye:hover { color: #4361ee; }
+
+.lf-error {
+    color: #e74c3c;
+    font-size: .8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ---- Submit Button ---- */
+.lf-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: .5px;
+    transition: opacity .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 6px 20px rgba(67,97,238,.4);
+    margin-top: 8px;
+}
+.lf-btn:hover {
+    opacity: .92;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px rgba(67,97,238,.45);
+}
+.lf-btn:active { transform: translateY(0); }
+
+/* ---- Divider ---- */
+.lf-divider {
+    text-align: center;
+    color: #c1cad6;
+    font-size: .8rem;
+    margin: 24px 0 0;
+    position: relative;
+}
+.lf-divider::before {
+    content: '';
+    display: block;
+    height: 1px;
+    background: #e8ecf4;
+    margin-bottom: -10px;
+}
+.lf-footer {
+    text-align: center;
+    margin-top: 28px;
+    color: #8492a6;
+    font-size: .82rem;
+}
+.lf-footer strong {
+    color: #1e2a45;
+    font-weight: 700;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 860px) {
+    .login-brand { display: none; }
+    .login-form-panel { background: linear-gradient(135deg, #1e2a45 0%, #4361ee 100%); }
+    .login-box-inner {
+        background: #fff;
+        border-radius: 20px;
+        padding: 36px 28px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+}
+@media (max-width: 480px) {
+    .login-box-inner { padding: 28px 20px; }
+    .lf-header h2 { font-size: 1.4rem; }
+}

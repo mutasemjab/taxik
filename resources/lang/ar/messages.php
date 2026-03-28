@@ -2006,6 +2006,9 @@ return [
 'Delete_Confirmation_Message' => 'هل أنت متأكد أنك تريد حذف هذا السجل نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',
 'Enter_Reason_For_Deletion'   => 'أدخل سبب الحذف...',
     'driver-acceptance' => 'السائقين المقبولين',
+        'Waiting Payment' => 'بانتظار الدفع',
+    'On The Way' => 'في الطريق',
+
 
     '' => '',
     '' => '',

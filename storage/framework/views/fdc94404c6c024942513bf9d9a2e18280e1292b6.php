@@ -321,6 +321,15 @@
                                     </a>
                                 </li>
                             <?php endif; ?>
+                            <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('report-view')): ?>
+                                <li class="nav-item">
+                                    <a href="<?php echo e(route('reports.driver-acceptance')); ?>"
+                                        class="nav-link <?php echo e(request()->routeIs('reports.driver-acceptance') ? 'active' : ''); ?>">
+                                        <i class="fas fa-history nav-icon"></i>
+                                        <p><?php echo e(__('messages.driver-acceptance')); ?></p>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
 
                             <!-- Financial Reports Submenu -->
                             <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('financial-reports-list')): ?>

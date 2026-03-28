@@ -100,6 +100,31 @@ class DashboardController extends Controller
         $usersGrowth = $this->calculateUsersGrowthThisMonth();
         $driversGrowth = $this->calculateDriversGrowthThisMonth();
 
+        // Recent 8 orders
+        $recentOrders = Order::with(['user', 'driver'])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        // Top 5 drivers by completed orders today
+        $topDriversToday = DB::table('orders')
+            ->join('drivers', 'orders.driver_id', '=', 'drivers.id')
+            ->whereDate('orders.updated_at', $today)
+            ->where('orders.status', 'completed')
+            ->whereNotNull('orders.driver_id')
+            ->select(
+                'drivers.id',
+                'drivers.name',
+                'drivers.phone',
+                'drivers.photo',
+                DB::raw('COUNT(orders.id) as trips_count'),
+                DB::raw('SUM(orders.net_price_for_driver) as total_earned')
+            )
+            ->groupBy('drivers.id', 'drivers.name', 'drivers.phone', 'drivers.photo')
+            ->orderByDesc('trips_count')
+            ->limit(5)
+            ->get();
+
         return view('admin.dashboard', compact(
             'usersCount',
             'driversCount',
@@ -122,7 +147,9 @@ class DashboardController extends Controller
             'earningsGrowth',
             'ordersGrowth',
             'usersGrowth',
-            'driversGrowth'
+            'driversGrowth',
+            'recentOrders',
+            'topDriversToday'
         ));
     }
 

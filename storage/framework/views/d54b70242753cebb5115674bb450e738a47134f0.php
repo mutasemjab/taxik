@@ -1,95 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>تسجيل الدخول</title>
-  <!-- Tell the browser to be responsive to screen width -->
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/plugins/fontawesome-free/css/all.min.css')); ?>">
-  <!-- Ionicons -->
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/fonts/ionicons/2.0.1/css/ionicons.min.css')); ?>">
-  <!-- icheck bootstrap -->
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/plugins/icheck-bootstrap/icheck-bootstrap.min.css')); ?>">
-  <!-- Theme style -->
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/dist/css/adminlte.min.css')); ?>">
-  <!-- Google Font: Source Sans Pro -->
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/fonts/SansPro/SansPro.min.css')); ?>">
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/css/bootstrap_rtl-v4.2.1/bootstrap.min.css')); ?>">
-  <link rel="stylesheet" href="<?php echo e(asset('assets/admin/css/bootstrap_rtl-v4.2.1/custom_rtl.css')); ?>">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>تسجيل الدخول — Taxi</title>
+    <link rel="stylesheet" href="<?php echo e(asset('assets/admin/plugins/fontawesome-free/css/all.min.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(asset('assets/admin/css/login.css')); ?>">
 </head>
-<body class="hold-transition login-page">
-<div class="login-box">
+<body class="taxik-login">
 
-  <!-- /.login-logo -->
-  <div class="card">
-    <div class="card-body login-card-body">
-      <p class="login-box-msg">تسجيل الدخول</p>
+<div class="login-layout">
 
-      <form action="<?php echo e(route('admin.login')); ?>" method="post">
-        <?php echo csrf_field(); ?>
-        <div class="input-group mb-3">
-          <input  type="text" name="username" class="form-control" placeholder="username">
-          <div class="input-group-append">
-            <div class="input-group-text">
-              <span class="fas fa-envelope"></span>
+    
+    <div class="login-brand">
+        <div class="brand-circle-mid"></div>
+        <div class="brand-content">
+
+            <div class="brand-logo-wrap">
+                <i class="fas fa-taxi"></i>
             </div>
-          </div>
 
-        </div>
-        <?php $__errorArgs = ['username'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-        <span class="text-danger"><?php echo e($message); ?></span>
-      <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
+            <div class="brand-name">TAXI</div>
+            <p class="brand-tagline">
+                لوحة تحكم متكاملة لإدارة رحلاتك<br>
+                وسائقيك وعملائك بكل سهولة
+            </p>
 
-        <div class="input-group mb-3">
-          <input type="password" name="password" class="form-control" placeholder="Password">
-          <div class="input-group-append">
-            <div class="input-group-text">
-              <span class="fas fa-lock"></span>
+            <div class="brand-stats">
+                <div class="brand-stat">
+                    <div class="bs-num"><i class="fas fa-car"></i></div>
+                    <div class="bs-lbl">سائقون</div>
+                </div>
+                <div class="brand-stat">
+                    <div class="bs-num"><i class="fas fa-users"></i></div>
+                    <div class="bs-lbl">مستخدمون</div>
+                </div>
+                <div class="brand-stat">
+                    <div class="bs-num"><i class="fas fa-route"></i></div>
+                    <div class="bs-lbl">رحلات</div>
+                </div>
             </div>
-          </div>
 
         </div>
-        <?php $__errorArgs = ['password'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-        <span class="text-danger"><?php echo e($message); ?></span>
-      <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-        <div class="row">
-
-          <!-- /.col -->
-          <div class="col-12">
-            <button type="submit" class="btn btn-primary btn-block btn-flat">دخول </button>
-          </div>
-          <!-- /.col -->
-        </div>
-      </form>
-
-
     </div>
-    <!-- /.login-card-body -->
-  </div>
-</div>
-<!-- /.login-box -->
 
-<!-- jQuery -->
-<script src="<?php echo e(asset('assets/admin/plugins/jquery/jquery.min.js')); ?>"></script>
-<!-- Bootstrap 4 -->
-<script src="<?php echo e(asset('assets/admin/plugins/bootstrap/js/bootstrap.bundle.min.js')); ?>"></script>
+    
+    <div class="login-form-panel">
+        <div class="login-box-inner">
+
+            <div class="lf-header">
+                <h2>مرحباً بك 👋</h2>
+                <p>أدخل بيانات الدخول للوصول إلى لوحة التحكم</p>
+            </div>
+
+            <form action="<?php echo e(route('admin.login')); ?>" method="post" autocomplete="off">
+                <?php echo csrf_field(); ?>
+
+                
+                <div class="lf-group">
+                    <label for="username">اسم المستخدم</label>
+                    <div class="lf-input-wrap">
+                        <i class="fas fa-user lf-icon"></i>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            placeholder="أدخل اسم المستخدم"
+                            value="<?php echo e(old('username')); ?>"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+                    <?php $__errorArgs = ['username'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                        <div class="lf-error">
+                            <i class="fas fa-exclamation-circle"></i> <?php echo e($message); ?>
+
+                        </div>
+                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                </div>
+
+                
+                <div class="lf-group">
+                    <label for="password">كلمة المرور</label>
+                    <div class="lf-input-wrap">
+                        <i class="fas fa-lock lf-icon"></i>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="أدخل كلمة المرور"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button type="button" class="lf-eye" id="toggle-pw" tabindex="-1">
+                            <i class="fas fa-eye" id="eye-icon"></i>
+                        </button>
+                    </div>
+                    <?php $__errorArgs = ['password'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                        <div class="lf-error">
+                            <i class="fas fa-exclamation-circle"></i> <?php echo e($message); ?>
+
+                        </div>
+                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                </div>
+
+                <button type="submit" class="lf-btn">
+                    <i class="fas fa-sign-in-alt mr-2"></i> دخول
+                </button>
+
+            </form>
+
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.getElementById('toggle-pw').addEventListener('click', function () {
+        var pw   = document.getElementById('password');
+        var icon = document.getElementById('eye-icon');
+        if (pw.type === 'password') {
+            pw.type = 'text';
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            pw.type = 'password';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    });
+</script>
 
 </body>
 </html>

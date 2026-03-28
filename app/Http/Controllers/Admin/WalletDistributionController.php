@@ -58,9 +58,10 @@ class WalletDistributionController extends Controller
         ]);
 
         $distribution = WalletDistribution::create([
-            'total_amount' => $request->total_amount,
+            'total_amount'    => $request->total_amount,
             'number_of_orders' => $request->number_of_orders,
-            'activate' => $request->has('activate') ? 1 : 0,
+            'expires_days'    => $request->filled('expires_days') ? (int) $request->expires_days : null,
+            'activate'        => $request->has('activate') ? 1 : 0,
         ]);
 
         // ✅ إذا كان التوزيع مفعل، طبقه على رصيد التطبيق لجميع المستخدمين
@@ -105,9 +106,10 @@ class WalletDistributionController extends Controller
         $distribution = WalletDistribution::findOrFail($id);
         
         $distribution->update([
-            'total_amount' => $request->total_amount,
+            'total_amount'    => $request->total_amount,
             'number_of_orders' => $request->number_of_orders,
-            'activate' => $request->has('activate') ? 1 : 0,
+            'expires_days'    => $request->filled('expires_days') ? (int) $request->expires_days : null,
+            'activate'        => $request->has('activate') ? 1 : 0,
         ]);
 
         // ✅ إذا كان التوزيع مفعل، طبقه على رصيد التطبيق

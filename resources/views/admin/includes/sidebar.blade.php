@@ -317,6 +317,15 @@
                                     </a>
                                 </li>
                             @endcan
+                            @can('report-view')
+                                <li class="nav-item">
+                                    <a href="{{ route('reports.driver-acceptance') }}"
+                                        class="nav-link {{ request()->routeIs('reports.driver-acceptance') ? 'active' : '' }}">
+                                        <i class="fas fa-history nav-icon"></i>
+                                        <p>{{ __('messages.driver-acceptance') }}</p>
+                                    </a>
+                                </li>
+                            @endcan
 
                             <!-- Financial Reports Submenu -->
                             @can('financial-reports-list')

@@ -1970,7 +1970,7 @@ return [
 'Delete_Reason'               => 'Delete Reason',
 'Delete_Confirmation_Message' => 'Are you sure you want to permanently delete this record? This action cannot be undone.',
 'Enter_Reason_For_Deletion'   => 'Enter reason for deletion...',
-    '' => '',
+    'driver-acceptance' => 'Driver acceptance',
     '' => '',
     '' => '',
     '' => '',

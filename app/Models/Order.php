@@ -87,6 +87,11 @@ class Order extends Model
         return $this->hasOne(Rating::class);
     }
 
+    public function statusHistories()
+    {
+        return $this->hasMany(OrderStatusHistory::class)->orderBy('changed_at', 'asc');
+    }
+
     public static function generateOrderNumber()
     {
         do {

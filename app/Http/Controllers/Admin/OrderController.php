@@ -102,7 +102,8 @@ class OrderController extends Controller
             'complaints' => function ($query) {
                 $query->orderBy('created_at', 'desc');
             },
-            'rating'
+            'rating',
+            'statusHistories'
         ])->findOrFail($id);
 
         return view('admin.orders.show', compact('order'));

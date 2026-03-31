@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Traits\Responses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
@@ -50,6 +51,9 @@ class HomeController extends Controller
             // Get app credit distribution info
             $appCreditInfo = $this->getAppCreditDistributionInfo($lang);
 
+            // Get cancellation info
+            $cancellationInfo = $this->getCancellationInfo($user->id);
+
             $responseData = [
                 'user' => [
                     'id' => $user->id,
@@ -67,6 +71,8 @@ class HomeController extends Controller
                 'challenges' => $challenges,
                 'statistics' => $userStats,
                 'app_credit_info' => $appCreditInfo,
+                'daily_cancellation_limit_reached' => $cancellationInfo['daily_cancellation_limit_reached'],
+                'cancellation_fee' => $cancellationInfo['cancellation_fee'],
             ];
 
             return $this->success_response('Home data retrieved successfully', $responseData);
@@ -153,6 +159,31 @@ class HomeController extends Controller
             \Log::error('Error retrieving challenge details: ' . $e->getMessage());
             return $this->error_response('Failed to retrieve challenge details', $e->getMessage());
         }
+    }
+
+    /**
+     * Get daily cancellation limit status and fee for the user
+     */
+    private function getCancellationInfo($userId)
+    {
+        $limit = (int) (DB::table('settings')
+            ->where('key', 'times_that_user_cancel_orders_in_one_day')
+            ->value('value') ?? 2);
+
+        $fee = (float) (DB::table('settings')
+            ->where('key', 'fee_when_user_cancel_order_more_times')
+            ->value('value') ?? 0.5);
+
+        $todayCancellations = DB::table('orders')
+            ->where('user_id', $userId)
+            ->where('status', 'user_cancel_order')
+            ->whereDate('updated_at', now()->format('Y-m-d'))
+            ->count();
+
+        return [
+            'daily_cancellation_limit_reached' => $todayCancellations >= $limit,
+            'cancellation_fee' => $fee,
+        ];
     }
 
     /**

@@ -54,6 +54,9 @@ class HomeDriverController extends Controller
             // Get today's statistics
             $todayStats = $this->getTodayStatistics($driver->id);
 
+            // Get cancellation info
+            $cancellationInfo = $this->getCancellationInfo($driver->id);
+
             // Prepare the response data
             $responseData = [
                 'profile' => $driver,
@@ -68,7 +71,9 @@ class HomeDriverController extends Controller
                     'required_amount' => $walletStatus['required_amount'],
                     'popup_message' => $walletStatus['popup_message']
                 ],
-                'today_statistics' => $todayStats
+                'today_statistics' => $todayStats,
+                'daily_cancellation_limit_reached' => $cancellationInfo['daily_cancellation_limit_reached'],
+                'cancellation_fee' => $cancellationInfo['cancellation_fee'],
             ];
 
             // Add ban information if driver is banned
@@ -321,6 +326,31 @@ class HomeDriverController extends Controller
     }
 
     /**
+     * Get daily cancellation limit status and fee for the driver
+     */
+    private function getCancellationInfo($driverId)
+    {
+        $limit = (int) (DB::table('settings')
+            ->where('key', 'times_that_driver_cancel_orders_in_one_day')
+            ->value('value') ?? 2);
+
+        $fee = (float) (DB::table('settings')
+            ->where('key', 'fee_when_driver_cancel_order_more_times')
+            ->value('value') ?? 0.5);
+
+        $todayCancellations = DB::table('orders')
+            ->where('driver_id', $driverId)
+            ->where('status', 'driver_cancel_order')
+            ->whereDate('updated_at', now()->format('Y-m-d'))
+            ->count();
+
+        return [
+            'daily_cancellation_limit_reached' => $todayCancellations >= $limit,
+            'cancellation_fee' => $fee,
+        ];
+    }
+
+    /**
      * Calculate distance between two coordinates using Haversine formula
      * Returns distance in kilometers
      */
@@ -341,3 +371,4 @@ class HomeDriverController extends Controller
         return $distance;
     }
 }
+

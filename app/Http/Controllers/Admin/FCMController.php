@@ -16,15 +16,9 @@ class FCMController extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    public static function sendMessage($title, $body, $fcmToken, $userId, $screen = "order", $userType = "user")
+    public static function getAccessToken(): ?string
     {
-        if (!$fcmToken) {
-            \Log::error("FCM Error: No FCM token provided for $userType ID $userId");
-            return false;
-        }
-
         $credentialsFilePath = base_path(env('FIREBASE_CREDENTIALS_PATH'));
-
         try {
             $client = new GoogleClient();
             $client->setAuthConfig($credentialsFilePath);
@@ -32,8 +26,31 @@ class FCMController extends BaseController
             $client->useApplicationDefaultCredentials();
             $client->fetchAccessTokenWithAssertion();
             $tokenResponse = $client->getAccessToken();
+            return $tokenResponse['access_token'] ?? null;
+        } catch (\Exception $e) {
+            \Log::error("FCM Error: Failed to get access token: " . $e->getMessage());
+            return null;
+        }
+    }
 
-            $access_token = $tokenResponse['access_token'];
+    public static function sendMessage($title, $body, $fcmToken, $userId, $screen = "order", $userType = "user", $accessToken = null)
+    {
+        if (!$fcmToken) {
+            \Log::error("FCM Error: No FCM token provided for $userType ID $userId");
+            return false;
+        }
+
+        try {
+            if (!$accessToken) {
+                $accessToken = self::getAccessToken();
+            }
+
+            if (!$accessToken) {
+                \Log::error("FCM Error: Could not obtain access token for $userType ID $userId");
+                return false;
+            }
+
+            $access_token = $accessToken;
             \Log::info("FCM Access Token for $userType ID $userId: " . $access_token);
 
             $headers = [
@@ -146,13 +163,20 @@ class FCMController extends BaseController
             return false;
         }
 
+        // Fetch access token once for all recipients to avoid rate limiting
+        $accessToken = self::getAccessToken();
+        if (!$accessToken) {
+            \Log::error("FCM Error: Could not obtain access token for bulk notification");
+            return false;
+        }
+
         $allSent = true;
 
         foreach ($users as $recipient) {
             $fcmToken = $recipient->fcm_token ?? null;
             $userId = $recipient->id;
 
-            $sent = self::sendMessage($title, $body, $fcmToken, $userId);
+            $sent = self::sendMessage($title, $body, $fcmToken, $userId, "order", "user", $accessToken);
 
             if (!$sent) {
                 $allSent = false;

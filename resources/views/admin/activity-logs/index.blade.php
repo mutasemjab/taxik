@@ -4,43 +4,43 @@
 <div class="container-fluid">
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">All Activity Logs</h3>
+            <h3 class="card-title">{{ __('dashboard.activity_logs') }}</h3>
         </div>
-        
+
         <!-- Filter Form -->
         <div class="card-body border-bottom">
             <form method="GET" action="{{ route('activity-logs.index') }}" class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label">Model Type</label>
+                    <label class="form-label">{{ __('dashboard.model_type') }}</label>
                     <select name="log_name" class="form-control">
-                        <option value="">All Models</option>
+                        <option value="">{{ __('dashboard.all_models') }}</option>
                         <option value="card" {{ request('log_name') == 'card' ? 'selected' : '' }}>Card</option>
                         <option value="user" {{ request('log_name') == 'user' ? 'selected' : '' }}>User</option>
                         <option value="pos" {{ request('log_name') == 'pos' ? 'selected' : '' }}>POS</option>
                         <!-- Add more model types as needed -->
                     </select>
                 </div>
-                
+
                 <div class="col-md-3">
-                    <label class="form-label">Event Type</label>
+                    <label class="form-label">{{ __('dashboard.event_type') }}</label>
                     <select name="event" class="form-control">
-                        <option value="">All Events</option>
-                        <option value="created" {{ request('event') == 'created' ? 'selected' : '' }}>Created</option>
-                        <option value="updated" {{ request('event') == 'updated' ? 'selected' : '' }}>Updated</option>
-                        <option value="deleted" {{ request('event') == 'deleted' ? 'selected' : '' }}>Deleted</option>
+                        <option value="">{{ __('dashboard.all_events') }}</option>
+                        <option value="created" {{ request('event') == 'created' ? 'selected' : '' }}>{{ __('dashboard.event_created') }}</option>
+                        <option value="updated" {{ request('event') == 'updated' ? 'selected' : '' }}>{{ __('dashboard.event_updated') }}</option>
+                        <option value="deleted" {{ request('event') == 'deleted' ? 'selected' : '' }}>{{ __('dashboard.event_deleted') }}</option>
                     </select>
                 </div>
-                
+
                 <div class="col-md-3">
-                    <label class="form-label">Date From</label>
+                    <label class="form-label">{{ __('dashboard.date_from') }}</label>
                     <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
                 </div>
-                
+
                 <div class="col-md-3">
                     <label class="form-label">&nbsp;</label>
                     <div>
-                        <button type="submit" class="btn btn-primary">Filter</button>
-                        <a href="{{ route('activity-logs.index') }}" class="btn btn-secondary">Reset</a>
+                        <button type="submit" class="btn btn-primary">{{ __('dashboard.filter') }}</button>
+                        <a href="{{ route('activity-logs.index') }}" class="btn btn-secondary">{{ __('dashboard.reset') }}</a>
                     </div>
                 </div>
             </form>
@@ -51,11 +51,11 @@
                 <table class="table table-bordered table-striped table-hover">
                     <thead class="table-dark">
                         <tr>
-                            <th width="15%">Date & Time</th>
-                            <th width="10%">Model</th>
-                            <th width="10%">Event</th>
-                            <th width="15%">User</th>
-                            <th>Changes</th>
+                            <th width="15%">{{ __('dashboard.date_time') }}</th>
+                            <th width="10%">{{ __('dashboard.model') }}</th>
+                            <th width="10%">{{ __('dashboard.event') }}</th>
+                            <th width="15%">{{ __('dashboard.user') }}</th>
+                            <th>{{ __('dashboard.changes') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -74,11 +74,11 @@
                             </td>
                             <td>
                                 @if($log->event == 'created')
-                                    <span class="badge bg-success">Created</span>
+                                    <span class="badge bg-success">{{ __('dashboard.event_created') }}</span>
                                 @elseif($log->event == 'updated')
-                                    <span class="badge bg-warning text-dark">Updated</span>
+                                    <span class="badge bg-warning text-dark">{{ __('dashboard.event_updated') }}</span>
                                 @elseif($log->event == 'deleted')
-                                    <span class="badge bg-danger">Deleted</span>
+                                    <span class="badge bg-danger">{{ __('dashboard.event_deleted') }}</span>
                                 @else
                                     <span class="badge bg-secondary">{{ ucfirst($log->event) }}</span>
                                 @endif
@@ -88,14 +88,14 @@
                                     <i class="fas fa-user"></i> {{ $log->causer->name }}
                                     <div><small class="text-muted">{{ $log->causer->email ?? '' }}</small></div>
                                 @else
-                                    <span class="text-muted">System</span>
+                                    <span class="text-muted">{{ __('dashboard.system') }}</span>
                                 @endif
                             </td>
                             <td>
                                 @if($log->description)
                                     <div><strong>{{ $log->description }}</strong></div>
                                 @endif
-                                
+
                                 @if($log->event == 'updated' && $log->properties->has('old') && $log->properties->has('attributes'))
                                     <small>
                                         @foreach($log->properties['attributes'] as $key => $value)
@@ -110,9 +110,9 @@
                                         @endforeach
                                     </small>
                                 @elseif($log->event == 'created')
-                                    <small class="text-muted">New record created</small>
+                                    <small class="text-muted">{{ __('dashboard.new_record_created') }}</small>
                                 @elseif($log->event == 'deleted')
-                                    <small class="text-muted">Record deleted</small>
+                                    <small class="text-muted">{{ __('dashboard.record_deleted') }}</small>
                                 @endif
                             </td>
                         </tr>
@@ -121,7 +121,7 @@
                             <td colspan="5" class="text-center">
                                 <div class="py-4">
                                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted">No activity logs found</p>
+                                    <p class="text-muted">{{ __('dashboard.no_activity_logs') }}</p>
                                 </div>
                             </td>
                         </tr>
@@ -137,4 +137,3 @@
     </div>
 </div>
 @endsection
-

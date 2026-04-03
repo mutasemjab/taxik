@@ -37,7 +37,7 @@ class SendBulkNotification implements ShouldQueue
     public function handle()
     {
         // Send notification via FCM
-        AdminFCMController::sendMessageToAll($this->title, $this->body);
+        AdminFCMController::sendMessageToAll($this->title, $this->body, $this->type);
         
         // Optionally update notification status
         $notification = Notification::find($this->notificationId);

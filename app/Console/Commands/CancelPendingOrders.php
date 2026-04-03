@@ -125,10 +125,38 @@ class CancelPendingOrders extends Command
                     'body' => $response->body()
                 ]);
             }
-            
+
+            // Delete the associated chat
+            $this->removeChatFromFirestore($orderId);
+
         } catch (\Exception $e) {
             Log::error("Error removing order #{$orderId} from Firestore: " . $e->getMessage());
             // Don't throw exception - we don't want Firestore errors to stop the cancellation
+        }
+    }
+
+    /**
+     * Remove chat from Firestore associated with the given order ID
+     */
+    private function removeChatFromFirestore($orderId)
+    {
+        try {
+            $response = Http::timeout(10)->delete(
+                "{$this->baseUrl}/chats/{$orderId}"
+            );
+
+            if ($response->successful()) {
+                Log::info("Chat for order #{$orderId} removed from Firestore successfully");
+            } elseif ($response->status() === 404) {
+                Log::info("Chat for order #{$orderId} not found in Firestore (already removed or never existed)");
+            } else {
+                Log::warning("Failed to delete chat for order #{$orderId} from Firestore", [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning("Error removing chat for order #{$orderId} from Firestore: " . $e->getMessage());
         }
     }
 }

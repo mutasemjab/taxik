@@ -131,7 +131,7 @@
             </div>
 
             <div class="mt-3">
-                {{ $logs->links() }}
+                {{ $logs->appends(request()->query())->links() }}
             </div>
         </div>
     </div>

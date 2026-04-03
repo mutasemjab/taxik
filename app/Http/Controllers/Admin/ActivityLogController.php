@@ -29,7 +29,7 @@ class ActivityLogController extends Controller
     public function index(Request $request)
     {
         $query = Activity::with('causer', 'subject')
-            ->where('causer_type', 'App\\Models\\Admin') // ← فقط الأدمن
+            ->where('causer_type', 'admin') // ← فقط الأدمن
             ->latest();
 
         // Filter by model type

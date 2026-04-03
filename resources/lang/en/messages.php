@@ -702,6 +702,7 @@ return [
     'Driver_Accepted' => 'Driver Accepted',
     'On_The_Way' => 'On The Way',
     'On The Way' => 'On The Way',
+    'Cancel Cron Job' => 'Cancel Cron Job',
     'Driver_Going_To_User' => 'Driver Going To User',
     'Arrived' => 'Arrived',
     'Started' => 'Started',

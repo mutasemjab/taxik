@@ -2008,6 +2008,7 @@ return [
     'driver-acceptance' => 'السائقين المقبولين',
         'Waiting Payment' => 'بانتظار الدفع',
     'On The Way' => 'في الطريق',
+    'Cancel Cron Job' => 'ألغيت تلقائيا',
 
 
     '' => '',
